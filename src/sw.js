@@ -24,6 +24,101 @@ self.addEventListener('install', (event) => {
   );
 });
 
+// Request notification permission
+self.addEventListener('activate', async (event) => {
+    event.waitUntil(
+        Promise.all([
+            // Enable navigation preload
+            'navigationPreload' in self.registration ?
+                self.registration.navigationPreload.enable() : Promise.resolve(),
+            
+            // Request notification permission
+            self.registration.pushManager.getSubscription()
+                .then(async (subscription) => {
+                    if (Notification.permission !== 'granted') {
+                        await Notification.requestPermission();
+                    }
+                })
+        ])
+    );
+});
+
+// Handle installation status
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        (async () => {
+            try {
+                // Show installation started notification
+                if (Notification.permission === 'granted') {
+                    await self.registration.showNotification('NGOBRAS', {
+                        body: 'Memulai penginstalan aplikasi...',
+                        icon: '/images/icons/icon-192x192.png',
+                        tag: 'install-progress'
+                    });
+                }
+
+                const cache = await caches.open(CACHE_NAME);
+                console.log('Cache opened');
+                
+                // Track progress
+                let loaded = 0;
+                const total = urlsToCache.length;
+                
+                // Cache files with progress tracking
+                for (const url of urlsToCache) {
+                    try {
+                        await cache.add(url);
+                        loaded++;
+                        
+                        // Update progress notification every 25%
+                        if (loaded % Math.ceil(total/4) === 0 && Notification.permission === 'granted') {
+                            const progress = Math.round((loaded/total) * 100);
+                            await self.registration.showNotification('NGOBRAS', {
+                                body: `Menginstal... ${progress}%`,
+                                icon: '/images/icons/icon-192x192.png',
+                                tag: 'install-progress',
+                                renotify: true
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Failed to cache ${url}:`, error);
+                    }
+                }
+
+                // Show installation complete notification
+                if (Notification.permission === 'granted') {
+                    await self.registration.showNotification('NGOBRAS', {
+                        body: 'Aplikasi berhasil diinstall! Klik untuk membuka.',
+                        icon: '/images/icons/icon-192x192.png',
+                        tag: 'install-complete',
+                        requireInteraction: true,
+                        actions: [
+                            {
+                                action: 'open-app',
+                                title: 'Buka Aplikasi'
+                            }
+                        ]
+                    });
+                }
+            } catch (error) {
+                console.error('Installation failed:', error);
+            }
+        })()
+    );
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    if (event.notification.tag === 'install-complete' || event.action === 'open-app') {
+        // Open the app
+        event.waitUntil(
+            clients.openWindow('/ngobras.html')
+        );
+    }
+});
+
 // Fetch Service Worker
 self.addEventListener('fetch', (event) => {
   // Skip chrome-extension requests

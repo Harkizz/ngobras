@@ -246,7 +246,18 @@ if ('serviceWorker' in navigator) {
             return !!deferredPrompt;
         }
 
-        // Function to handle chat initiation
+        // Request notification permission
+        async function requestNotificationPermission() {
+            try {
+                const permission = await Notification.requestPermission();
+                return permission === 'granted';
+            } catch (error) {
+                console.error('Error requesting notification permission:', error);
+                return false;
+            }
+        }
+
+        // Function to handle chat initiation with notification support
         async function startChat(event) {
             if (event) {
                 event.preventDefault();
@@ -258,12 +269,15 @@ if ('serviceWorker' in navigator) {
                 return;
             }
 
+            // Request notification permission
+            await requestNotificationPermission();
+
             // Then check if can be installed
             const installable = await canInstallPWA();
             
             if (installable && deferredPrompt) {
                 try {
-                    // Show the install prompt
+                    // Show installation prompt
                     const result = await deferredPrompt.prompt();
                     console.log(`Install prompt shown: ${result}`);
                     
@@ -273,7 +287,7 @@ if ('serviceWorker' in navigator) {
                     if (choice.outcome === 'accepted') {
                         console.log('PWA installation accepted');
                         deferredPrompt = null;
-                        // Don't redirect here - let the appinstalled event handle it
+                        // Installation progress will be handled by service worker
                     } else {
                         console.log('PWA installation rejected');
                         window.location.href = 'ngobras.html';
@@ -283,8 +297,6 @@ if ('serviceWorker' in navigator) {
                     window.location.href = 'ngobras.html';
                 }
             } else {
-                // If can't install (browser doesn't support or already installed)
-                // but not running as PWA, redirect to web version
                 window.location.href = 'ngobras.html';
             }
         }
