@@ -168,17 +168,21 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     (async () => {
-      // Try to get the response from cache first
-      const cachedResponse = await caches.match(event.request);
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
       try {
-        // Try to use preloaded response
-        const preloadResponse = await event.preloadResponse;
+        // Try to use preloaded response first
+        const preloadResponse = await Promise.race([
+          event.preloadResponse,
+          new Promise((_, reject) => setTimeout(() => reject('preload timeout'), 2000))
+        ]);
+        
         if (preloadResponse) {
           return preloadResponse;
+        }
+
+        // Try to get the response from cache
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
         }
 
         // Otherwise, fetch from network
@@ -198,29 +202,41 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       } catch (error) {
         console.error('Fetch failed:', error);
-        return new Response('Network error', { status: 408, statusText: 'Network request failed' });
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return new Response('Network error', { 
+          status: 408, 
+          statusText: 'Network request failed' 
+        });
       }
     })()
   );
 });
 
-// Add navigation preload support
+// Activate event handler - Enable navigation preload
 self.addEventListener('activate', event => {
-    event.waitUntil(
-        Promise.all([
-            // Enable navigation preload if available
-            'navigationPreload' in self.registration ?
-                self.registration.navigationPreload.enable() : Promise.resolve(),
-            // Clean up old caches
-            caches.keys().then(cacheNames => {
-                return Promise.all(
-                    cacheNames.filter(cacheName => {
-                        return cacheName !== CACHE_NAME;
-                    }).map(cacheName => {
-                        return caches.delete(cacheName);
-                    })
-                );
-            })
-        ])
-    );
+  event.waitUntil(
+    Promise.all([
+      // Enable navigation preload
+      Promise.resolve()
+        .then(() => {
+          if (self.registration.navigationPreload) {
+            return self.registration.navigationPreload.enable();
+          }
+        })
+        .catch(err => console.error('Navigation preload failed:', err)),
+
+      // Clean old caches  
+      caches.keys()
+        .then(cacheNames => {
+          return Promise.all(
+            cacheNames
+              .filter(cacheName => cacheName !== CACHE_NAME)
+              .map(cacheName => caches.delete(cacheName))
+          );
+        })
+    ])
+  );
 });
