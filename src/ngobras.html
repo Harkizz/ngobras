@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGOBRAS - Chat App</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/ngobras.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="logo">
+            <i class="fas fa-comments me-2"></i>NGOBRAS
+        </div>
+        <button class="notification-btn" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge">3</span>
+        </button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Home Page (Chat List) -->
+        <div id="home-page" class="page active">
+            <div class="chat-list">
+                <div class="chat-item unread" onclick="openChat('admin', 'Dr. Sarah Wijaya')">
+                    <div class="chat-avatar admin">
+                        <i class="fas fa-user-md"></i>
+                        <div class="online-indicator"></div>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            Dr. Sarah Wijaya
+                            <span class="admin-badge">ADMIN</span>
+                        </div>
+                        <div class="chat-preview">Bagaimana perasaan Anda hari ini?</div>
+                    </div>
+                    <div class="chat-meta">
+                        <div class="chat-time">10:30</div>
+                        <div class="unread-count">2</div>
+                    </div>
+                </div>
+
+                <div class="chat-item" onclick="openChat('ai', 'NGOBRAS AI Assistant')">
+                    <div class="chat-avatar ai">
+                        <i class="fas fa-robot"></i>
+                        <div class="online-indicator"></div>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            NGOBRAS AI Assistant
+                            <span class="ai-badge">AI</span>
+                        </div>
+                        <div class="chat-preview">Saya siap membantu Anda 24/7</div>
+                    </div>
+                    <div class="chat-meta">
+                        <div class="chat-time">09:15</div>
+                    </div>
+                </div>
+
+                <div class="chat-item" onclick="openChat('admin', 'Dr. Andi Pratama')">
+                    <div class="chat-avatar admin">
+                        <i class="fas fa-user-md"></i>
+                        <div class="online-indicator offline-indicator"></div>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            Dr. Andi Pratama
+                            <span class="admin-badge">ADMIN</span>
+                        </div>
+                        <div class="chat-preview">Terima kasih sudah berkonsultasi</div>
+                    </div>
+                    <div class="chat-meta">
+                        <div class="chat-time">Kemarin</div>
+                    </div>
+                </div>
+
+                <div class="chat-item" onclick="openChat('admin', 'Dra. Lisa Sari')">
+                    <div class="chat-avatar admin">
+                        <i class="fas fa-user-md"></i>
+                        <div class="online-indicator offline-indicator"></div>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            Dra. Lisa Sari
+                            <span class="admin-badge">ADMIN</span>
+                        </div>
+                        <div class="chat-preview">Jangan ragu untuk menghubungi saya</div>
+                    </div>
+                    <div class="chat-meta">
+                        <div class="chat-time">2 hari</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Room -->
+        <div id="chat-page" class="page">
+            <div class="chat-room">
+                <div class="chat-header">
+                    <button class="back-btn" onclick="goBack()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="chat-avatar admin" id="current-chat-avatar">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name" id="current-chat-name">Dr. Sarah Wijaya</div>
+                        <div class="chat-time" id="current-chat-status">Online</div>
+                    </div>
+                    <div class="chat-switch">
+                        <button class="switch-btn ai" onclick="switchToAI()">AI</button>
+                        <button class="switch-btn admin active" onclick="switchToAdmin()">Admin</button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message received">
+                        <div class="message-avatar admin">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <div>
+                            <div class="message-bubble">
+                                Halo! Saya Dr. Sarah. Senang bertemu dengan Anda. Bagaimana perasaan Anda hari ini?
+                            </div>
+                            <div class="message-time">10:25</div>
+                        </div>
+                    </div>
+
+                    <div class="message sent">
+                        <div>
+                            <div class="message-bubble">
+                                Halo dok, saya merasa sedikit cemas belakangan ini dan sulit tidur
+                            </div>
+                            <div class="message-time">10:27</div>
+                        </div>
+                    </div>
+
+                    <div class="message received">
+                        <div class="message-avatar admin">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <div>
+                            <div class="message-bubble">
+                                Saya memahami perasaan Anda. Kecemasan dan gangguan tidur memang sering terjadi bersamaan. Bisakah Anda ceritakan lebih detail tentang apa yang membuat Anda merasa cemas?
+                            </div>
+                            <div class="message-time">10:30</div>
+                        </div>
+                    </div>
+
+                    <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                        <div class="message-avatar admin">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <div>
+                            <div class="typing-dots">
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                            </div>
+                            <span style="margin-left: 0.5rem; font-size: 0.8rem; color: #6C757D;">mengetik...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input">
+                    <div class="input-group">
+                        <button class="emoji-btn" onclick="toggleEmoji()">
+                            <i class="fas fa-smile"></i>
+                        </button>
+                        <input type="text" class="message-input" placeholder="Ketik pesan..." id="messageInput" onkeypress="handleKeyPress(event)">
+                    </div>
+                    <button class="send-btn" onclick="sendMessage()" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Page -->
+        <div id="history-page" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-history me-2"></i>Riwayat Konsultasi</h2>
+                <p>Lihat kembali sesi konsultasi Anda</p>
+            </div>
+            <div class="page-content">
+                <div class="history-item">
+                    <div class="history-header">
+                        <div class="history-title">Sesi dengan Dr. Sarah Wijaya</div>
+                        <div class="history-date">15 Jun 2025</div>
+                    </div>
+                    <div class="history-summary">
+                        Konsultasi mengenai manajemen kecemasan dan teknik relaksasi. Durasi: 45 menit
+                    </div>
+                </div>
+
+                <div class="history-item">
+                    <div class="history-header">
+                        <div class="history-title">Chat dengan AI Assistant</div>
+                        <div class="history-date">14 Jun 2025</div>
+                    </div>
+                    <div class="history-summary">
+                        Diskusi tentang tips mengatasi stress dan pola tidur yang sehat. Durasi: 20 menit
+                    </div>
+                </div>
+
+                <div class="history-item">
+                    <div class="history-header">
+                        <div class="history-title">Sesi dengan Dr. Andi Pratama</div>
+                        <div class="history-date">13 Jun 2025</div>
+                    </div>
+                    <div class="history-summary">
+                        Terapi kognitif behavioral untuk mengatasi pikiran negatif. Durasi: 60 menit
+                    </div>
+                </div>
+
+                <div class="history-item">
+                    <div class="history-header">
+                        <div class="history-title">Sesi dengan Dra. Lisa Sari</div>
+                        <div class="history-date">12 Jun 2025</div>
+                    </div>
+                    <div class="history-summary">
+                        Konseling keluarga dan strategi komunikasi yang efektif. Durasi: 50 menit
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profile-page" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-user me-2"></i>Profil Saya</h2>
+                <p>Kelola informasi akun Anda</p>
+            </div>
+            <div class="page-content">
+                <div class="profile-card">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-name">Budi Santoso</div>
+                    <div class="profile-email">budi.santoso@email.com</div>
+                    <p class="text-muted">Member sejak Januari 2025</p>
+                </div>
+
+                <div class="profile-menu">
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit Profil</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-bell"></i>
+                        <span>Notifikasi</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Privasi & Keamanan</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Pembayaran</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-question-circle"></i>
+                        <span>Bantuan</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Tentang NGOBRAS</span>
+                    </a>
+                    <a href="#" class="profile-menu-item" style="color: var(--coral);">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Keluar</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active" onclick="showPage('home')">
+            <i class="fas fa-home"></i>
+            <span>Beranda</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showPage('chat')">
+            <i class="fas fa-comments"></i>
+            <span>Konsultasi</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showPage('history')">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Riwayat</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showPage('profile')">
+            <i class="fas fa-user"></i>
+            <span>Profil</span>
+        </a>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="js/ngobras.js">
+    </script>
+</body>
+</html>
