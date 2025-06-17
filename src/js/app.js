@@ -68,11 +68,6 @@ function openInstalledApp() {
     window.location.href = appUrl;
 }
 
-// Function to check if app can be installed
-async function canInstallPWA() {
-    return !!deferredPrompt && !isInstalling;
-}
-
 // Function to show installation progress
 function showProgress(progress) {
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -84,32 +79,11 @@ function showProgress(progress) {
     }
 }
 
-// Request notification permission
-async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-        return false;
-    }
-
-    try {
-        const permission = await Notification.requestPermission();
-        return permission === 'granted';
-    } catch (error) {
-        console.error('Error requesting notification permission:', error);
-        return false;
-    }
-}
-
 // Handle installation
 async function handleInstallation() {
     if (!deferredPrompt) {
-        // Show installation guide based on platform
-        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-            showIOSInstallGuide();
-        } else if (/Android/.test(navigator.userAgent)) {
-            showAndroidInstallGuide();
-        } else {
-            alert('Silakan buka aplikasi ini di browser mobile untuk menginstal.');
-        }
+        // Redirect to web version if installation not possible
+        window.location.href = 'ngobras.html';
         return;
     }
 
@@ -130,93 +104,41 @@ async function handleInstallation() {
         } else {
             isInstalling = false;
             deferredPrompt = null;
+            // Redirect even if installation rejected
+            window.location.href = 'ngobras.html';
         }
     } catch (error) {
         console.error('Installation error:', error);
-        isInstalling = false;
-    }
-}
-
-// Function to handle chat initiation with notification support
-async function startChat(event) {
-    if (event) {
-        event.preventDefault();
-    }
-
-    // Prevent multiple installation attempts
-    if (isInstalling) {
-        console.log('Installation already in progress');
-        return;
-    }
-
-    try {
-        // First check if already running as PWA
-        if (isPWAInstalled()) {
-            showInstalledModal();
-            return;
-        }
-
-        // Check if installation is possible
-        const installable = await canInstallPWA();
-        
-        if (installable && deferredPrompt) {
-            isInstalling = true;
-            showProgress(0);
-            
-            // Show installation prompt
-            console.log('Showing install prompt...');
-            await deferredPrompt.prompt();
-            
-            // Wait for the user's choice
-            const choice = await deferredPrompt.userChoice;
-            
-            if (choice.outcome === 'accepted') {
-                console.log('PWA installation accepted');
-                localStorage.setItem('pwa-installed', 'true');
-                showProgress(100);
-                
-                // Wait a bit before redirecting
-                setTimeout(() => {
-                    window.location.href = 'ngobras.html';
-                }, 1000);
-            } else {
-                console.log('PWA installation rejected');
-                isInstalling = false;
-                deferredPrompt = null;
-                // Even if rejected, redirect to web version
-                window.location.href = 'ngobras.html';
-            }
-        } else {
-            // If can't install (no deferredPrompt), show installation guide
-            if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-                showIOSInstallGuide();
-            } else if (/Android/.test(navigator.userAgent)) {
-                showAndroidInstallGuide();
-            } else {
-                // If not mobile or can't determine, redirect to web version
-                window.location.href = 'ngobras.html';
-            }
-        }
-    } catch (error) {
-        console.error('Start chat error:', error);
         isInstalling = false;
         window.location.href = 'ngobras.html';
     }
 }
 
-// Add installation guides
-function showIOSInstallGuide() {
-    alert('Untuk menginstal aplikasi di iOS:\n\n' +
-          '1. Ketuk tombol "Share" di browser Safari\n' +
-          '2. Gulir ke bawah dan ketuk "Add to Home Screen"\n' +
-          '3. Ketuk "Add" untuk menginstal');
-}
+// Main chat function
+async function startChat(event) {
+    if (event) {
+        event.preventDefault();
+    }
 
-function showAndroidInstallGuide() {
-    alert('Untuk menginstal aplikasi di Android:\n\n' +
-          '1. Ketuk tombol menu di browser (3 titik)\n' +
-          '2. Pilih "Install app" atau "Add to Home screen"\n' +
-          '3. Ketuk "Install" untuk melanjutkan');
+    if (isInstalling) {
+        console.log('Installation in progress');
+        return;
+    }
+
+    try {
+        // Check if app is installed
+        if (isPWAInstalled()) {
+            showInstalledModal();
+            return;
+        }
+
+        // If not installed, directly trigger installation
+        await handleInstallation();
+    } catch (error) {
+        console.error('Start chat error:', error);
+        isInstalling = false;
+        window.location.href = 'ngobras.html';
+    }
 }
 
 // JavaScript for the index.html page
