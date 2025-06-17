@@ -3,10 +3,12 @@
   "short_name": "NGOBRAS",
   "description": "Aplikasi konsultasi online yang membantu Anda berbicara dengan ahli",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4a90e2",
   "orientation": "portrait",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "images/icons/icon-192x192.png",

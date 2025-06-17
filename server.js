@@ -33,10 +33,13 @@ app.get('/api/messages/:userId', (req, res) => {
 
 // Handle PWA routes
 app.get('/manifest.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/manifest+json');
     res.sendFile(path.join(__dirname, 'src', 'manifest.json'));
 });
 
 app.get('/sw.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Service-Worker-Allowed', '/');
     res.sendFile(path.join(__dirname, 'src', 'sw.js'));
 });
 

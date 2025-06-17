@@ -28,6 +28,11 @@ self.addEventListener('install', (event) => {
 
 // Fetch Service Worker
 self.addEventListener('fetch', (event) => {
+  // Skip chrome-extension requests
+  if (event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -35,21 +40,25 @@ self.addEventListener('fetch', (event) => {
         if (response) {
           return response;
         }
+
         return fetch(event.request)
           .then((response) => {
             // Check if we received a valid response
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
-            
-            // Clone the response
-            const responseToCache = response.clone();
-            
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
+
+            // Only cache requests from our domain
+            if (event.request.url.startsWith(self.location.origin)) {
+              // Clone the response
+              const responseToCache = response.clone();
               
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(event.request, responseToCache);
+                });
+            }
+            
             return response;
           });
       })
