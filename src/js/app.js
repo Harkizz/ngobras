@@ -215,37 +215,13 @@ document.addEventListener('DOMContentLoaded', function() {
         return; // Skip initialization if redirecting
     }
 
-    // Smooth scrolling
-    const navLinks = document.querySelectorAll('a[href^="#"]');
-    if (navLinks) {
-        navLinks.forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                const href = this.getAttribute('href');
-                // Only do smooth scroll for page sections, not for actions
-                if (href !== '#' && href.startsWith('#')) {
-                    e.preventDefault();
-                    const target = document.querySelector(href);
-                    if (target) {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                }
-            });
-        });
-    }
-    
     // Initialize chat buttons
-    const chatButtons = document.querySelectorAll('[onclick="startChat()"]');
+    const chatButtons = document.querySelectorAll('[data-action="start-chat"]');
     if (chatButtons) {
         chatButtons.forEach(button => {
-            // Remove inline onclick
-            button.removeAttribute('onclick');
-            // Add event listener
             button.addEventListener('click', (e) => {
                 e.preventDefault();
-                startChat();
+                startChat(e);
             });
         });
     }
@@ -269,6 +245,27 @@ document.addEventListener('DOMContentLoaded', function() {
         if (cleanup) {
             window.addEventListener('unload', cleanup);
         }
+    }
+
+    // Initialize smooth scrolling
+    const navLinks = document.querySelectorAll('a[href^="#"]');
+    if (navLinks) {
+        navLinks.forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                // Only do smooth scroll for page sections, not for actions
+                if (href !== '#' && href.startsWith('#')) {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
     }
 });
 
