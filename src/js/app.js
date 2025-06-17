@@ -2,12 +2,6 @@
 async function initializeApp() {
     try {
         if ('serviceWorker' in navigator) {
-            // First unregister any existing service worker
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let registration of registrations) {
-                await registration.unregister();
-            }
-
             // Register new service worker
             const registration = await navigator.serviceWorker.register('/sw.js', {
                 scope: '/'
@@ -33,11 +27,9 @@ async function initializeApp() {
     }
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initializeApp);
-
 // Variable to store the PWA install prompt
-let deferredPrompt;
+let deferredPrompt = null;
+let isInstalling = false;
 
 // Listen for the beforeinstallprompt event
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -45,11 +37,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     // Stash the event so it can be triggered later
     deferredPrompt = e;
+    console.log('beforeinstallprompt event was fired and saved');
 });
 
 // Listen for the appinstalled event
 window.addEventListener('appinstalled', (event) => {
+    isInstalling = false;
     deferredPrompt = null;
+    
     // Show success message if notifications are permitted
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('NGOBRAS Terinstall', {
@@ -57,6 +52,7 @@ window.addEventListener('appinstalled', (event) => {
             icon: '/images/icons/icon-192x192.png'
         });
     }
+
     // Redirect after short delay
     setTimeout(() => {
         window.location.href = 'ngobras.html';
@@ -72,7 +68,7 @@ function isPWAInstalled() {
 
 // Function to check if app can be installed
 async function canInstallPWA() {
-    return !!deferredPrompt;
+    return !!deferredPrompt && !isInstalling;
 }
 
 // Function to show installation progress
@@ -88,6 +84,10 @@ function showProgress(progress) {
 
 // Request notification permission
 async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        return false;
+    }
+
     try {
         const permission = await Notification.requestPermission();
         return permission === 'granted';
@@ -101,6 +101,12 @@ async function requestNotificationPermission() {
 async function startChat(event) {
     if (event) {
         event.preventDefault();
+    }
+
+    // Prevent multiple installation attempts
+    if (isInstalling) {
+        console.log('Installation already in progress');
+        return;
     }
 
     // First check if already running as PWA
@@ -117,10 +123,12 @@ async function startChat(event) {
     
     if (installable && deferredPrompt) {
         try {
+            isInstalling = true;
             showProgress(0);
+            
             // Show installation prompt
-            const result = await deferredPrompt.prompt();
-            console.log(`Install prompt shown: ${result}`);
+            console.log('Showing install prompt...');
+            await deferredPrompt.prompt();
             
             // Wait for the user's choice
             const choice = await deferredPrompt.userChoice;
@@ -128,17 +136,20 @@ async function startChat(event) {
             if (choice.outcome === 'accepted') {
                 console.log('PWA installation accepted');
                 showProgress(50);
-                deferredPrompt = null;
                 // Installation progress will be handled by service worker
             } else {
                 console.log('PWA installation rejected');
+                isInstalling = false;
+                deferredPrompt = null;
                 window.location.href = 'ngobras.html';
             }
         } catch (error) {
             console.error('Install prompt error:', error);
+            isInstalling = false;
             window.location.href = 'ngobras.html';
         }
     } else {
+        console.log('App cannot be installed or is already installing');
         window.location.href = 'ngobras.html';
     }
 }

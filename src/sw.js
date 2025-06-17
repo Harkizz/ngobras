@@ -13,27 +13,55 @@ const urlsToCache = [
   'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js'
 ];
 
-// Skip waiting on install
-self.addEventListener('install', event => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
-});
-
 // Install Service Worker
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
+self.addEventListener('install', event => {
+    self.skipWaiting();
+    event.waitUntil(
+        (async () => {
+            try {
+                // Show installation started notification
+                if ('Notification' in self && Notification.permission === 'granted') {
+                    await self.registration.showNotification('NGOBRAS', {
+                        body: 'Memulai penginstalan aplikasi...',
+                        icon: '/images/icons/icon-192x192.png',
+                        tag: 'install-progress'
+                    });
+                }
+
+                const cache = await caches.open(CACHE_NAME);
+                console.log('Cache opened');
+                
+                // Track progress
+                let loaded = 0;
+                const total = urlsToCache.length;
+                
+                // Cache files with progress tracking
+                for (const url of urlsToCache) {
+                    try {
+                        await cache.add(url);
+                        loaded++;
+                        
+                        // Update progress notification every 25%
+                        if (loaded % Math.ceil(total/4) === 0 && 
+                            'Notification' in self && 
+                            Notification.permission === 'granted') {
+                            const progress = Math.round((loaded/total) * 100);
+                            await self.registration.showNotification('NGOBRAS', {
+                                body: `Menginstal... ${progress}%`,
+                                icon: '/images/icons/icon-192x192.png',
+                                tag: 'install-progress',
+                                renotify: true
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Failed to cache ${url}:`, error);
+                    }
+                }
+            } catch (error) {
+                console.error('Installation failed:', error);
+            }
+        })()
+    );
 });
 
 // Activate event handler
