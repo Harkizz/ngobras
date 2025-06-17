@@ -4,28 +4,33 @@ let currentChatType = 'admin';
 
         // Navigation
         function showPage(page) {
-            // Remove active class from all nav items
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-           // Add active class to clicked nav item
-            event.target.closest('.nav-item').classList.add('active');
+            // First check if nav items exist before trying to modify them
+            const navItems = document.querySelectorAll('.nav-item');
+            if (navItems) {
+                // Remove active class from all nav items
+                navItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Add active class to clicked nav item if it exists
+                const clickedItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+                if (clickedItem) {
+                    clickedItem.classList.add('active');
+                }
+            }
             
             // Hide all pages
-            document.querySelectorAll('.page').forEach(p => {
-                p.classList.remove('active');
-            });
+            const pages = document.querySelectorAll('.page');
+            if (pages) {
+                pages.forEach(p => {
+                    p.classList.remove('active');
+                });
+            }
             
             // Show selected page
-            if (page === 'home') {
-                document.getElementById('home-page').classList.add('active');
-            } else if (page === 'chat') {
-                document.getElementById('chat-page').classList.add('active');
-            } else if (page === 'history') {
-                document.getElementById('history-page').classList.add('active');
-            } else if (page === 'profile') {
-                document.getElementById('profile-page').classList.add('active');
+            const targetPage = document.getElementById(`${page}-page`);
+            if (targetPage) {
+                targetPage.classList.add('active');
             }
         }
 
