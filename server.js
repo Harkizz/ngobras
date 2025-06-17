@@ -43,9 +43,24 @@ app.get('/sw.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'src', 'sw.js'));
 });
 
-// Handle all other routes for PWA
-app.get('*', (req, res) => {
+// Route handler for PWA
+app.get('/ngobras', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src', 'ngobras.html'));
+});
+
+// Landing page route
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'src', 'index.html'));
+});
+
+// Handle all other routes
+app.get('*', (req, res) => {
+    // If request is from installed PWA, redirect to ngobras.html
+    if (req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document') {
+        res.sendFile(path.join(__dirname, 'src', 'ngobras.html'));
+    } else {
+        res.sendFile(path.join(__dirname, 'src', 'index.html'));
+    }
 });
 
 app.listen(port, () => {

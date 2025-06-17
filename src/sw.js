@@ -1,13 +1,11 @@
 const CACHE_NAME = 'ngobras-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
   '/ngobras.html',
-  '/css/style.css',
   '/css/ngobras.css',
   '/js/app.js',
   '/js/chat.js',
   '/js/ngobras.js',
+  '/manifest.json',
   '/images/icons/favicon.png',
   '/images/icons/icon-192x192.png',
   '/images/icons/icon-512x512.png',

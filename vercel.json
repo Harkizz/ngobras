@@ -16,6 +16,18 @@
             "dest": "server.js"
         },
         {
+            "src": "/ngobras",
+            "dest": "src/ngobras.html"
+        },
+        {
+            "src": "/manifest.json",
+            "dest": "src/manifest.json"
+        },
+        {
+            "src": "/sw.js",
+            "dest": "src/sw.js"
+        },
+        {
             "src": "/(.*)",
             "dest": "src/$1"
         }
