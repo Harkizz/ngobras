@@ -1,4 +1,5 @@
-const CACHE_NAME = 'ngobras-v1';
+const APP_VERSION = '1.0.0';
+const CACHE_NAME = `ngobras-v${APP_VERSION}`;
 const urlsToCache = [
   '/ngobras.html',
   '/css/ngobras.css',
@@ -139,6 +140,14 @@ self.addEventListener('notificationclick', (event) => {
             clients.openWindow('/ngobras.html')
         );
     }
+
+    if (event.action === 'reload') {
+        event.waitUntil(
+            clients.matchAll().then(clients => {
+                clients.forEach(client => client.navigate(client.url));
+            })
+        );
+    }
 });
 
 // Fetch Service Worker
@@ -221,4 +230,48 @@ self.addEventListener('activate', event => {
         })
     ])
   );
+});
+
+// Check for updates
+async function checkForUpdates() {
+    try {
+        const response = await fetch('/manifest.json');
+        const manifest = await response.json();
+        
+        if (manifest.version !== APP_VERSION) {
+            // Clear all caches
+            const cacheNames = await caches.keys();
+            await Promise.all(
+                cacheNames.map(cacheName => caches.delete(cacheName))
+            );
+            
+            // Show update notification
+            if (Notification.permission === 'granted') {
+                await self.registration.showNotification('NGOBRAS Update', {
+                    body: 'Versi baru tersedia. Aplikasi akan diperbarui.',
+                    icon: '/images/icons/icon-192x192.png',
+                    tag: 'update-available',
+                    actions: [{ action: 'reload', title: 'Perbarui Sekarang' }]
+                });
+            }
+            
+            // Force reload all clients
+            const clients = await self.clients.matchAll();
+            clients.forEach(client => client.navigate(client.url));
+        }
+    } catch (error) {
+        console.error('Error checking for updates:', error);
+    }
+}
+
+// Check for updates periodically
+self.addEventListener('periodicsync', event => {
+    if (event.tag === 'check-updates') {
+        event.waitUntil(checkForUpdates());
+    }
+});
+
+// Check for updates on push notification
+self.addEventListener('push', event => {
+    event.waitUntil(checkForUpdates());
 });
