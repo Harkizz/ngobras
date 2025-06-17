@@ -15,15 +15,14 @@ async function initializeApp() {
             // Wait for the service worker to be ready
             await navigator.serviceWorker.ready;
             console.log('ServiceWorker registration successful');
-
-            // Now check for notification permission
-            if ('Notification' in window) {
-                const permission = await Notification.requestPermission();
-                console.log('Notification permission:', permission);
-            }
         }
     } catch (error) {
         console.error('ServiceWorker registration failed:', error);
+    }
+
+    // Request notification permission
+    if ('Notification' in window) {
+        Notification.requestPermission();
     }
 }
 
@@ -31,28 +30,94 @@ async function initializeApp() {
 let deferredPrompt = null;
 let isInstalling = false;
 
-// Improved PWA installation check
+// When the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Add click listeners to all buttons with data-action="start-chat"
+    const startChatButtons = document.querySelectorAll('[data-action="start-chat"]');
+    startChatButtons.forEach(button => {
+        button.addEventListener('click', startChat);
+    });
+});
+
+// Listen for beforeinstallprompt
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    console.log('beforeinstallprompt captured');
+});
+
+// Update startChat function
+async function startChat(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    console.log('startChat triggered');
+
+    if (isInstalling) {
+        console.log('Installation already in progress');
+        return;
+    }
+
+    try {
+        if (isPWAInstalled()) {
+            console.log('App is already installed');
+            showInstalledModal();
+            return;
+        }
+
+        if (!deferredPrompt) {
+            console.log('No installation prompt available');
+            // Redirect to web version if can't install
+            window.location.href = 'ngobras.html';
+            return;
+        }
+
+        console.log('Triggering install prompt');
+        isInstalling = true;
+
+        // Show the install prompt
+        await deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        
+        console.log('User choice:', choiceResult.outcome);
+        
+        if (choiceResult.outcome === 'accepted') {
+            localStorage.setItem('pwa-installed', 'true');
+            showProgress(100);
+            setTimeout(() => {
+                window.location.href = 'ngobras.html';
+            }, 1000);
+        } else {
+            // Even if user cancels, redirect to web version
+            window.location.href = 'ngobras.html';
+        }
+
+        // Reset the prompt variable
+        deferredPrompt = null;
+        isInstalling = false;
+
+    } catch (error) {
+        console.error('Installation error:', error);
+        isInstalling = false;
+        window.location.href = 'ngobras.html';
+    }
+}
+
+// Update isPWAInstalled function
 function isPWAInstalled() {
-    // Check if running as standalone PWA
     if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('Detected standalone mode');
         return true;
     }
-    
-    // Check for iOS standalone mode
     if (window.navigator.standalone) {
+        console.log('Detected iOS standalone mode');
         return true;
     }
-    
-    // Check if installed via manifest
-    if (document.referrer.includes('android-app://')) {
-        return true;
-    }
-
-    // Check if PWA was previously installed
     if (localStorage.getItem('pwa-installed')) {
+        console.log('Found installation flag in localStorage');
         return true;
     }
-
     return false;
 }
 
@@ -109,33 +174,6 @@ async function handleInstallation() {
         }
     } catch (error) {
         console.error('Installation error:', error);
-        isInstalling = false;
-        window.location.href = 'ngobras.html';
-    }
-}
-
-// Main chat function
-async function startChat(event) {
-    if (event) {
-        event.preventDefault();
-    }
-
-    if (isInstalling) {
-        console.log('Installation in progress');
-        return;
-    }
-
-    try {
-        // Check if app is installed
-        if (isPWAInstalled()) {
-            showInstalledModal();
-            return;
-        }
-
-        // If not installed, directly trigger installation
-        await handleInstallation();
-    } catch (error) {
-        console.error('Start chat error:', error);
         isInstalling = false;
         window.location.href = 'ngobras.html';
     }
@@ -313,11 +351,4 @@ window.addEventListener('appinstalled', (event) => {
             icon: '/images/icons/icon-192x192.png'
         });
     }
-});
-
-// Listen for the beforeinstallprompt event
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    console.log('beforeinstallprompt event was fired and saved');
 });
