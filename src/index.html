@@ -277,5 +277,25 @@
     <script src="js/app.js"></script>
     <script src="js/ngobras.js"></script>
     <script src="js/chat.js"></script>
+
+    <!-- App Installed Modal -->
+<div class="modal fade" id="appInstalledModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Aplikasi Terinstall</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                <p>Aplikasi NGOBRAS sudah terinstall di perangkat Anda.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-primary" onclick="openInstalledApp()">Buka Aplikasi</button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

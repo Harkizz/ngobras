@@ -31,34 +31,6 @@ async function initializeApp() {
 let deferredPrompt = null;
 let isInstalling = false;
 
-// Listen for the beforeinstallprompt event
-window.addEventListener('beforeinstallprompt', (e) => {
-    // Prevent Chrome 67 and earlier from automatically showing the prompt
-    e.preventDefault();
-    // Stash the event so it can be triggered later
-    deferredPrompt = e;
-    console.log('beforeinstallprompt event was fired and saved');
-});
-
-// Listen for the appinstalled event
-window.addEventListener('appinstalled', (event) => {
-    isInstalling = false;
-    deferredPrompt = null;
-    
-    // Show success message if notifications are permitted
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('NGOBRAS Terinstall', {
-            body: 'Aplikasi berhasil diinstall!',
-            icon: '/images/icons/icon-192x192.png'
-        });
-    }
-
-    // Redirect after short delay
-    setTimeout(() => {
-        window.location.href = 'ngobras.html';
-    }, 1000);
-});
-
 // Improved PWA installation check
 function isPWAInstalled() {
     // Check if running as standalone PWA
@@ -82,6 +54,18 @@ function isPWAInstalled() {
     }
 
     return false;
+}
+
+// Show installed modal
+function showInstalledModal() {
+    const modal = new bootstrap.Modal(document.getElementById('appInstalledModal'));
+    modal.show();
+}
+
+// Open installed app
+function openInstalledApp() {
+    const appUrl = window.location.origin + '/ngobras.html';
+    window.location.href = appUrl;
 }
 
 // Function to check if app can be installed
@@ -115,6 +99,44 @@ async function requestNotificationPermission() {
     }
 }
 
+// Handle installation
+async function handleInstallation() {
+    if (!deferredPrompt) {
+        // Show installation guide based on platform
+        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+            showIOSInstallGuide();
+        } else if (/Android/.test(navigator.userAgent)) {
+            showAndroidInstallGuide();
+        } else {
+            alert('Silakan buka aplikasi ini di browser mobile untuk menginstal.');
+        }
+        return;
+    }
+
+    try {
+        isInstalling = true;
+        showProgress(0);
+        
+        // Show installation prompt
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        
+        if (choice.outcome === 'accepted') {
+            localStorage.setItem('pwa-installed', 'true');
+            showProgress(100);
+            setTimeout(() => {
+                window.location.href = 'ngobras.html';
+            }, 1000);
+        } else {
+            isInstalling = false;
+            deferredPrompt = null;
+        }
+    } catch (error) {
+        console.error('Installation error:', error);
+        isInstalling = false;
+    }
+}
+
 // Function to handle chat initiation with notification support
 async function startChat(event) {
     if (event) {
@@ -130,7 +152,7 @@ async function startChat(event) {
     try {
         // First check if already running as PWA
         if (isPWAInstalled()) {
-            window.location.href = 'ngobras.html';
+            showInstalledModal();
             return;
         }
 
@@ -355,4 +377,25 @@ window.addEventListener('load', () => {
     if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
         localStorage.setItem('pwa-installed', 'true');
     }
+});
+
+// Listen for the appinstalled event
+window.addEventListener('appinstalled', (event) => {
+    isInstalling = false;
+    deferredPrompt = null;
+    localStorage.setItem('pwa-installed', 'true');
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('NGOBRAS Terinstall', {
+            body: 'Aplikasi berhasil diinstall!',
+            icon: '/images/icons/icon-192x192.png'
+        });
+    }
+});
+
+// Listen for the beforeinstallprompt event
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    console.log('beforeinstallprompt event was fired and saved');
 });
