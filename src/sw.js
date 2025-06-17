@@ -19,7 +19,6 @@ self.addEventListener('install', event => {
     event.waitUntil(
         (async () => {
             try {
-                // Show installation started notification
                 if ('Notification' in self && Notification.permission === 'granted') {
                     await self.registration.showNotification('NGOBRAS', {
                         body: 'Memulai penginstalan aplikasi...',
@@ -29,33 +28,16 @@ self.addEventListener('install', event => {
                 }
 
                 const cache = await caches.open(CACHE_NAME);
-                console.log('Cache opened');
-                
-                // Track progress
-                let loaded = 0;
-                const total = urlsToCache.length;
-                
-                // Cache files with progress tracking
-                for (const url of urlsToCache) {
-                    try {
-                        await cache.add(url);
-                        loaded++;
-                        
-                        // Update progress notification every 25%
-                        if (loaded % Math.ceil(total/4) === 0 && 
-                            'Notification' in self && 
-                            Notification.permission === 'granted') {
-                            const progress = Math.round((loaded/total) * 100);
-                            await self.registration.showNotification('NGOBRAS', {
-                                body: `Menginstal... ${progress}%`,
-                                icon: '/images/icons/icon-192x192.png',
-                                tag: 'install-progress',
-                                renotify: true
-                            });
-                        }
-                    } catch (error) {
-                        console.error(`Failed to cache ${url}:`, error);
-                    }
+                await Promise.all(urlsToCache.map(url => cache.add(url)));
+
+                // Mark installation as complete
+                if ('Notification' in self && Notification.permission === 'granted') {
+                    await self.registration.showNotification('NGOBRAS', {
+                        body: 'Aplikasi berhasil diinstall!',
+                        icon: '/images/icons/icon-192x192.png',
+                        tag: 'install-complete',
+                        actions: [{ action: 'open-app', title: 'Buka Aplikasi' }]
+                    });
                 }
             } catch (error) {
                 console.error('Installation failed:', error);

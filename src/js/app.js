@@ -59,11 +59,29 @@ window.addEventListener('appinstalled', (event) => {
     }, 1000);
 });
 
-// Function to check if app is in standalone mode
+// Improved PWA installation check
 function isPWAInstalled() {
-    return window.matchMedia('(display-mode: standalone)').matches ||
-           window.navigator.standalone ||
-           document.referrer.includes('android-app://');
+    // Check if running as standalone PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        return true;
+    }
+    
+    // Check for iOS standalone mode
+    if (window.navigator.standalone) {
+        return true;
+    }
+    
+    // Check if installed via manifest
+    if (document.referrer.includes('android-app://')) {
+        return true;
+    }
+
+    // Check if PWA was previously installed
+    if (localStorage.getItem('pwa-installed')) {
+        return true;
+    }
+
+    return false;
 }
 
 // Function to check if app can be installed
@@ -109,20 +127,17 @@ async function startChat(event) {
         return;
     }
 
-    // First check if already running as PWA
-    if (isPWAInstalled()) {
-        window.location.href = 'ngobras.html';
-        return;
-    }
+    try {
+        // First check if already running as PWA
+        if (isPWAInstalled()) {
+            window.location.href = 'ngobras.html';
+            return;
+        }
 
-    // Request notification permission
-    await requestNotificationPermission();
-
-    // Then check if can be installed
-    const installable = await canInstallPWA();
-    
-    if (installable && deferredPrompt) {
-        try {
+        // Check if installation is possible
+        const installable = await canInstallPWA();
+        
+        if (installable && deferredPrompt) {
             isInstalling = true;
             showProgress(0);
             
@@ -135,27 +150,52 @@ async function startChat(event) {
             
             if (choice.outcome === 'accepted') {
                 console.log('PWA installation accepted');
-                showProgress(50);
-                // Installation progress will be handled by service worker
+                localStorage.setItem('pwa-installed', 'true');
+                showProgress(100);
+                
+                // Wait a bit before redirecting
+                setTimeout(() => {
+                    window.location.href = 'ngobras.html';
+                }, 1000);
             } else {
                 console.log('PWA installation rejected');
                 isInstalling = false;
                 deferredPrompt = null;
+                // Even if rejected, redirect to web version
                 window.location.href = 'ngobras.html';
             }
-        } catch (error) {
-            console.error('Install prompt error:', error);
-            isInstalling = false;
-            window.location.href = 'ngobras.html';
+        } else {
+            // If can't install (no deferredPrompt), show installation guide
+            if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                showIOSInstallGuide();
+            } else if (/Android/.test(navigator.userAgent)) {
+                showAndroidInstallGuide();
+            } else {
+                // If not mobile or can't determine, redirect to web version
+                window.location.href = 'ngobras.html';
+            }
         }
-    } else {
-        console.log('App cannot be installed or is already installing');
+    } catch (error) {
+        console.error('Start chat error:', error);
+        isInstalling = false;
         window.location.href = 'ngobras.html';
     }
 }
 
-// Make startChat available globally
-window.startChat = startChat;
+// Add installation guides
+function showIOSInstallGuide() {
+    alert('Untuk menginstal aplikasi di iOS:\n\n' +
+          '1. Ketuk tombol "Share" di browser Safari\n' +
+          '2. Gulir ke bawah dan ketuk "Add to Home Screen"\n' +
+          '3. Ketuk "Add" untuk menginstal');
+}
+
+function showAndroidInstallGuide() {
+    alert('Untuk menginstal aplikasi di Android:\n\n' +
+          '1. Ketuk tombol menu di browser (3 titik)\n' +
+          '2. Pilih "Install app" atau "Add to Home screen"\n' +
+          '3. Ketuk "Install" untuk melanjutkan');
+}
 
 // JavaScript for the index.html page
 // Counter Animation
@@ -302,3 +342,17 @@ const initSupabase = async () => {
         console.error('Error:', error);
     }
 };
+
+// Listen for display mode changes
+window.matchMedia('(display-mode: standalone)').addEventListener('change', (evt) => {
+    if (evt.matches) {
+        localStorage.setItem('pwa-installed', 'true');
+    }
+});
+
+// Check if launched from homescreen
+window.addEventListener('load', () => {
+    if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+        localStorage.setItem('pwa-installed', 'true');
+    }
+});
