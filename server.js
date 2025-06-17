@@ -53,10 +53,22 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'src', 'index.html'));
 });
 
+// Handle protocol routes
+app.get('/check-install', (req, res) => {
+    res.json({ 
+        installed: req.headers['sec-fetch-mode'] === 'navigate' && 
+                  req.headers['sec-fetch-dest'] === 'document'
+    });
+});
+
 // Handle all other routes
 app.get('*', (req, res) => {
-    // If request is from installed PWA, redirect to ngobras.html
-    if (req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document') {
+    // Check if it's a PWA request
+    const isPWA = req.headers['sec-fetch-mode'] === 'navigate' && 
+                 req.headers['sec-fetch-dest'] === 'document';
+    
+    // If PWA or specific protocol, serve chat app
+    if (isPWA || req.query.action === 'chat') {
         res.sendFile(path.join(__dirname, 'src', 'ngobras.html'));
     } else {
         res.sendFile(path.join(__dirname, 'src', 'index.html'));

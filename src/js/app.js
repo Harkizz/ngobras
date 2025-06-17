@@ -1,3 +1,27 @@
+// Variable to store the PWA install prompt
+let deferredPrompt;
+
+// Listen for the beforeinstallprompt event
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later
+    deferredPrompt = e;
+});
+
+// Function to check if the app is installed
+async function isAppInstalled() {
+    // Check if running as standalone PWA
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone || 
+        document.referrer.includes('android-app://')) {
+        return true;
+    }
+    
+    // Check if it's available for installation
+    return !!deferredPrompt;
+}
+
 // Register Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -201,12 +225,41 @@ if ('serviceWorker' in navigator) {
             initSupabase();
         });
 
-        // Add startChat function
-        function startChat() {
-            // Simpan state bahwa kita akan pindah halaman
-            sessionStorage.setItem('redirecting', 'true');
-            // Redirect ke halaman chat
-            window.location.href = 'ngobras.html';
+        // Function to handle chat button clicks
+        async function startChat() {
+            try {
+                const installed = await isAppInstalled();
+                
+                if (installed) {
+                    // If installed, try to open the app using the web+ngobras protocol
+                    window.location.href = 'ngobras.html';
+                } else if (deferredPrompt) {
+                    // Show the install prompt
+                    deferredPrompt.prompt();
+                    // Wait for the user to respond to the prompt
+                    const choiceResult = await deferredPrompt.userChoice;
+                    
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA setup accepted');
+                        // Clear the deferredPrompt
+                        deferredPrompt = null;
+                        // Wait a moment for the install to complete
+                        setTimeout(() => {
+                            window.location.href = 'ngobras.html';
+                        }, 1000);
+                    } else {
+                        // If user declines installation, just redirect to the chat page
+                        window.location.href = 'ngobras.html';
+                    }
+                } else {
+                    // If can't install (e.g., already installed but not detected), redirect to chat
+                    window.location.href = 'ngobras.html';
+                }
+            } catch (error) {
+                console.error('Error in startChat:', error);
+                // Fallback to regular navigation
+                window.location.href = 'ngobras.html';
+            }
         }
 
         // Make startChat available globally

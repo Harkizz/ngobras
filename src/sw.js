@@ -62,3 +62,24 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Add navigation preload support
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        Promise.all([
+            // Enable navigation preload if available
+            'navigationPreload' in self.registration ?
+                self.registration.navigationPreload.enable() : Promise.resolve(),
+            // Clean up old caches
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames.filter(cacheName => {
+                        return cacheName !== CACHE_NAME;
+                    }).map(cacheName => {
+                        return caches.delete(cacheName);
+                    })
+                );
+            })
+        ])
+    );
+});
