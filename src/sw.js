@@ -32,34 +32,40 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
+    (async () => {
+      // Try to get the response from cache first
+      const cachedResponse = await caches.match(event.request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      try {
+        // Try to use preloaded response
+        const preloadResponse = await event.preloadResponse;
+        if (preloadResponse) {
+          return preloadResponse;
         }
 
-        return fetch(event.request)
-          .then((response) => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
+        // Otherwise, fetch from network
+        const networkResponse = await fetch(event.request);
+        
+        // Check if we received a valid response
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
+        }
 
-            // Only cache requests from our domain
-            if (event.request.url.startsWith(self.location.origin)) {
-              // Clone the response
-              const responseToCache = response.clone();
-              
-              caches.open(CACHE_NAME)
-                .then((cache) => {
-                  cache.put(event.request, responseToCache);
-                });
-            }
-            
-            return response;
-          });
-      })
+        // Cache the response if it's from our domain
+        if (event.request.url.startsWith(self.location.origin)) {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(event.request, networkResponse.clone());
+        }
+
+        return networkResponse;
+      } catch (error) {
+        console.error('Fetch failed:', error);
+        return new Response('Network error', { status: 408, statusText: 'Network request failed' });
+      }
+    })()
   );
 });
 

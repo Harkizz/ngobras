@@ -9,6 +9,15 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = e;
 });
 
+// Listen for the appinstalled event
+window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    // After installation, redirect to the app
+    setTimeout(() => {
+        window.location.href = 'ngobras.html';
+    }, 1000);
+});
+
 // Function to check if the app is installed
 async function isAppInstalled() {
     // Check if running as standalone PWA
@@ -225,39 +234,57 @@ if ('serviceWorker' in navigator) {
             initSupabase();
         });
 
-        // Function to handle chat button clicks
-        async function startChat() {
-            try {
-                const installed = await isAppInstalled();
-                
-                if (installed) {
-                    // If installed, try to open the app using the web+ngobras protocol
-                    window.location.href = 'ngobras.html';
-                } else if (deferredPrompt) {
+        // Function to check if app is in standalone mode
+        function isPWAInstalled() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone ||
+                   document.referrer.includes('android-app://');
+        }
+
+        // Function to check if app can be installed
+        async function canInstallPWA() {
+            return !!deferredPrompt;
+        }
+
+        // Function to handle chat initiation
+        async function startChat(event) {
+            if (event) {
+                event.preventDefault();
+            }
+
+            // First check if already running as PWA
+            if (isPWAInstalled()) {
+                window.location.href = 'ngobras.html';
+                return;
+            }
+
+            // Then check if can be installed
+            const installable = await canInstallPWA();
+            
+            if (installable && deferredPrompt) {
+                try {
                     // Show the install prompt
-                    deferredPrompt.prompt();
-                    // Wait for the user to respond to the prompt
-                    const choiceResult = await deferredPrompt.userChoice;
+                    const result = await deferredPrompt.prompt();
+                    console.log(`Install prompt shown: ${result}`);
                     
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('PWA setup accepted');
-                        // Clear the deferredPrompt
+                    // Wait for the user's choice
+                    const choice = await deferredPrompt.userChoice;
+                    
+                    if (choice.outcome === 'accepted') {
+                        console.log('PWA installation accepted');
                         deferredPrompt = null;
-                        // Wait a moment for the install to complete
-                        setTimeout(() => {
-                            window.location.href = 'ngobras.html';
-                        }, 1000);
+                        // Don't redirect here - let the appinstalled event handle it
                     } else {
-                        // If user declines installation, just redirect to the chat page
+                        console.log('PWA installation rejected');
                         window.location.href = 'ngobras.html';
                     }
-                } else {
-                    // If can't install (e.g., already installed but not detected), redirect to chat
+                } catch (error) {
+                    console.error('Install prompt error:', error);
                     window.location.href = 'ngobras.html';
                 }
-            } catch (error) {
-                console.error('Error in startChat:', error);
-                // Fallback to regular navigation
+            } else {
+                // If can't install (browser doesn't support or already installed)
+                // but not running as PWA, redirect to web version
                 window.location.href = 'ngobras.html';
             }
         }
