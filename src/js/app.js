@@ -1,3 +1,27 @@
+// Register service worker and handle notifications
+async function initializeApp() {
+    try {
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('ServiceWorker registration successful');
+
+            // Wait for the service worker to be ready
+            await navigator.serviceWorker.ready;
+
+            // Now check for notification permission
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+                console.log('Notification permission:', permission);
+            }
+        }
+    } catch (error) {
+        console.error('ServiceWorker registration failed:', error);
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializeApp);
+
 // Variable to store the PWA install prompt
 let deferredPrompt;
 
@@ -10,39 +34,82 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 // Listen for the appinstalled event
-window.addEventListener('appinstalled', () => {
+window.addEventListener('appinstalled', (event) => {
     deferredPrompt = null;
-    // After installation, redirect to the app
+    // Show success message if notifications are permitted
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('NGOBRAS Terinstall', {
+            body: 'Aplikasi berhasil diinstall!',
+            icon: '/images/icons/icon-192x192.png'
+        });
+    }
+    // Redirect after short delay
     setTimeout(() => {
         window.location.href = 'ngobras.html';
     }, 1000);
 });
 
-// Function to check if the app is installed
-async function isAppInstalled() {
-    // Check if running as standalone PWA
-    if (window.matchMedia('(display-mode: standalone)').matches || 
-        window.navigator.standalone || 
-        document.referrer.includes('android-app://')) {
-        return true;
-    }
-    
-    // Check if it's available for installation
-    return !!deferredPrompt;
+// Function to check if app is installed
+function isPWAInstalled() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone ||
+           document.referrer.includes('android-app://');
 }
 
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-                console.log('ServiceWorker registration successful');
-            })
-            .catch((err) => {
-                console.log('ServiceWorker registration failed: ', err);
-            });
-    });
+// Function to show installation progress
+function showProgress(progress) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('NGOBRAS Installing', {
+            body: `Installing... ${progress}%`,
+            icon: '/images/icons/icon-192x192.png',
+            tag: 'install-progress'
+        });
+    }
 }
+
+// Function to handle chat initiation
+async function startChat(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    // Check if already running as PWA
+    if (isPWAInstalled()) {
+        window.location.href = 'ngobras.html';
+        return;
+    }
+
+    // Check if can be installed
+    if (deferredPrompt) {
+        try {
+            showProgress(0);
+            // Show the install prompt
+            await deferredPrompt.prompt();
+            
+            // Wait for the user's choice
+            const choiceResult = await deferredPrompt.userChoice;
+            
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+                showProgress(50);
+                deferredPrompt = null;
+                // Installation progress will continue in appinstalled event
+            } else {
+                console.log('User dismissed the install prompt');
+                window.location.href = 'ngobras.html';
+            }
+        } catch (error) {
+            console.error('Installation failed:', error);
+            window.location.href = 'ngobras.html';
+        }
+    } else {
+        // If can't install, redirect to web version
+        window.location.href = 'ngobras.html';
+    }
+}
+
+// Make startChat available globally
+window.startChat = startChat;
 
 // JavaScript for the index.html page
 // Counter Animation
