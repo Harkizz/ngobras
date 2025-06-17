@@ -13,6 +13,18 @@ const urlsToCache = [
   'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js'
 ];
 
+// Skip waiting on install
+self.addEventListener('install', event => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
+  );
+});
+
 // Install Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -26,21 +38,20 @@ self.addEventListener('install', (event) => {
 
 // Activate event handler
 self.addEventListener('activate', event => {
+    // Clean old caches
     event.waitUntil(
-        Promise.all([
-            // Take control of all clients
-            self.clients.claim(),
-            // Clean up old caches
-            caches.keys().then(cacheNames => {
+        caches.keys()
+            .then(cacheNames => {
                 return Promise.all(
-                    cacheNames.filter(cacheName => {
-                        return cacheName !== CACHE_NAME;
-                    }).map(cacheName => {
-                        return caches.delete(cacheName);
-                    })
+                    cacheNames
+                        .filter(cacheName => cacheName !== CACHE_NAME)
+                        .map(cacheName => caches.delete(cacheName))
                 );
             })
-        ])
+            .then(() => {
+                // Only claim clients after cache cleanup
+                return self.clients.claim();
+            })
     );
 });
 

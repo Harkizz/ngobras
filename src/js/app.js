@@ -2,11 +2,25 @@
 async function initializeApp() {
     try {
         if ('serviceWorker' in navigator) {
-            const registration = await navigator.serviceWorker.register('/sw.js');
-            console.log('ServiceWorker registration successful');
+            // First unregister any existing service worker
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+                await registration.unregister();
+            }
+
+            // Register new service worker
+            const registration = await navigator.serviceWorker.register('/sw.js', {
+                scope: '/'
+            });
+            
+            // Wait for the service worker to be activated
+            if (registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
 
             // Wait for the service worker to be ready
             await navigator.serviceWorker.ready;
+            console.log('ServiceWorker registration successful');
 
             // Now check for notification permission
             if ('Notification' in window) {
@@ -73,14 +87,23 @@ async function startChat(event) {
         event.preventDefault();
     }
 
-    // Check if already running as PWA
-    if (isPWAInstalled()) {
-        window.location.href = 'ngobras.html';
-        return;
-    }
+    try {
+        // Ensure service worker is ready
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            if (registration.active) {
+                console.log('Service worker is active');
+            }
+        }
 
-    // Check if can be installed
-    if (deferredPrompt) {
+        // Check if already running as PWA
+        if (isPWAInstalled()) {
+            window.location.href = 'ngobras.html';
+            return;
+        }
+
+        // Check if can be installed
+        if (deferredPrompt) {
         try {
             showProgress(0);
             // Show the install prompt
