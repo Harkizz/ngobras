@@ -61,33 +61,34 @@ self.addEventListener('install', event => {
     );
 });
 
-// Activate event handler
+// Activation handler
 self.addEventListener('activate', event => {
     event.waitUntil(
         Promise.all([
-            // Existing cache cleanup
-            caches.keys()
-                .then(cacheNames => {
-                    return Promise.all(
-                        cacheNames
-                            .filter(cacheName => cacheName !== CACHE_NAME)
-                            .map(cacheName => caches.delete(cacheName))
-                    );
-                }),
-            // Register periodic check for installation status
+            // Clean old caches
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames
+                        .filter(cacheName => cacheName !== CACHE_NAME)
+                        .map(cacheName => caches.delete(cacheName))
+                );
+            }),
+            // Enable navigation preload
             (async () => {
-                try {
-                    if ('periodicSync' in self.registration) {
-                        await self.registration.periodicSync.register('check-install-status', {
-                            minInterval: 60000 // Check every minute
-                        });
-                    }
-                } catch (error) {
-                    console.warn('Periodic Sync could not be registered:', error);
+                if (self.registration.navigationPreload) {
+                    await self.registration.navigationPreload.enable();
                 }
             })(),
-            // Take control of clients
-            self.clients.claim()
+            // Notify clients
+            (async () => {
+                const clients = await self.clients.matchAll();
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'PWA_STATUS',
+                        status: 'active'
+                    });
+                });
+            })()
         ])
     );
 });
@@ -488,3 +489,68 @@ self.addEventListener('install', event => {
         })()
     );
 });
+
+// Installation handler
+self.addEventListener('install', event => {
+    event.waitUntil(
+        (async () => {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.addAll(urlsToCache);
+            
+            // Notify clients of installation
+            const clients = await self.clients.matchAll();
+            clients.forEach(client => {
+                client.postMessage({
+                    type: 'PWA_STATUS',
+                    status: 'installed'
+                });
+            });
+        })()
+    );
+});
+
+// Activation handler
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        Promise.all([
+            // Clean old caches
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames
+                        .filter(cacheName => cacheName !== CACHE_NAME)
+                        .map(cacheName => caches.delete(cacheName))
+                );
+            }),
+            // Enable navigation preload
+            (async () => {
+                if (self.registration.navigationPreload) {
+                    await self.registration.navigationPreload.enable();
+                }
+            })(),
+            // Notify clients
+            (async () => {
+                const clients = await self.clients.matchAll();
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'PWA_STATUS',
+                        status: 'active'
+                    });
+                });
+            })()
+        ])
+    );
+});
+
+// Add periodic check for installation status
+setInterval(async () => {
+    const clients = await self.clients.matchAll();
+    if (clients.length === 0) {
+        // No clients connected, might be uninstalled
+        clients.forEach(client => {
+            client.postMessage({
+                type: 'PWA_STATUS',
+                status: 'uninstalled'
+            });
+        });
+    }
+}, 60000); // Check every minute

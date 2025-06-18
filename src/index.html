@@ -350,6 +350,41 @@
             localStorage.setItem('pwa-installed', 'true');
         }
     });
+
+    // Function to check PWA status
+    async function checkPWAStatus() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                           window.navigator.standalone;
+        
+        // Get current status from localStorage
+        const currentStatus = localStorage.getItem('pwa-installed');
+        
+        // Update status based on checks
+        if (isStandalone) {
+            localStorage.setItem('pwa-installed', 'true');
+            console.log('PWA Status: Installed (Running in standalone mode)');
+        } else if (currentStatus === null) {
+            localStorage.setItem('pwa-installed', 'false');
+            console.log('PWA Status: Never installed');
+        } else {
+            console.log(`PWA Status: ${currentStatus === 'true' ? 'Installed' : 'Uninstalled'}`);
+        }
+    }
+
+    // Check status on page load
+    window.addEventListener('load', checkPWAStatus);
+
+    // Listen for installation
+    window.addEventListener('appinstalled', (e) => {
+        localStorage.setItem('pwa-installed', 'true');
+        console.log('PWA Status: Just installed');
+    });
+
+    // Monitor display mode changes
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+        localStorage.setItem('pwa-installed', e.matches ? 'true' : 'false');
+        console.log(`PWA Status: ${e.matches ? 'Installed' : 'Uninstalled'} (Display mode changed)`);
+    });
 </script>
 </body>
 </html>

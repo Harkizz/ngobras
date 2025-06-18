@@ -62,13 +62,12 @@ async function isPWAInstalled() {
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    localStorage.removeItem('pwa-installed');
+    console.log('PWA Status: Installation prompt available');
 });
 
-window.addEventListener('appinstalled', () => {
-    isInstalling = false;
-    deferredPrompt = null;
+window.addEventListener('appinstalled', (e) => {
     localStorage.setItem('pwa-installed', 'true');
+    console.log('PWA Status: Installation completed');
 });
 
 // Add service worker message handling
@@ -85,6 +84,24 @@ if ('serviceWorker' in navigator) {
                     deferredPrompt = null;
                     // Force reload to update UI
                     window.location.reload();
+                    break;
+                case 'PWA_STATUS':
+                    switch (event.data.status) {
+                        case 'installed':
+                            localStorage.setItem('pwa-installed', 'true');
+                            console.log('PWA Status: Installation confirmed by Service Worker');
+                            break;
+                        case 'active':
+                            if (window.matchMedia('(display-mode: standalone)').matches) {
+                                localStorage.setItem('pwa-installed', 'true');
+                                console.log('PWA Status: Active and running in standalone mode');
+                            }
+                            break;
+                        case 'uninstalled':
+                            localStorage.setItem('pwa-installed', 'false');
+                            console.log('PWA Status: Uninstallation detected by Service Worker');
+                            break;
+                    }
                     break;
             }
         }
