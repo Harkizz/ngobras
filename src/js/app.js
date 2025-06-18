@@ -45,11 +45,18 @@ async function isPWAInstalled() {
 function showModal(config) {
     const {title, message, buttonText = 'OK', buttonAction = () => {}} = config;
     
-    const existingModal = document.getElementById('pwaModal');
-    if (existingModal) existingModal.remove();
+    // Tutup modal yang mungkin masih terbuka
+    const existingModal = document.querySelector('.modal.show');
+    if (existingModal) {
+        const bsModal = bootstrap.Modal.getInstance(existingModal);
+        if (bsModal) bsModal.hide();
+    }
 
+    // Gunakan ID yang unik untuk setiap jenis modal
+    const modalId = `modal-${Date.now()}`;
+    
     const modalHtml = `
-        <div class="modal fade" id="pwaModal" tabindex="-1">
+        <div class="modal fade" id="${modalId}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -59,7 +66,7 @@ function showModal(config) {
                     <div class="modal-body">${message}</div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                        <button type="button" class="btn btn-primary" id="modalAction">${buttonText}</button>
+                        <button type="button" class="btn btn-primary" id="${modalId}-action">${buttonText}</button>
                     </div>
                 </div>
             </div>
@@ -67,11 +74,24 @@ function showModal(config) {
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    const modalElement = document.getElementById('pwaModal');
-    if (modalElement) {
-        const actionButton = modalElement.querySelector('#modalAction');
-        if (actionButton) actionButton.onclick = buttonAction;
+    const modalElement = document.getElementById(modalId);
+    const modal = new bootstrap.Modal(modalElement);
+    
+    // Event listener untuk membersihkan modal setelah ditutup
+    modalElement.addEventListener('hidden.bs.modal', () => {
+        modalElement.remove();
+    });
+
+    // Setup action button
+    const actionButton = modalElement.querySelector(`#${modalId}-action`);
+    if (actionButton) {
+        actionButton.onclick = () => {
+            buttonAction();
+            modal.hide();
+        };
     }
+
+    modal.show();
 }
 
 // Separate installation handler
@@ -156,10 +176,15 @@ window.addEventListener('appinstalled', () => {
 
 // When the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Add click listeners to all buttons with data-action="start-chat"
-    const startChatButtons = document.querySelectorAll('[data-action="start-chat"]');
-    startChatButtons.forEach(button => {
-        button.addEventListener('click', startChat);
+    // Hapus event listener lama jika ada
+    const chatButtons = document.querySelectorAll('[data-action="start-chat"]');
+    chatButtons.forEach(button => {
+        button.replaceWith(button.cloneNode(true));
+    });
+    
+    // Pasang event listener baru
+    document.querySelectorAll('[data-action="start-chat"]').forEach(button => {
+        button.addEventListener('click', startChat, { once: true });
     });
 });
 
