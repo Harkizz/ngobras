@@ -99,32 +99,41 @@ async function startChat(event) {
                 'Buka Aplikasi',
                 () => window.location.href = 'ngobras.html'
             );
-        } else if (deferredPrompt) {
-            // Show installation prompt
+        } else {
+            // Show installation confirmation modal
             showCustomModal(
                 'Install Aplikasi',
                 'Untuk pengalaman terbaik, install aplikasi NGOBRAS di perangkat Anda.',
                 'Install Sekarang',
-                async () => {
-                    try {
-                        const result = await deferredPrompt.prompt();
-                        if (result.outcome === 'accepted') {
-                            localStorage.setItem('pwa-installed', 'true');
-                            deferredPrompt = null;
-                            window.location.href = 'ngobras.html';
-                        }
-                    } catch (error) {
-                        console.error('Installation failed:', error);
-                        window.location.href = 'ngobras.html';
-                    }
-                }
+                handleInstallClick  // Separate handler for installation
             );
-        } else {
-            // If can't install, redirect to web version
-            window.location.href = 'ngobras.html';
         }
     } catch (error) {
         console.error('Start chat error:', error);
+        window.location.href = 'ngobras.html';
+    }
+}
+
+// Add new handler for installation click
+async function handleInstallClick() {
+    if (!deferredPrompt) {
+        console.log('No installation prompt available');
+        window.location.href = 'ngobras.html';
+        return;
+    }
+
+    try {
+        const result = await deferredPrompt.prompt();
+        if (result.outcome === 'accepted') {
+            localStorage.setItem('pwa-installed', 'true');
+            deferredPrompt = null;
+            window.location.href = 'ngobras.html';
+        } else {
+            console.log('User declined installation');
+            window.location.href = 'ngobras.html';
+        }
+    } catch (error) {
+        console.error('Installation failed:', error);
         window.location.href = 'ngobras.html';
     }
 }
