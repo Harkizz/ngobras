@@ -89,9 +89,21 @@ async function handleInstallClick() {
         if (result.outcome === 'accepted') {
             deferredPrompt = null;
             localStorage.setItem('pwa-installed', 'true');
+            showCustomModal(
+                'Instalasi Berhasil',
+                'Aplikasi NGOBRAS berhasil diinstall di perangkat Anda.',
+                'OK',
+                () => {}
+            );
         }
     } catch (error) {
         console.error('Installation failed:', error);
+        showCustomModal(
+            'Instalasi Gagal',
+            'Terjadi kesalahan saat menginstall aplikasi.',
+            'OK',
+            () => {}
+        );
     }
 }
 
@@ -103,15 +115,13 @@ async function startChat(event) {
         const isInstalled = await isPWAInstalled();
         
         if (isInstalled) {
-            // Show already installed modal
             showCustomModal(
                 'Aplikasi Terinstal',
-                'Aplikasi NGOBRAS sudah terinstal di perangkat Anda.',
-                'Buka Aplikasi',
-                () => {} // Remove window.open redirect
+                'Aplikasi NGOBRAS sudah terinstall di perangkat Anda.',
+                'OK',
+                () => {}
             );
         } else if (deferredPrompt) {
-            // Show installation modal first
             showCustomModal(
                 'Install Aplikasi',
                 'Untuk pengalaman terbaik, install aplikasi NGOBRAS di perangkat Anda.',
@@ -119,12 +129,11 @@ async function startChat(event) {
                 handleInstallClick
             );
         } else {
-            // If no install prompt available, show modal
             showCustomModal(
-                'Buka di Browser',
+                'Informasi',
                 'Aplikasi tidak dapat diinstall di perangkat ini.',
                 'OK',
-                () => {} // Remove window.open redirect
+                () => {}
             );
         }
     } catch (error) {
@@ -132,7 +141,7 @@ async function startChat(event) {
         showCustomModal(
             'Error',
             'Terjadi kesalahan saat memproses permintaan Anda.',
-            'Coba Lagi',
+            'OK',
             () => {}
         );
     }
