@@ -26,9 +26,8 @@ async function initializeApp() {
     }
 }
 
-// Store deferredPrompt for later use
+// Store installation prompt
 let deferredPrompt = null;
-let isInstalling = false;
 
 // Update isPWAInstalled function
 async function isPWAInstalled() {
@@ -38,24 +37,8 @@ async function isPWAInstalled() {
         return true;
     }
 
-    // Check installation status in localStorage
-    const installStatus = localStorage.getItem('pwa-installed');
-    if (installStatus === 'true') {
-        // Verify with additional checks
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            if (!registration) {
-                localStorage.removeItem('pwa-installed');
-                return false;
-            }
-            return true;
-        } catch {
-            localStorage.removeItem('pwa-installed');
-            return false;
-        }
-    }
-
-    return false;
+    // Check localStorage
+    return localStorage.getItem('pwa-installed') === 'true';
 }
 
 // Show custom modal
@@ -101,65 +84,47 @@ function showCustomModal(title, message, buttonText, buttonAction) {
     modal.show();
 }
 
-// Handle PWA installation
-async function handlePWAInstallation(e) {
-    e.preventDefault();
+// Handle start chat action
+async function startChat(event) {
+    event.preventDefault();
     
     try {
-        // Check if already installed
         const isInstalled = await isPWAInstalled();
         
         if (isInstalled) {
-            // Show "already installed" modal
+            // Show already installed modal
             showCustomModal(
                 'Aplikasi Terinstal',
                 'Aplikasi NGOBRAS sudah terinstal di perangkat Anda.',
                 'Buka Aplikasi',
-                () => { window.location.href = 'ngobras.html'; }
+                () => window.location.href = 'ngobras.html'
             );
-            return;
-        }
-
-        // Check if installation prompt is available
-        if (deferredPrompt) {
-            // Show installation modal
+        } else if (deferredPrompt) {
+            // Show installation prompt
             showCustomModal(
-                'Instalasi Aplikasi',
-                'Untuk pengalaman yang lebih baik, install aplikasi NGOBRAS di perangkat Anda.',
+                'Install Aplikasi',
+                'Untuk pengalaman terbaik, install aplikasi NGOBRAS di perangkat Anda.',
                 'Install Sekarang',
                 async () => {
                     try {
                         const result = await deferredPrompt.prompt();
-                        console.log('Installation prompt result:', result);
-                        
                         if (result.outcome === 'accepted') {
                             localStorage.setItem('pwa-installed', 'true');
-                            console.log('PWA installation accepted');
-                            
-                            // Show success modal
-                            showCustomModal(
-                                'Instalasi Berhasil',
-                                'Aplikasi NGOBRAS berhasil diinstal!',
-                                'Buka Aplikasi',
-                                () => { window.location.href = 'ngobras.html'; }
-                            );
+                            deferredPrompt = null;
+                            window.location.href = 'ngobras.html';
                         }
-                        
-                        deferredPrompt = null;
                     } catch (error) {
-                        console.error('Installation error:', error);
+                        console.error('Installation failed:', error);
                         window.location.href = 'ngobras.html';
                     }
                 }
             );
-            return;
+        } else {
+            // If can't install, redirect to web version
+            window.location.href = 'ngobras.html';
         }
-        
-        // If no installation possible, redirect to web version
-        window.location.href = 'ngobras.html';
-        
     } catch (error) {
-        console.error('handlePWAInstallation error:', error);
+        console.error('Start chat error:', error);
         window.location.href = 'ngobras.html';
     }
 }
@@ -168,12 +133,13 @@ async function handlePWAInstallation(e) {
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    console.log('Installation prompt ready');
+    console.log('Installation prompt available');
 });
 
 window.addEventListener('appinstalled', () => {
-    console.log('PWA was installed');
     localStorage.setItem('pwa-installed', 'true');
+    deferredPrompt = null;
+    console.log('PWA installed successfully');
 });
 
 // When the page loads
@@ -181,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add click listeners to all buttons with data-action="start-chat"
     const startChatButtons = document.querySelectorAll('[data-action="start-chat"]');
     startChatButtons.forEach(button => {
-        button.addEventListener('click', handlePWAInstallation);
+        button.addEventListener('click', startChat);
     });
 });
 
