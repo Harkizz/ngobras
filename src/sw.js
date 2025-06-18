@@ -342,18 +342,16 @@ self.addEventListener('activate', event => {
 });
 
 // Add uninstall detection
-self.addEventListener('uninstall', () => {
-    self.registration.periodicSync.unregister('ngobras-installed')
-        .then(() => {
-            // Notify any open clients about uninstallation
-            self.clients.matchAll().then(clients => {
-                clients.forEach(client => {
-                    client.postMessage({
-                        type: 'APP_UNINSTALLED'
-                    });
-                });
+self.addEventListener('uninstall', event => {
+    isInstalled = false;
+    self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+            client.postMessage({
+                type: 'APP_UNINSTALLED',
+                timestamp: new Date().getTime()
             });
         });
+    });
 });
 
 // Check for updates
@@ -464,3 +462,29 @@ function notifyClientsOfUninstall() {
         });
     });
 }
+
+// Add installation status tracking
+self.addEventListener('install', event => {
+    event.waitUntil(
+        (async () => {
+            try {
+                const cache = await caches.open(CACHE_NAME);
+                await Promise.all(urlsToCache.map(url => cache.add(url)));
+                
+                // Set installation flag
+                isInstalled = true;
+                
+                // Notify all clients
+                const clients = await self.clients.matchAll();
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'APP_INSTALLED',
+                        timestamp: new Date().getTime()
+                    });
+                });
+            } catch (error) {
+                console.error('Installation failed:', error);
+            }
+        })()
+    );
+});

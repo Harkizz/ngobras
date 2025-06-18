@@ -26,9 +26,70 @@ async function initializeApp() {
     }
 }
 
-// Variable to store the PWA install prompt
+// Add these variables at the top
 let deferredPrompt = null;
 let isInstalling = false;
+
+// Update isPWAInstalled function
+async function isPWAInstalled() {
+    // Check if running in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone) {
+        return true;
+    }
+
+    // Check installation status in localStorage
+    const installStatus = localStorage.getItem('pwa-installed');
+    if (installStatus === 'true') {
+        // Verify with additional checks
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            if (!registration) {
+                localStorage.removeItem('pwa-installed');
+                return false;
+            }
+            return true;
+        } catch {
+            localStorage.removeItem('pwa-installed');
+            return false;
+        }
+    }
+
+    return false;
+}
+
+// Add installation event listeners
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    localStorage.removeItem('pwa-installed');
+});
+
+window.addEventListener('appinstalled', () => {
+    isInstalling = false;
+    deferredPrompt = null;
+    localStorage.setItem('pwa-installed', 'true');
+});
+
+// Add service worker message handling
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data) {
+            switch (event.data.type) {
+                case 'APP_INSTALLED':
+                    localStorage.setItem('pwa-installed', 'true');
+                    break;
+                    
+                case 'APP_UNINSTALLED':
+                    localStorage.removeItem('pwa-installed');
+                    deferredPrompt = null;
+                    // Force reload to update UI
+                    window.location.reload();
+                    break;
+            }
+        }
+    });
+}
 
 // When the page loads
 document.addEventListener('DOMContentLoaded', () => {
@@ -39,198 +100,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Listen for beforeinstallprompt
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    // Clear any existing installation flags
-    localStorage.removeItem('pwa-installed');
-    console.log('beforeinstallprompt captured, installation status reset');
-});
-
 // Update startChat function
 async function startChat(event) {
-    if (event) {
-        event.preventDefault();
-    }
-
-    console.log('startChat triggered');
-
-    if (isInstalling) {
-        console.log('Installation already in progress');
-        return;
-    }
-
-    try {
-        if (isPWAInstalled()) {
-            console.log('App is already installed');
-            showInstalledModal();
-            return;
-        }
-
-        if (!deferredPrompt) {
-            console.log('No installation prompt available');
-            // Redirect to web version if can't install
-            window.location.href = 'ngobras.html';
-            return;
-        }
-
-        console.log('Triggering install prompt');
-        isInstalling = true;
-
-        // Show the install prompt
-        await deferredPrompt.prompt();
-        const choiceResult = await deferredPrompt.userChoice;
-        
-        console.log('User choice:', choiceResult.outcome);
-        
-        if (choiceResult.outcome === 'accepted') {
-            localStorage.setItem('pwa-installed', 'true');
-            showProgress(100);
-            setTimeout(() => {
-                window.location.href = 'ngobras.html';
-            }, 1000);
-        } else {
-            // Even if user cancels, redirect to web version
-            window.location.href = 'ngobras.html';
-        }
-
-        // Reset the prompt variable
-        deferredPrompt = null;
-        isInstalling = false;
-
-    } catch (error) {
-        console.error('Installation error:', error);
-        isInstalling = false;
+    event.preventDefault();
+    
+    const isInstalled = await isPWAInstalled();
+    
+    if (isInstalled) {
+        // Open installed app
         window.location.href = 'ngobras.html';
-    }
-}
-
-// Update isPWAInstalled function
-async function isPWAInstalled() {
-    // Check localStorage timestamp
-    const lastUninstallCheck = localStorage.getItem('last-uninstall-check');
-    const currentTime = new Date().getTime();
-    
-    if (lastUninstallCheck) {
-        const timeSinceLastCheck = currentTime - parseInt(lastUninstallCheck);
-        if (timeSinceLastCheck < 60000) { // Within last minute
-            const wasUninstalled = localStorage.getItem('was-uninstalled') === 'true';
-            if (wasUninstalled) {
-                return false;
-            }
-        }
-    }
-    
-    // Update last check timestamp
-    localStorage.setItem('last-uninstall-check', currentTime.toString());
-
-    // Traditional checks
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        return true;
-    }
-    
-    if (window.navigator.standalone) {
-        return true;
-    }
-
-    // Check service worker registration
-    if ('serviceWorker' in navigator) {
+    } else if (deferredPrompt) {
+        // Show installation prompt
         try {
-            const registration = await navigator.serviceWorker.getRegistration();
-            if (!registration) {
-                return false;
+            const result = await deferredPrompt.prompt();
+            if (result.outcome === 'accepted') {
+                localStorage.setItem('pwa-installed', 'true');
+                window.location.href = 'ngobras.html';
             }
         } catch (error) {
-            console.warn('Service worker check failed:', error);
-            return false;
-        }
-    }
-
-    return false;
-}
-
-// Add uninstall detection listener
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'APP_UNINSTALLED') {
-            console.log('App uninstall detected');
-            localStorage.setItem('was-uninstalled', 'true');
-            localStorage.removeItem('pwa-installed');
-            deferredPrompt = null;
-
-            // Force reload after short delay
-            setTimeout(() => {
-                window.location.reload();
-            }, 100);
-        }
-    });
-}
-
-// Add beforeinstallprompt handler
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    // Reset installation flags
-    localStorage.removeItem('pwa-installed');
-    localStorage.removeItem('was-uninstalled');
-    console.log('Installation prompt ready');
-});
-
-// Show installed modal
-function showInstalledModal() {
-    const modal = new bootstrap.Modal(document.getElementById('appInstalledModal'));
-    modal.show();
-}
-
-// Open installed app
-function openInstalledApp() {
-    const appUrl = window.location.origin + '/ngobras.html';
-    window.location.href = appUrl;
-}
-
-// Function to show installation progress
-function showProgress(progress) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('NGOBRAS Installing', {
-            body: `Installing... ${progress}%`,
-            icon: '/images/icons/icon-192x192.png',
-            tag: 'install-progress'
-        });
-    }
-}
-
-// Handle installation
-async function handleInstallation() {
-    if (!deferredPrompt) {
-        // Redirect to web version if installation not possible
-        window.location.href = 'ngobras.html';
-        return;
-    }
-
-    try {
-        isInstalling = true;
-        showProgress(0);
-        
-        // Show installation prompt
-        await deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        
-        if (choice.outcome === 'accepted') {
-            localStorage.setItem('pwa-installed', 'true');
-            showProgress(100);
-            setTimeout(() => {
-                window.location.href = 'ngobras.html';
-            }, 1000);
-        } else {
-            isInstalling = false;
-            deferredPrompt = null;
-            // Redirect even if installation rejected
+            console.error('Installation failed:', error);
             window.location.href = 'ngobras.html';
         }
-    } catch (error) {
-        console.error('Installation error:', error);
-        isInstalling = false;
+        deferredPrompt = null;
+    } else {
+        // Fallback to web version
         window.location.href = 'ngobras.html';
     }
 }
@@ -396,20 +289,6 @@ window.addEventListener('load', () => {
     clearCacheOnDev();
 });
 
-// Listen for the appinstalled event
-window.addEventListener('appinstalled', (event) => {
-    isInstalling = false;
-    deferredPrompt = null;
-    localStorage.setItem('pwa-installed', 'true');
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('NGOBRAS Terinstall', {
-            body: 'Aplikasi berhasil diinstall!',
-            icon: '/images/icons/icon-192x192.png'
-        });
-    }
-});
-
 // Add after initializeApp function
 async function clearCacheOnDev() {
     // Ganti process.env check dengan window check
@@ -427,13 +306,16 @@ async function clearCacheOnDev() {
     }
 }
 
-// Add message listener for uninstall detection
-navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'APP_UNINSTALLED') {
-        console.log('App uninstall detected');
-        localStorage.removeItem('pwa-installed');
-        deferredPrompt = null;
-        // Refresh page to update installation status
-        window.location.reload();
+// Listen for the appinstalled event
+window.addEventListener('appinstalled', (event) => {
+    isInstalling = false;
+    deferredPrompt = null;
+    localStorage.setItem('pwa-installed', 'true');
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('NGOBRAS Terinstall', {
+            body: 'Aplikasi berhasil diinstall!',
+            icon: '/images/icons/icon-192x192.png'
+        });
     }
 });
