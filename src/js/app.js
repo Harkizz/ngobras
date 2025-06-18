@@ -125,16 +125,23 @@ async function handleInstallClick() {
 async function startChat(event) {
     event.preventDefault();
     
+    // Prevent multiple clicks
+    const button = event.target;
+    if (button.disabled) return;
+    button.disabled = true;
+    
     try {
         const isInstalled = await isPWAInstalled();
         
+        // Close any existing modals first
+        const existingModal = document.querySelector('.modal.show');
+        if (existingModal) {
+            const bsModal = bootstrap.Modal.getInstance(existingModal);
+            if (bsModal) bsModal.hide();
+        }
+        
         if (isInstalled) {
-            showModal({
-                title: 'Aplikasi Terinstal',
-                message: 'Aplikasi NGOBRAS sudah terinstall di perangkat Anda.',
-                buttonText: 'OK',
-                buttonAction: () => {}
-            });
+            window.location.href = '/ngobras?action=chat';
         } else if (deferredPrompt) {
             showModal({
                 title: 'Install Aplikasi',
@@ -143,12 +150,7 @@ async function startChat(event) {
                 buttonAction: handleInstallClick
             });
         } else {
-            showModal({
-                title: 'Informasi',
-                message: 'Aplikasi tidak dapat diinstall di perangkat ini.',
-                buttonText: 'OK',
-                buttonAction: () => {}
-            });
+            window.location.href = '/ngobras?action=chat';
         }
     } catch (error) {
         console.error('Start chat error:', error);
@@ -158,6 +160,11 @@ async function startChat(event) {
             buttonText: 'OK',
             buttonAction: () => {}
         });
+    } finally {
+        // Re-enable button after processing
+        setTimeout(() => {
+            button.disabled = false;
+        }, 1000);
     }
 }
 
@@ -176,15 +183,22 @@ window.addEventListener('appinstalled', () => {
 
 // When the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Hapus event listener lama jika ada
+    // Remove existing listeners first
     const chatButtons = document.querySelectorAll('[data-action="start-chat"]');
     chatButtons.forEach(button => {
-        button.replaceWith(button.cloneNode(true));
-    });
-    
-    // Pasang event listener baru
-    document.querySelectorAll('[data-action="start-chat"]').forEach(button => {
-        button.addEventListener('click', startChat, { once: true });
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        
+        // Add new listener with debounce
+        let timeoutId;
+        newButton.addEventListener('click', (event) => {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            timeoutId = setTimeout(() => {
+                startChat(event);
+            }, 300);
+        });
     });
 });
 
