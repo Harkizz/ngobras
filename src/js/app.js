@@ -43,9 +43,15 @@ async function isPWAInstalled() {
 
 // Show custom modal
 function showCustomModal(title, message, buttonText, buttonAction) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('pwaModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
     const modalHtml = `
         <div class="modal fade" id="pwaModal" tabindex="-1">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">${title}</h5>
@@ -60,27 +66,17 @@ function showCustomModal(title, message, buttonText, buttonAction) {
             </div>
         </div>`;
 
-    // Remove existing modal if any
-    const existingModal = document.getElementById('pwaModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
-    // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Get modal instance
     const modalElement = document.getElementById('pwaModal');
     const modal = new bootstrap.Modal(modalElement);
-
-    // Add action button handler
+    
     const actionButton = document.getElementById('modalAction');
     actionButton.addEventListener('click', () => {
         modal.hide();
         buttonAction();
     });
 
-    // Show modal
     modal.show();
 }
 
@@ -99,14 +95,17 @@ async function startChat(event) {
                 'Buka Aplikasi',
                 () => window.location.href = 'ngobras.html'
             );
-        } else {
-            // Show installation confirmation modal
+        } else if (deferredPrompt) {
+            // Show installation modal first
             showCustomModal(
                 'Install Aplikasi',
                 'Untuk pengalaman terbaik, install aplikasi NGOBRAS di perangkat Anda.',
                 'Install Sekarang',
-                handleInstallClick  // Separate handler for installation
+                handleInstallClick
             );
+        } else {
+            // If no install prompt available, redirect to chat
+            window.location.href = 'ngobras.html';
         }
     } catch (error) {
         console.error('Start chat error:', error);
@@ -114,26 +113,20 @@ async function startChat(event) {
     }
 }
 
-// Add new handler for installation click
+// Separate installation handler
 async function handleInstallClick() {
-    if (!deferredPrompt) {
-        console.log('No installation prompt available');
-        window.location.href = 'ngobras.html';
-        return;
-    }
-
     try {
         const result = await deferredPrompt.prompt();
+        console.log('Install prompt result:', result.outcome);
+        
         if (result.outcome === 'accepted') {
-            localStorage.setItem('pwa-installed', 'true');
             deferredPrompt = null;
-            window.location.href = 'ngobras.html';
-        } else {
-            console.log('User declined installation');
-            window.location.href = 'ngobras.html';
+            localStorage.setItem('pwa-installed', 'true');
         }
     } catch (error) {
         console.error('Installation failed:', error);
+    } finally {
+        // Always redirect to chat after attempt
         window.location.href = 'ngobras.html';
     }
 }
@@ -146,8 +139,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 window.addEventListener('appinstalled', () => {
-    localStorage.setItem('pwa-installed', 'true');
     deferredPrompt = null;
+    localStorage.setItem('pwa-installed', 'true');
     console.log('PWA installed successfully');
 });
 
