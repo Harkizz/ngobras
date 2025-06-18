@@ -80,6 +80,21 @@ function showCustomModal(title, message, buttonText, buttonAction) {
     modal.show();
 }
 
+// Separate installation handler
+async function handleInstallClick() {
+    try {
+        const result = await deferredPrompt.prompt();
+        console.log('Install prompt result:', result.outcome);
+        
+        if (result.outcome === 'accepted') {
+            deferredPrompt = null;
+            localStorage.setItem('pwa-installed', 'true');
+        }
+    } catch (error) {
+        console.error('Installation failed:', error);
+    }
+}
+
 // Handle start chat action
 async function startChat(event) {
     event.preventDefault();
@@ -93,7 +108,7 @@ async function startChat(event) {
                 'Aplikasi Terinstal',
                 'Aplikasi NGOBRAS sudah terinstal di perangkat Anda.',
                 'Buka Aplikasi',
-                () => window.location.href = 'ngobras.html'
+                () => window.open('ngobras.html', '_blank')
             );
         } else if (deferredPrompt) {
             // Show installation modal first
@@ -104,30 +119,22 @@ async function startChat(event) {
                 handleInstallClick
             );
         } else {
-            // If no install prompt available, redirect to chat
-            window.location.href = 'ngobras.html';
+            // If no install prompt available, show modal
+            showCustomModal(
+                'Buka di Browser',
+                'Aplikasi tidak dapat diinstall di perangkat ini. Anda dapat mengakses via browser.',
+                'Buka di Browser',
+                () => window.open('ngobras.html', '_blank')
+            );
         }
     } catch (error) {
         console.error('Start chat error:', error);
-        window.location.href = 'ngobras.html';
-    }
-}
-
-// Separate installation handler
-async function handleInstallClick() {
-    try {
-        const result = await deferredPrompt.prompt();
-        console.log('Install prompt result:', result.outcome);
-        
-        if (result.outcome === 'accepted') {
-            deferredPrompt = null;
-            localStorage.setItem('pwa-installed', 'true');
-        }
-    } catch (error) {
-        console.error('Installation failed:', error);
-    } finally {
-        // Always redirect to chat after attempt
-        window.location.href = 'ngobras.html';
+        showCustomModal(
+            'Error',
+            'Terjadi kesalahan saat memproses permintaan Anda.',
+            'Coba Lagi',
+            () => {}
+        );
     }
 }
 
