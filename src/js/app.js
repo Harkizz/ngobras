@@ -41,13 +41,12 @@ async function isPWAInstalled() {
     return localStorage.getItem('pwa-installed') === 'true';
 }
 
-// Show custom modal
-function showCustomModal(title, message, buttonText, buttonAction) {
-    // Remove existing modal if any
+// Buat fungsi modal yang lebih fleksibel
+function showModal(config) {
+    const {title, message, buttonText = 'OK', buttonAction = () => {}} = config;
+    
     const existingModal = document.getElementById('pwaModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
+    if (existingModal) existingModal.remove();
 
     const modalHtml = `
         <div class="modal fade" id="pwaModal" tabindex="-1">
@@ -67,17 +66,12 @@ function showCustomModal(title, message, buttonText, buttonAction) {
         </div>`;
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-    const modalElement = document.getElementById('pwaModal');
-    const modal = new bootstrap.Modal(modalElement);
     
-    const actionButton = document.getElementById('modalAction');
-    actionButton.addEventListener('click', () => {
-        modal.hide();
-        buttonAction();
-    });
-
-    modal.show();
+    const modalElement = document.getElementById('pwaModal');
+    if (modalElement) {
+        const actionButton = modalElement.querySelector('#modalAction');
+        if (actionButton) actionButton.onclick = buttonAction;
+    }
 }
 
 // Separate installation handler
@@ -89,21 +83,21 @@ async function handleInstallClick() {
         if (result.outcome === 'accepted') {
             deferredPrompt = null;
             localStorage.setItem('pwa-installed', 'true');
-            showCustomModal(
-                'Instalasi Berhasil',
-                'Aplikasi NGOBRAS berhasil diinstall di perangkat Anda.',
-                'OK',
-                () => {}
-            );
+            showModal({
+                title: 'Instalasi Berhasil',
+                message: 'Aplikasi NGOBRAS berhasil diinstall di perangkat Anda.',
+                buttonText: 'OK',
+                buttonAction: () => {}
+            });
         }
     } catch (error) {
         console.error('Installation failed:', error);
-        showCustomModal(
-            'Instalasi Gagal',
-            'Terjadi kesalahan saat menginstall aplikasi.',
-            'OK',
-            () => {}
-        );
+        showModal({
+            title: 'Instalasi Gagal',
+            message: 'Terjadi kesalahan saat menginstall aplikasi.',
+            buttonText: 'OK',
+            buttonAction: () => {}
+        });
     }
 }
 
@@ -115,35 +109,35 @@ async function startChat(event) {
         const isInstalled = await isPWAInstalled();
         
         if (isInstalled) {
-            showCustomModal(
-                'Aplikasi Terinstal',
-                'Aplikasi NGOBRAS sudah terinstall di perangkat Anda.',
-                'OK',
-                () => {}
-            );
+            showModal({
+                title: 'Aplikasi Terinstal',
+                message: 'Aplikasi NGOBRAS sudah terinstall di perangkat Anda.',
+                buttonText: 'OK',
+                buttonAction: () => {}
+            });
         } else if (deferredPrompt) {
-            showCustomModal(
-                'Install Aplikasi',
-                'Untuk pengalaman terbaik, install aplikasi NGOBRAS di perangkat Anda.',
-                'Install Sekarang',
-                handleInstallClick
-            );
+            showModal({
+                title: 'Install Aplikasi',
+                message: 'Untuk pengalaman terbaik, install aplikasi NGOBRAS di perangkat Anda.',
+                buttonText: 'Install Sekarang',
+                buttonAction: handleInstallClick
+            });
         } else {
-            showCustomModal(
-                'Informasi',
-                'Aplikasi tidak dapat diinstall di perangkat ini.',
-                'OK',
-                () => {}
-            );
+            showModal({
+                title: 'Informasi',
+                message: 'Aplikasi tidak dapat diinstall di perangkat ini.',
+                buttonText: 'OK',
+                buttonAction: () => {}
+            });
         }
     } catch (error) {
         console.error('Start chat error:', error);
-        showCustomModal(
-            'Error',
-            'Terjadi kesalahan saat memproses permintaan Anda.',
-            'OK',
-            () => {}
-        );
+        showModal({
+            title: 'Error',
+            message: 'Terjadi kesalahan saat memproses permintaan Anda.',
+            buttonText: 'OK',
+            buttonAction: () => {}
+        });
     }
 }
 
