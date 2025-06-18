@@ -58,6 +58,112 @@ async function isPWAInstalled() {
     return false;
 }
 
+// Show custom modal
+function showCustomModal(title, message, buttonText, buttonAction) {
+    const modalHtml = `
+        <div class="modal fade" id="pwaModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${title}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">${message}</div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn btn-primary" id="modalAction">${buttonText}</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('pwaModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Get modal instance
+    const modalElement = document.getElementById('pwaModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    // Add action button handler
+    const actionButton = document.getElementById('modalAction');
+    actionButton.addEventListener('click', () => {
+        modal.hide();
+        buttonAction();
+    });
+
+    // Show modal
+    modal.show();
+}
+
+// Handle PWA installation
+async function handlePWAInstallation(e) {
+    e.preventDefault();
+    
+    try {
+        // Check if already installed
+        const isInstalled = await isPWAInstalled();
+        
+        if (isInstalled) {
+            // Show "already installed" modal
+            showCustomModal(
+                'Aplikasi Terinstal',
+                'Aplikasi NGOBRAS sudah terinstal di perangkat Anda.',
+                'Buka Aplikasi',
+                () => { window.location.href = 'ngobras.html'; }
+            );
+            return;
+        }
+
+        // Check if installation prompt is available
+        if (deferredPrompt) {
+            // Show installation modal
+            showCustomModal(
+                'Instalasi Aplikasi',
+                'Untuk pengalaman yang lebih baik, install aplikasi NGOBRAS di perangkat Anda.',
+                'Install Sekarang',
+                async () => {
+                    try {
+                        const result = await deferredPrompt.prompt();
+                        console.log('Installation prompt result:', result);
+                        
+                        if (result.outcome === 'accepted') {
+                            localStorage.setItem('pwa-installed', 'true');
+                            console.log('PWA installation accepted');
+                            
+                            // Show success modal
+                            showCustomModal(
+                                'Instalasi Berhasil',
+                                'Aplikasi NGOBRAS berhasil diinstal!',
+                                'Buka Aplikasi',
+                                () => { window.location.href = 'ngobras.html'; }
+                            );
+                        }
+                        
+                        deferredPrompt = null;
+                    } catch (error) {
+                        console.error('Installation error:', error);
+                        window.location.href = 'ngobras.html';
+                    }
+                }
+            );
+            return;
+        }
+        
+        // If no installation possible, redirect to web version
+        window.location.href = 'ngobras.html';
+        
+    } catch (error) {
+        console.error('handlePWAInstallation error:', error);
+        window.location.href = 'ngobras.html';
+    }
+}
+
 // Add installation event listeners
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -65,105 +171,19 @@ window.addEventListener('beforeinstallprompt', (e) => {
     console.log('Installation prompt ready');
 });
 
-window.addEventListener('appinstalled', (e) => {
+window.addEventListener('appinstalled', () => {
+    console.log('PWA was installed');
     localStorage.setItem('pwa-installed', 'true');
-    console.log('PWA Status: Installation completed');
 });
-
-// Add service worker message handling
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data) {
-            switch (event.data.type) {
-                case 'APP_INSTALLED':
-                    localStorage.setItem('pwa-installed', 'true');
-                    break;
-                    
-                case 'APP_UNINSTALLED':
-                    localStorage.removeItem('pwa-installed');
-                    deferredPrompt = null;
-                    // Force reload to update UI
-                    window.location.reload();
-                    break;
-                case 'PWA_STATUS':
-                    switch (event.data.status) {
-                        case 'installed':
-                            localStorage.setItem('pwa-installed', 'true');
-                            console.log('PWA Status: Installation confirmed by Service Worker');
-                            break;
-                        case 'active':
-                            if (window.matchMedia('(display-mode: standalone)').matches) {
-                                localStorage.setItem('pwa-installed', 'true');
-                                console.log('PWA Status: Active and running in standalone mode');
-                            }
-                            break;
-                        case 'uninstalled':
-                            localStorage.setItem('pwa-installed', 'false');
-                            console.log('PWA Status: Uninstallation detected by Service Worker');
-                            break;
-                    }
-                    break;
-            }
-        }
-    });
-}
 
 // When the page loads
 document.addEventListener('DOMContentLoaded', () => {
     // Add click listeners to all buttons with data-action="start-chat"
     const startChatButtons = document.querySelectorAll('[data-action="start-chat"]');
     startChatButtons.forEach(button => {
-        button.addEventListener('click', startChat);
+        button.addEventListener('click', handlePWAInstallation);
     });
 });
-
-// Update startChat function
-async function startChat(event) {
-    event.preventDefault();
-    
-    try {
-        const isInstalled = await isPWAInstalled();
-        
-        if (isInstalled) {
-            // Already installed, just open the chat
-            window.location.href = 'ngobras.html';
-            return;
-        }
-        
-        // Check if installation prompt is available
-        if (deferredPrompt) {
-            // Show the installation prompt
-            deferredPrompt.prompt();
-            
-            // Wait for the user's choice
-            const choiceResult = await deferredPrompt.userChoice;
-            
-            // Reset the deferredPrompt
-            deferredPrompt = null;
-            
-            if (choiceResult.outcome === 'accepted') {
-                console.log('PWA installation accepted');
-                localStorage.setItem('pwa-installed', 'true');
-                // Wait a moment for the installation to complete
-                setTimeout(() => {
-                    window.location.href = 'ngobras.html';
-                }, 1000);
-                return;
-            } else {
-                console.log('PWA installation rejected');
-            }
-        }
-        
-        // If we get here, either installation was rejected or not possible
-        // Fallback to opening in browser
-        window.location.href = 'ngobras.html';
-        
-    } catch (error) {
-        console.error('Start chat error:', error);
-        // Fallback to opening in browser if any error occurs
-        window.location.href = 'ngobras.html';
-    }
-}
 
 // JavaScript for the index.html page
 // Counter Animation
