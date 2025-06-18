@@ -157,12 +157,7 @@ self.addEventListener('install', (event) => {
 });
 
 // Update fetch event handler
-self.addEventListener('fetch', (event) => {
-    // Skip cache in development mode
-    if (isDev) {
-        return;
-    }
-
+self.addEventListener('fetch', event => {
   // Skip chrome-extension requests
   if (event.request.url.startsWith('chrome-extension://')) {
     return;
@@ -171,6 +166,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     (async () => {
       try {
+        // Try to get preloaded response
+        const preloadResponse = await event.preloadResponse;
+        if (preloadResponse) {
+          return preloadResponse;
+        }
+
         // Check if request is for CDN resource
         if (event.request.url.includes('cdnjs.cloudflare.com')) {
           try {
@@ -193,21 +194,7 @@ self.addEventListener('fetch', (event) => {
           }
         }
 
-        // For API calls
-        if (event.request.url.includes('/api/')) {
-          try {
-            const networkResponse = await fetch(event.request);
-            return networkResponse;
-          } catch (error) {
-            const cachedResponse = await caches.match(event.request);
-            return cachedResponse || new Response(
-              JSON.stringify({ error: 'Network error' }), 
-              { headers: { 'Content-Type': 'application/json' }}
-            );
-          }
-        }
-
-        // For other requests, try cache first
+        // Try cache first for other requests
         const cachedResponse = await caches.match(event.request);
         if (cachedResponse) {
           return cachedResponse;
@@ -217,7 +204,7 @@ self.addEventListener('fetch', (event) => {
         const networkResponse = await fetch(event.request);
         if (networkResponse.ok) {
           const cache = await caches.open(CACHE_NAME);
-          await cache.put(event.request, networkResponse.clone());
+          cache.put(event.request, networkResponse.clone());
           return networkResponse;
         }
 
@@ -225,7 +212,7 @@ self.addEventListener('fetch', (event) => {
 
       } catch (error) {
         console.error('Fetch error:', error);
-        return await handleOfflineFallback(event.request);
+        return handleOfflineFallback(event.request);
       }
     })()
   );
@@ -305,12 +292,11 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     Promise.all([
       // Enable navigation preload
-      Promise.resolve()
-        .then(() => {
-          if (self.registration.navigationPreload) {
-            return self.registration.navigationPreload.enable();
-          }
-        }),
+      (async () => {
+        if (self.registration.navigationPreload) {
+          await self.registration.navigationPreload.enable();
+        }
+      })(),
       // Clean old caches
       caches.keys().then(cacheNames => {
         return Promise.all(
@@ -320,7 +306,7 @@ self.addEventListener('activate', event => {
         );
       })
     ])
-    .then(() => self.clients.claim()) // Take control immediately
+    .then(() => self.clients.claim())
   );
 });
 
