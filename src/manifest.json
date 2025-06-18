@@ -3,7 +3,7 @@
   "short_name": "NGOBRAS",
   "version": "1.0.0",
   "description": "Aplikasi konsultasi online yang membantu Anda berbicara dengan ahli",
-  "start_url": "/ngobras.html",
+  "start_url": "/ngobras.html?standalone=true",
   "scope": "/",
   "permissions": ["notifications"],
   "protocol_handlers": [
@@ -17,6 +17,13 @@
   "theme_color": "#4a90e2",
   "orientation": "portrait",
   "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://ngobras.vercel.app/manifest.json",
+      "id": "com.ngobras.app"
+    }
+  ],
   "icons": [
     {
       "src": "images/icons/icon-192x192.png",

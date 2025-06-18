@@ -43,7 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    console.log('beforeinstallprompt captured');
+    // Clear any existing installation flags
+    localStorage.removeItem('pwa-installed');
+    console.log('beforeinstallprompt captured, installation status reset');
 });
 
 // Update startChat function
@@ -105,21 +107,75 @@ async function startChat(event) {
 }
 
 // Update isPWAInstalled function
-function isPWAInstalled() {
+async function isPWAInstalled() {
+    // Check localStorage timestamp
+    const lastUninstallCheck = localStorage.getItem('last-uninstall-check');
+    const currentTime = new Date().getTime();
+    
+    if (lastUninstallCheck) {
+        const timeSinceLastCheck = currentTime - parseInt(lastUninstallCheck);
+        if (timeSinceLastCheck < 60000) { // Within last minute
+            const wasUninstalled = localStorage.getItem('was-uninstalled') === 'true';
+            if (wasUninstalled) {
+                return false;
+            }
+        }
+    }
+    
+    // Update last check timestamp
+    localStorage.setItem('last-uninstall-check', currentTime.toString());
+
+    // Traditional checks
     if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('Detected standalone mode');
         return true;
     }
+    
     if (window.navigator.standalone) {
-        console.log('Detected iOS standalone mode');
         return true;
     }
-    if (localStorage.getItem('pwa-installed')) {
-        console.log('Found installation flag in localStorage');
-        return true;
+
+    // Check service worker registration
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (!registration) {
+                return false;
+            }
+        } catch (error) {
+            console.warn('Service worker check failed:', error);
+            return false;
+        }
     }
+
     return false;
 }
+
+// Add uninstall detection listener
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'APP_UNINSTALLED') {
+            console.log('App uninstall detected');
+            localStorage.setItem('was-uninstalled', 'true');
+            localStorage.removeItem('pwa-installed');
+            deferredPrompt = null;
+
+            // Force reload after short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 100);
+        }
+    });
+}
+
+// Add beforeinstallprompt handler
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Reset installation flags
+    localStorage.removeItem('pwa-installed');
+    localStorage.removeItem('was-uninstalled');
+    console.log('Installation prompt ready');
+});
 
 // Show installed modal
 function showInstalledModal() {
@@ -370,3 +426,14 @@ async function clearCacheOnDev() {
         }
     }
 }
+
+// Add message listener for uninstall detection
+navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'APP_UNINSTALLED') {
+        console.log('App uninstall detected');
+        localStorage.removeItem('pwa-installed');
+        deferredPrompt = null;
+        // Refresh page to update installation status
+        window.location.reload();
+    }
+});

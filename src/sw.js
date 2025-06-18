@@ -25,6 +25,9 @@ const cdnResources = [
 // Ganti process.env check dengan window check
 const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
+// Add after const declarations
+let isInstalled = false;
+
 // Install Service Worker
 self.addEventListener('install', event => {
     self.skipWaiting();
@@ -60,20 +63,32 @@ self.addEventListener('install', event => {
 
 // Activate event handler
 self.addEventListener('activate', event => {
-    // Clean old caches
     event.waitUntil(
-        caches.keys()
-            .then(cacheNames => {
-                return Promise.all(
-                    cacheNames
-                        .filter(cacheName => cacheName !== CACHE_NAME)
-                        .map(cacheName => caches.delete(cacheName))
-                );
-            })
-            .then(() => {
-                // Only claim clients after cache cleanup
-                return self.clients.claim();
-            })
+        Promise.all([
+            // Existing cache cleanup
+            caches.keys()
+                .then(cacheNames => {
+                    return Promise.all(
+                        cacheNames
+                            .filter(cacheName => cacheName !== CACHE_NAME)
+                            .map(cacheName => caches.delete(cacheName))
+                    );
+                }),
+            // Register periodic check for installation status
+            (async () => {
+                try {
+                    if ('periodicSync' in self.registration) {
+                        await self.registration.periodicSync.register('check-install-status', {
+                            minInterval: 60000 // Check every minute
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Periodic Sync could not be registered:', error);
+                }
+            })(),
+            // Take control of clients
+            self.clients.claim()
+        ])
     );
 });
 
@@ -139,26 +154,6 @@ self.addEventListener('install', (event) => {
             }
         })()
     );
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-
-    if (event.notification.tag === 'install-complete' || event.action === 'open-app') {
-        // Open the app
-        event.waitUntil(
-            clients.openWindow('/ngobras.html')
-        );
-    }
-
-    if (event.action === 'reload') {
-        event.waitUntil(
-            clients.matchAll().then(clients => {
-                clients.forEach(client => client.navigate(client.url));
-            })
-        );
-    }
 });
 
 // Update fetch event handler
@@ -329,6 +324,52 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Add periodic sync registration
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        Promise.all([
+            // Existing cache cleanup
+            caches.keys()
+                .then(cacheNames => {
+                    return Promise.all(
+                        cacheNames
+                            .filter(cacheName => cacheName !== CACHE_NAME)
+                            .map(cacheName => caches.delete(cacheName))
+                    );
+                }),
+            // Register periodic sync
+            (async () => {
+                try {
+                    if ('periodicSync' in self.registration) {
+                        await self.registration.periodicSync.register('ngobras-installed', {
+                            minInterval: 24 * 60 * 60 * 1000 // 24 hours
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Periodic Sync could not be registered:', error);
+                }
+            })(),
+            // Take control of clients
+            self.clients.claim()
+        ])
+    );
+});
+
+// Add uninstall detection
+self.addEventListener('uninstall', () => {
+    self.registration.periodicSync.unregister('ngobras-installed')
+        .then(() => {
+            // Notify any open clients about uninstallation
+            self.clients.matchAll().then(clients => {
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'APP_UNINSTALLED'
+                    });
+                });
+            });
+        });
+});
+
 // Check for updates
 async function checkForUpdates() {
     try {
@@ -384,5 +425,56 @@ if (isDev) {
                     );
                 })
         );
+    });
+}
+
+// Add periodic check for installation status
+self.addEventListener('periodicsync', async (event) => {
+    if (event.tag === 'check-install-status') {
+        const prevInstallState = isInstalled;
+        
+        // Check if app is still installed
+        const newInstallState = await checkInstallationStatus();
+        
+        if (prevInstallState && !newInstallState) {
+            // App was uninstalled
+            isInstalled = false;
+            notifyClientsOfUninstall();
+        } else if (!prevInstallState && newInstallState) {
+            // App was installed
+            isInstalled = true;
+        }
+    }
+});
+
+// Add function to check installation status
+async function checkInstallationStatus() {
+    try {
+        // Check if the app is running in standalone mode
+        const clients = await self.clients.matchAll();
+        const isStandalone = clients.some(client => 
+            new URL(client.url).searchParams.has('standalone')
+        );
+        
+        // Check if service worker is still registered
+        const registration = await self.registration.getRegistration();
+        const hasServiceWorker = !!registration;
+        
+        return isStandalone && hasServiceWorker;
+    } catch (error) {
+        console.error('Error checking installation status:', error);
+        return false;
+    }
+}
+
+// Add function to notify clients of uninstall
+function notifyClientsOfUninstall() {
+    self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+            client.postMessage({
+                type: 'APP_UNINSTALLED',
+                timestamp: new Date().getTime()
+            });
+        });
     });
 }
