@@ -108,7 +108,7 @@ async function startChat(event) {
                 'Aplikasi Terinstal',
                 'Aplikasi NGOBRAS sudah terinstal di perangkat Anda.',
                 'Buka Aplikasi',
-                () => window.open('ngobras.html', '_blank')
+                () => {} // Remove window.open redirect
             );
         } else if (deferredPrompt) {
             // Show installation modal first
@@ -122,9 +122,9 @@ async function startChat(event) {
             // If no install prompt available, show modal
             showCustomModal(
                 'Buka di Browser',
-                'Aplikasi tidak dapat diinstall di perangkat ini. Anda dapat mengakses via browser.',
-                'Buka di Browser',
-                () => window.open('ngobras.html', '_blank')
+                'Aplikasi tidak dapat diinstall di perangkat ini.',
+                'OK',
+                () => {} // Remove window.open redirect
             );
         }
     } catch (error) {
