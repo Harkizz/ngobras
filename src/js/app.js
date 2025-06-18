@@ -26,7 +26,7 @@ async function initializeApp() {
     }
 }
 
-// Add these variables at the top
+// Store deferredPrompt for later use
 let deferredPrompt = null;
 let isInstalling = false;
 
@@ -62,7 +62,7 @@ async function isPWAInstalled() {
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    console.log('PWA Status: Installation prompt available');
+    console.log('Installation prompt ready');
 });
 
 window.addEventListener('appinstalled', (e) => {
@@ -121,26 +121,46 @@ document.addEventListener('DOMContentLoaded', () => {
 async function startChat(event) {
     event.preventDefault();
     
-    const isInstalled = await isPWAInstalled();
-    
-    if (isInstalled) {
-        // Open installed app
-        window.location.href = 'ngobras.html';
-    } else if (deferredPrompt) {
-        // Show installation prompt
-        try {
-            const result = await deferredPrompt.prompt();
-            if (result.outcome === 'accepted') {
-                localStorage.setItem('pwa-installed', 'true');
-                window.location.href = 'ngobras.html';
-            }
-        } catch (error) {
-            console.error('Installation failed:', error);
+    try {
+        const isInstalled = await isPWAInstalled();
+        
+        if (isInstalled) {
+            // Already installed, just open the chat
             window.location.href = 'ngobras.html';
+            return;
         }
-        deferredPrompt = null;
-    } else {
-        // Fallback to web version
+        
+        // Check if installation prompt is available
+        if (deferredPrompt) {
+            // Show the installation prompt
+            deferredPrompt.prompt();
+            
+            // Wait for the user's choice
+            const choiceResult = await deferredPrompt.userChoice;
+            
+            // Reset the deferredPrompt
+            deferredPrompt = null;
+            
+            if (choiceResult.outcome === 'accepted') {
+                console.log('PWA installation accepted');
+                localStorage.setItem('pwa-installed', 'true');
+                // Wait a moment for the installation to complete
+                setTimeout(() => {
+                    window.location.href = 'ngobras.html';
+                }, 1000);
+                return;
+            } else {
+                console.log('PWA installation rejected');
+            }
+        }
+        
+        // If we get here, either installation was rejected or not possible
+        // Fallback to opening in browser
+        window.location.href = 'ngobras.html';
+        
+    } catch (error) {
+        console.error('Start chat error:', error);
+        // Fallback to opening in browser if any error occurs
         window.location.href = 'ngobras.html';
     }
 }
