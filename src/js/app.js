@@ -305,12 +305,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // Add navbar background on scroll
 window.addEventListener('scroll', function() {
     const navbar = document.querySelector('.navbar');
-    if (navbar) {
-        if (window.scrollY > 50) {
-            navbar.style.background = 'rgba(255, 255, 255, 0.98)';
-        } else {
-            navbar.style.background = 'rgba(255, 255, 255, 0.95)';
-        }
+    if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+    } else {
+        navbar.classList.remove('scrolled');
     }
 });
 
@@ -337,6 +335,9 @@ window.addEventListener('load', () => {
     if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
         localStorage.setItem('pwa-installed', 'true');
     }
+    
+    // Clear cache in development mode
+    clearCacheOnDev();
 });
 
 // Listen for the appinstalled event
@@ -352,3 +353,20 @@ window.addEventListener('appinstalled', (event) => {
         });
     }
 });
+
+// Add after initializeApp function
+async function clearCacheOnDev() {
+    // Ganti process.env check dengan window check
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        try {
+            // Clear all caches
+            const cacheNames = await caches.keys();
+            await Promise.all(
+                cacheNames.map(cacheName => caches.delete(cacheName))
+            );
+            console.log('Cache cleared in development mode');
+        } catch (error) {
+            console.error('Error clearing cache:', error);
+        }
+    }
+}

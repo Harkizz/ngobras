@@ -35,75 +35,19 @@
     <div class="main-content">
         <!-- Home Page (Chat List) -->
         <div id="home-page" class="page active">
-            <div class="chat-list">
-                <div class="chat-item unread" onclick="openChat('admin', 'Dr. Sarah Wijaya')">
-                    <div class="chat-avatar admin">
-                        <i class="fas fa-user-md"></i>
-                        <div class="online-indicator"></div>
-                    </div>
-                    <div class="chat-info">
-                        <div class="chat-name">
-                            Dr. Sarah Wijaya
-                            <span class="admin-badge">ADMIN</span>
-                        </div>
-                        <div class="chat-preview">Bagaimana perasaan Anda hari ini?</div>
-                    </div>
-                    <div class="chat-meta">
-                        <div class="chat-time">10:30</div>
-                        <div class="unread-count">2</div>
-                    </div>
-                </div>
+            <h3 class="section-title">AI Assistants</h3>
+            <div id="ai-assistants-list" class="chat-list">
+                <!-- AI Assistants will be loaded here dynamically -->
+            </div>
+              <h3 class="section-title">Our Admins</h3>
+            <div class="chat-list" id="admin-list">
+                <!-- Admin list will be loaded here dynamically -->
+            </div>
 
-                <div class="chat-item" onclick="openChat('ai', 'NGOBRAS AI Assistant')">
-                    <div class="chat-avatar ai">
-                        <i class="fas fa-robot"></i>
-                        <div class="online-indicator"></div>
-                    </div>
-                    <div class="chat-info">
-                        <div class="chat-name">
-                            NGOBRAS AI Assistant
-                            <span class="ai-badge">AI</span>
-                        </div>
-                        <div class="chat-preview">Saya siap membantu Anda 24/7</div>
-                    </div>
-                    <div class="chat-meta">
-                        <div class="chat-time">09:15</div>
-                    </div>
-                </div>
-
-                <div class="chat-item" onclick="openChat('admin', 'Dr. Andi Pratama')">
-                    <div class="chat-avatar admin">
-                        <i class="fas fa-user-md"></i>
-                        <div class="online-indicator offline-indicator"></div>
-                    </div>
-                    <div class="chat-info">
-                        <div class="chat-name">
-                            Dr. Andi Pratama
-                            <span class="admin-badge">ADMIN</span>
-                        </div>
-                        <div class="chat-preview">Terima kasih sudah berkonsultasi</div>
-                    </div>
-                    <div class="chat-meta">
-                        <div class="chat-time">Kemarin</div>
-                    </div>
-                </div>
-
-                <div class="chat-item" onclick="openChat('admin', 'Dra. Lisa Sari')">
-                    <div class="chat-avatar admin">
-                        <i class="fas fa-user-md"></i>
-                        <div class="online-indicator offline-indicator"></div>
-                    </div>
-                    <div class="chat-info">
-                        <div class="chat-name">
-                            Dra. Lisa Sari
-                            <span class="admin-badge">ADMIN</span>
-                        </div>
-                        <div class="chat-preview">Jangan ragu untuk menghubungi saya</div>
-                    </div>
-                    <div class="chat-meta">
-                        <div class="chat-time">2 hari</div>
-                    </div>
-                </div>
+            <!-- Add after AI Assistants section in home page -->
+            <h3 class="section-title">Our Admins</h3>
+            <div class="chat-list" id="admin-list">
+                <!-- Admin list will be loaded here dynamically -->
             </div>
         </div>
 
@@ -125,42 +69,8 @@
                         <button class="switch-btn ai" onclick="switchToAI()">AI</button>
                         <button class="switch-btn admin active" onclick="switchToAdmin()">Admin</button>
                     </div>
-                </div>
-
-                <div class="chat-messages" id="chat-messages">
-                    <div class="message received">
-                        <div class="message-avatar admin">
-                            <i class="fas fa-user-md"></i>
-                        </div>
-                        <div>
-                            <div class="message-bubble">
-                                Halo! Saya Dr. Sarah. Senang bertemu dengan Anda. Bagaimana perasaan Anda hari ini?
-                            </div>
-                            <div class="message-time">10:25</div>
-                        </div>
-                    </div>
-
-                    <div class="message sent">
-                        <div>
-                            <div class="message-bubble">
-                                Halo dok, saya merasa sedikit cemas belakangan ini dan sulit tidur
-                            </div>
-                            <div class="message-time">10:27</div>
-                        </div>
-                    </div>
-
-                    <div class="message received">
-                        <div class="message-avatar admin">
-                            <i class="fas fa-user-md"></i>
-                        </div>
-                        <div>
-                            <div class="message-bubble">
-                                Saya memahami perasaan Anda. Kecemasan dan gangguan tidur memang sering terjadi bersamaan. Bisakah Anda ceritakan lebih detail tentang apa yang membuat Anda merasa cemas?
-                            </div>
-                            <div class="message-time">10:30</div>
-                        </div>
-                    </div>
-
+                </div>                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be loaded here dynamically -->
                     <div class="typing-indicator" id="typing-indicator" style="display: none;">
                         <div class="message-avatar admin">
                             <i class="fas fa-user-md"></i>

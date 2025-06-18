@@ -32,7 +32,8 @@ class ChatManager {
                 return {
                     id: userId,
                     username: 'Test User',
-                    avatar_url: '/images/default-avatar.png'
+                    avatar_url: '/images/default-avatar.png',
+                    role: 'user' // Tambahkan role
                 };
             }
             const response = await fetch(`/api/profiles/${userId}`);
@@ -93,6 +94,35 @@ class ChatManager {
             this.renderMessages();
         } catch (error) {
             console.error('Error sending message:', error);
+        }
+    }
+
+    async getAvailableAI() {
+        try {
+            const response = await fetch('/api/ai-assistants');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching AI assistants:', error);
+            return [];
+        }
+    }
+
+    async sendToAI(message, assistantId) {
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message,
+                    assistant_id: assistantId
+                })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Error sending message to AI:', error);
+            return null;
         }
     }
 

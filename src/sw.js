@@ -1,6 +1,9 @@
 const APP_VERSION = '1.0.0';
 const CACHE_NAME = `ngobras-v${APP_VERSION}`;
+
+// Update urlsToCache with CDN fallbacks
 const urlsToCache = [
+  '/',
   '/ngobras.html',
   '/css/ngobras.css',
   '/js/app.js',
@@ -9,10 +12,18 @@ const urlsToCache = [
   '/manifest.json',
   '/images/icons/favicon.png',
   '/images/icons/icon-192x192.png',
-  '/images/icons/icon-512x512.png',
-  'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js'
+  '/images/icons/icon-512x512.png'
 ];
+
+// CDN resources to cache
+const cdnResources = [
+  'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+];
+
+// Ganti process.env check dengan window check
+const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
 // Install Service Worker
 self.addEventListener('install', event => {
@@ -150,8 +161,13 @@ self.addEventListener('notificationclick', (event) => {
     }
 });
 
-// Fetch Service Worker
+// Update fetch event handler
 self.addEventListener('fetch', (event) => {
+    // Skip cache in development mode
+    if (isDev) {
+        return;
+    }
+
   // Skip chrome-extension requests
   if (event.request.url.startsWith('chrome-extension://')) {
     return;
@@ -160,53 +176,136 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     (async () => {
       try {
-        // Try to use preloaded response first
-        const preloadResponse = await Promise.race([
-          event.preloadResponse,
-          new Promise((_, reject) => setTimeout(() => reject('preload timeout'), 2000))
-        ]);
-        
-        if (preloadResponse) {
-          return preloadResponse;
+        // Check if request is for CDN resource
+        if (event.request.url.includes('cdnjs.cloudflare.com')) {
+          try {
+            // Try network first for CDN
+            const networkResponse = await fetch(event.request);
+            if (networkResponse.ok) {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put(event.request, networkResponse.clone());
+              return networkResponse;
+            }
+            throw new Error('CDN response not ok');
+          } catch (error) {
+            // If network fails, try cache
+            const cachedResponse = await caches.match(event.request);
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // If no cache, try local fallback
+            return await handleCDNFallback(event.request);
+          }
         }
 
-        // Try to get the response from cache
+        // For API calls
+        if (event.request.url.includes('/api/')) {
+          try {
+            const networkResponse = await fetch(event.request);
+            return networkResponse;
+          } catch (error) {
+            const cachedResponse = await caches.match(event.request);
+            return cachedResponse || new Response(
+              JSON.stringify({ error: 'Network error' }), 
+              { headers: { 'Content-Type': 'application/json' }}
+            );
+          }
+        }
+
+        // For other requests, try cache first
         const cachedResponse = await caches.match(event.request);
         if (cachedResponse) {
           return cachedResponse;
         }
 
-        // Otherwise, fetch from network
+        // If not in cache, try network
         const networkResponse = await fetch(event.request);
-        
-        // Check if we received a valid response
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (networkResponse.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(event.request, networkResponse.clone());
           return networkResponse;
         }
 
-        // Cache the response if it's from our domain
-        if (event.request.url.startsWith(self.location.origin)) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, networkResponse.clone());
-        }
+        throw new Error('Network response was not ok');
 
-        return networkResponse;
       } catch (error) {
-        console.error('Fetch failed:', error);
-        const cachedResponse = await caches.match(event.request);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return new Response('Network error', { 
-          status: 408, 
-          statusText: 'Network request failed' 
-        });
+        console.error('Fetch error:', error);
+        return await handleOfflineFallback(event.request);
       }
     })()
   );
 });
 
-// Activate event handler - Enable navigation preload
+// Handle CDN fallbacks
+async function handleCDNFallback(request) {
+  // Map CDN URLs to local fallbacks
+  const fallbackMap = {
+    'bootstrap.min.css': '/css/bootstrap.min.css',
+    'bootstrap.bundle.min.js': '/js/bootstrap.bundle.min.js',
+    'all.min.css': '/css/fontawesome.min.css'
+  };
+
+  // Get filename from URL
+  const fileName = request.url.split('/').pop();
+  const fallbackUrl = fallbackMap[fileName];
+
+  if (fallbackUrl) {
+    const fallbackResponse = await caches.match(fallbackUrl);
+    if (fallbackResponse) {
+      return fallbackResponse;
+    }
+  }
+
+  // Return minimal CSS if everything fails
+  if (request.url.endsWith('.css')) {
+    return new Response('/* Fallback CSS */', {
+      headers: { 'Content-Type': 'text/css' }
+    });
+  }
+
+  return new Response();
+}
+
+// Handle offline fallback
+async function handleOfflineFallback(request) {
+  if (request.headers.get('Accept').includes('text/html')) {
+    return caches.match('/offline.html');
+  }
+  
+  // Return empty response for other resources
+  return new Response();
+}
+
+// Update install event to cache CDN resources
+self.addEventListener('install', event => {
+  self.skipWaiting();
+  event.waitUntil(
+    (async () => {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        // Cache local resources
+        await cache.addAll(urlsToCache);
+        // Cache CDN resources
+        await Promise.all(
+          cdnResources.map(async url => {
+            try {
+              const response = await fetch(url);
+              if (response.ok) {
+                await cache.put(url, response);
+              }
+            } catch (error) {
+              console.warn(`Failed to cache CDN resource: ${url}`, error);
+            }
+          })
+        );
+      } catch (error) {
+        console.error('Installation failed:', error);
+      }
+    })()
+  );
+});
+
+// Update activate event to handle cache cleanup
 self.addEventListener('activate', event => {
   event.waitUntil(
     Promise.all([
@@ -216,19 +315,17 @@ self.addEventListener('activate', event => {
           if (self.registration.navigationPreload) {
             return self.registration.navigationPreload.enable();
           }
-        })
-        .catch(err => console.error('Navigation preload failed:', err)),
-
-      // Clean old caches  
-      caches.keys()
-        .then(cacheNames => {
-          return Promise.all(
-            cacheNames
-              .filter(cacheName => cacheName !== CACHE_NAME)
-              .map(cacheName => caches.delete(cacheName))
-          );
-        })
+        }),
+      // Clean old caches
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames
+            .filter(cacheName => cacheName !== CACHE_NAME)
+            .map(cacheName => caches.delete(cacheName))
+        );
+      })
     ])
+    .then(() => self.clients.claim()) // Take control immediately
   );
 });
 
@@ -275,3 +372,17 @@ self.addEventListener('periodicsync', event => {
 self.addEventListener('push', event => {
     event.waitUntil(checkForUpdates());
 });
+
+// Add development mode cache clearing
+if (isDev) {
+    self.addEventListener('activate', (event) => {
+        event.waitUntil(
+            caches.keys()
+                .then(cacheNames => {
+                    return Promise.all(
+                        cacheNames.map(cacheName => caches.delete(cacheName))
+                    );
+                })
+        );
+    });
+}

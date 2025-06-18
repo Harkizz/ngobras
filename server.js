@@ -1,9 +1,26 @@
 const express = require('express');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Initialize Supabase client
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
+
+console.log('Checking Supabase connection...');
+supabase.from('ai_assistant').select('count').single()
+    .then(({ count, error }) => {
+        if (error) {
+            console.error('Supabase connection error:', error);
+        } else {
+            console.log('Supabase connected successfully');
+        }
+    });
 
 // Serve static files from src directory
 app.use(express.static(path.join(__dirname, 'src')));
@@ -11,6 +28,35 @@ app.use(express.static(path.join(__dirname, 'src')));
 // Basic API endpoints
 app.get('/api/test', (req, res) => {
     res.json({ message: 'API is working' });
+});
+
+// Get active AI assistants
+app.get('/api/ai-assistants', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('ai_assistant')
+            .select('id, name, model_type, api_provider, base_prompt')
+            .eq('is_active', true);
+
+        if (error) {
+            console.error('Supabase error:', error);
+            return res.status(500).json({ 
+                error: 'Database error',
+                details: error.message 
+            });
+        }
+
+        // Ensure we always return an array
+        const assistants = Array.isArray(data) ? data : [];
+        return res.json(assistants);
+
+    } catch (error) {
+        console.error('Server error:', error);
+        return res.status(500).json({ 
+            error: 'Server error',
+            details: error.message 
+        });
+    }
 });
 
 app.get('/api/profiles/:userId', (req, res) => {
@@ -29,6 +75,36 @@ app.get('/api/messages/:userId', (req, res) => {
             created_at: new Date().toISOString()
         }
     ]);
+});
+
+// Add after other API endpoints
+app.get('/api/admins', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, full_name, email, avatar_url')
+            .eq('role', 'admin')
+            .eq('is_active', true);
+
+        if (error) {
+            console.error('Supabase error:', error);
+            return res.status(500).json({ 
+                error: 'Database error',
+                details: error.message 
+            });
+        }
+
+        // Ensure we always return an array
+        const admins = Array.isArray(data) ? data : [];
+        return res.json(admins);
+
+    } catch (error) {
+        console.error('Server error:', error);
+        return res.status(500).json({ 
+            error: 'Server error',
+            details: error.message 
+        });
+    }
 });
 
 // Handle PWA routes
@@ -74,6 +150,20 @@ app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, 'src', 'index.html'));
     }
 });
+
+// Add after require statements
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Add development middleware
+if (isDev) {
+    app.use((req, res, next) => {
+        // Set headers to prevent caching in development
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Expires', '-1');
+        res.set('Pragma', 'no-cache');
+        next();
+    });
+}
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);

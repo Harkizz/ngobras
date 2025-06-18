@@ -41,6 +41,10 @@
 
     <!-- Hero Section -->
     <section id="home" class="hero-section">
+        <img src="images/elements/clouds.png" alt="Clouds" class="hero-clouds">
+        <img src="images/elements/ornament.png" alt="Ornament" class="hero-ornament">
+        <img src="images/elements/ornament2.png" alt="Ornament Right" class="hero-ornament">
+        <img src="images/elements/ornament2.png" alt="Ornament Left" class="hero-ornament-left">
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-lg-6 hero-content">
@@ -66,7 +70,49 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-6 d-none d-lg-block"> <!-- Hidden on mobile -->
+                    <div class="chat-illustration">
+                        <div class="mobile-chat-demo">
+                            <div class="mobile-header">
+                                <i class="fas fa-user-circle me-2"></i>Dr. Sarah - Psikolog
+                            </div>
+                            <div class="chat-messages" id="demoChat">
+                                <div class="message received">
+                                    <div class="message-bubble">
+                                        Halo! Saya Dr. Sarah. Bagaimana perasaan Anda hari ini?
+                                    </div>
+                                </div>
+                                <div class="message sent">
+                                    <div class="message-bubble">
+                                        Halo dok, saya merasa sedikit cemas belakangan ini
+                                    </div>
+                                </div>
+                                <div class="message received">
+                                    <div class="message-bubble">
+                                        Saya memahami perasaan Anda. Mari kita bicarakan lebih lanjut. Apa yang membuat Anda merasa cemas?
+                                    </div>
+                                </div>
+                                <div class="typing-indicator">
+                                    <div class="typing-dots">
+                                        <div class="typing-dot"></div>
+                                        <div class="typing-dot"></div>
+                                        <div class="typing-dot"></div>
+                                    </div>
+                                    <span>Mengetik...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chat Demo Section - Hidden on Desktop -->
+    <section class="chat-demo-section d-none d-md-none">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-12">
                     <div class="chat-illustration">
                         <div class="mobile-chat-demo">
                             <div class="mobile-header">

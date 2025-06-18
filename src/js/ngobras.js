@@ -6,6 +6,31 @@ let currentChatType = 'admin';
         function showPage(page) {
             // First check if nav items exist before trying to modify them
             const navItems = document.querySelectorAll('.nav-item');
+            const bottomNav = document.querySelector('.bottom-nav');
+            const topBar = document.querySelector('.top-bar');
+
+            if (page === 'chat') {
+                // Hide bottom nav and top bar in chat page
+                if (bottomNav) bottomNav.style.display = 'none';
+                if (topBar) topBar.style.display = 'none';
+                
+                // Adjust main content margin when top bar is hidden
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.style.marginTop = '0';
+                }
+            } else {
+                // Show bottom nav and top bar in other pages
+                if (bottomNav) bottomNav.style.display = 'flex';
+                if (topBar) topBar.style.display = 'flex';
+                
+                // Reset main content margin
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.style.marginTop = '60px';
+                }
+            }
+
             if (navItems) {
                 // Remove active class from all nav items
                 navItems.forEach(item => {
@@ -77,6 +102,13 @@ let currentChatType = 'admin';
 
         // Go back to home
         function goBack() {
+            const bottomNav = document.querySelector('.bottom-nav');
+            const topNavbar = document.querySelector('.top-navbar');
+            
+            // Show bottom nav and top navbar when going back
+            if (bottomNav) bottomNav.style.display = 'flex';
+            if (topNavbar) topNavbar.style.display = 'flex';
+            
             showPage('home');
         }
 
@@ -363,6 +395,150 @@ let currentChatType = 'admin';
             alert('Notifikasi:\n• Dr. Sarah Wijaya mengirim pesan baru\n• Jadwal konsultasi minggu depan\n• Tips kesehatan mental harian');
         }
 
+        // Load AI Assistants
+        async function loadAIAssistants() {
+            try {
+                const response = await fetch('/api/ai-assistants');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                // Ensure we have an array
+                const assistants = Array.isArray(data) ? data : [];
+                
+                const aiListContainer = document.getElementById('ai-assistants-list');
+                if (!aiListContainer) return;
+                
+                aiListContainer.innerHTML = ''; // Clear existing content
+                
+                // If no assistants, show placeholder
+                if (assistants.length === 0) {
+                    aiListContainer.innerHTML = `
+                        <div class="chat-item">
+                            <div class="chat-info">
+                                <div class="chat-name">No AI Assistants Available</div>
+                                <div class="chat-preview">Please try again later</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Render assistants
+                assistants.forEach(assistant => {
+                    const aiCard = document.createElement('div');
+                    aiCard.className = 'chat-item ai-assistant-card';
+                    aiCard.onclick = () => openChat('ai', assistant.name);
+                    
+                    aiCard.innerHTML = `
+                        <div class="chat-avatar ai">
+                            <i class="fas fa-robot"></i>
+                            <div class="online-indicator"></div>
+                        </div>
+                        <div class="chat-info">
+                            <div class="chat-name">
+                                ${assistant.name}
+                                <span class="ai-badge">AI</span>
+                            </div>
+                            <div class="chat-preview">${assistant.model_type}</div>
+                        </div>
+                        <div class="chat-meta">
+                            <span class="ai-provider">${assistant.api_provider}</span>
+                        </div>
+                    `;
+                    
+                    aiListContainer.appendChild(aiCard);
+                });
+            } catch (error) {
+                console.error('Error loading AI assistants:', error);
+                const aiListContainer = document.getElementById('ai-assistants-list');
+                if (aiListContainer) {
+                    aiListContainer.innerHTML = `
+                        <div class="chat-item error">
+                            <div class="chat-info">
+                                <div class="chat-name">Error Loading AI Assistants</div>
+                                <div class="chat-preview">${error.message}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Load Admins
+        async function loadAdminList() {
+            try {
+                const response = await fetch('/api/admins');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                // Ensure we have an array
+                const admins = Array.isArray(data) ? data : [];
+                
+                const adminListContainer = document.getElementById('admin-list');
+                if (!adminListContainer) return;
+                
+                adminListContainer.innerHTML = ''; // Clear existing content
+                
+                // If no admins, show placeholder
+                if (admins.length === 0) {
+                    adminListContainer.innerHTML = `
+                        <div class="chat-item">
+                            <div class="chat-info">
+                                <div class="chat-name">No Admin Available</div>
+                                <div class="chat-preview">Please try again later</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Render admins
+                admins.forEach(admin => {
+                    const adminCard = document.createElement('div');
+                    adminCard.className = 'chat-item';
+                    adminCard.onclick = () => openChat('admin', admin.full_name || admin.username);
+                    
+                    adminCard.innerHTML = `
+                        <div class="chat-avatar admin">
+                            ${admin.avatar_url ? 
+                                `<img src="${admin.avatar_url}" alt="${admin.username}">` :
+                                '<i class="fas fa-user-md"></i>'}
+                            <div class="online-indicator"></div>
+                        </div>
+                        <div class="chat-info">
+                            <div class="chat-name">
+                                ${admin.full_name || admin.username}
+                                <span class="admin-badge">ADMIN</span>
+                            </div>
+                            <div class="chat-preview">Online - Siap membantu</div>
+                        </div>
+                        <div class="chat-meta">
+                            <span class="chat-status">Available</span>
+                        </div>
+                    `;
+                    
+                    adminListContainer.appendChild(adminCard);
+                });
+            } catch (error) {
+                console.error('Error loading admins:', error);
+                const adminListContainer = document.getElementById('admin-list');
+                if (adminListContainer) {
+                    adminListContainer.innerHTML = `
+                        <div class="chat-item error">
+                            <div class="chat-info">
+                                <div class="chat-name">Error Loading Admins</div>
+                                <div class="chat-preview">${error.message}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             // Check if we're on the chat page
@@ -381,5 +557,18 @@ let currentChatType = 'admin';
                 
                 // Auto-scroll to bottom when page loads
                 setTimeout(scrollToBottom, 100);
+            }
+
+            // Load AI assistants and admins on home page
+            const isHomePage = document.getElementById('home-page')?.classList.contains('active');
+            if (isHomePage) {
+                loadAIAssistants();
+                loadAdminList(); // Add this line
+            }
+
+            // Load admins on admin page
+            const isAdminPage = document.getElementById('admin-page')?.classList.contains('active');
+            if (isAdminPage) {
+                loadAdminList();
             }
         });
