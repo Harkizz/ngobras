@@ -18,6 +18,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/ngobras.css">
+        <!-- Add Anime.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+        <!-- Add in ngobras.html head section, before other scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Top Bar -->
@@ -34,64 +38,89 @@
     <!-- Main Content -->
     <div class="main-content">
         <!-- Home Page (Chat List) -->
-        <div id="home-page" class="page active">
-            <h3 class="section-title">AI Assistants</h3>
+        <div id="home-page" class="page active">            <h3 class="section-title">AI Assistants</h3>
             <div id="ai-assistants-list" class="chat-list">
-                <!-- AI Assistants will be loaded here dynamically -->
+                <!-- AI Assistants will be loaded dynamically -->
             </div>
-              <h3 class="section-title">Our Admins</h3>
-            <div class="chat-list" id="admin-list">
-                <!-- Admin list will be loaded here dynamically -->
+            
+            <div id="ai-assistants-list-skeleton" class="chat-list">
+                <!-- Skeleton items will be shown here while loading -->
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar ai skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 120px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 180px;"></div>
+                    </div>
+                </div>
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar ai skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 100px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 150px;"></div>
+                    </div>
+                </div>
             </div>
-
-            <!-- Add after AI Assistants section in home page -->
+            
             <h3 class="section-title">Our Admins</h3>
             <div class="chat-list" id="admin-list">
-                <!-- Admin list will be loaded here dynamically -->
+                <!-- Admins will be loaded dynamically -->
+            </div>
+            
+            <div id="admin-list-skeleton" class="chat-list">
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar admin skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 100px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 120px;"></div>
+                    </div>
+                </div>
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar admin skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 90px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 100px;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Chat Room -->
         <div id="chat-page" class="page">
-            <div class="chat-room">
-                <div class="chat-header">
+            <div class="chat-room">                <div class="chat-header">
                     <button class="back-btn" onclick="goBack()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
-                    <div class="chat-avatar admin" id="current-chat-avatar">
+                    <div class="chat-avatar" id="current-chat-avatar">
                         <i class="fas fa-user-md"></i>
                     </div>
                     <div class="chat-info">
                         <div class="chat-name" id="current-chat-name">Dr. Sarah Wijaya</div>
                         <div class="chat-time" id="current-chat-status">Online</div>
                     </div>
-                    <div class="chat-switch">
-                        <button class="switch-btn ai" onclick="switchToAI()">AI</button>
-                        <button class="switch-btn admin active" onclick="switchToAdmin()">Admin</button>
-                    </div>
-                </div>                <div class="chat-messages" id="chat-messages">
-                    <!-- Messages will be loaded here dynamically -->
-                    <div class="typing-indicator" id="typing-indicator" style="display: none;">
-                        <div class="message-avatar admin">
-                            <i class="fas fa-user-md"></i>
-                        </div>
-                        <div>
-                            <div class="typing-dots">
-                                <div class="typing-dot"></div>
-                                <div class="typing-dot"></div>
-                                <div class="typing-dot"></div>
-                            </div>
-                            <span style="margin-left: 0.5rem; font-size: 0.8rem; color: #6C757D;">mengetik...</span>
+                </div><div class="chat-messages" id="chat-messages">
+                    <!-- Greeting sphere stays here -->
+                    <div id="greeting-sphere" class="greeting-sphere-container" style="display:none;">
+                        <svg id="greetingSphereSVG" width="120" height="120" viewBox="0 0 120 120">
+                            <circle id="greetingSphereCircle" cx="60" cy="60" r="40" fill="#6C63FF" opacity="0.8"/>
+                        </svg>
+                        <div class="greeting-text">
+                            <span id="greetingText"></span>
                         </div>
                     </div>
-                </div>
-
-                <div class="chat-input">
+                    <!-- Only this will be replaced by JS -->
+                    <div id="messages-list"></div>
+                    <div id="typing-indicator" class="typing-indicator" style="display: none;"></div>
+                </div><div class="chat-input">
+                    <div class="chat-input-actions">
+                        <button class="action-btn" onclick="toggleAttachment()">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                    </div>
                     <div class="input-group">
-                        <button class="emoji-btn" onclick="toggleEmoji()">
+                        <textarea class="message-input" placeholder="Ketik pesan..." id="messageInput" onkeypress="handleKeyPress(event)" rows="1"></textarea>
+                        <button class="action-btn" onclick="toggleEmoji()">
                             <i class="fas fa-smile"></i>
                         </button>
-                        <input type="text" class="message-input" placeholder="Ketik pesan..." id="messageInput" onkeypress="handleKeyPress(event)">
                     </div>
                     <button class="send-btn" onclick="sendMessage()" id="sendBtn">
                         <i class="fas fa-paper-plane"></i>
@@ -157,12 +186,34 @@
             </div>
             <div class="page-content">
                 <div class="profile-card">
-                    <div class="profile-avatar">
-                        <i class="fas fa-user"></i>
+                    <div id="profileLoading" class="text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
                     </div>
-                    <div class="profile-name">Budi Santoso</div>
-                    <div class="profile-email">budi.santoso@email.com</div>
-                    <p class="text-muted">Member sejak Januari 2025</p>
+                    
+                    <div id="profileContent">
+                        <div class="profile-avatar">
+                            <img id="profileAvatar" src="/images/default-avatar.png" alt="Profile" 
+                                 onerror="this.onerror=null; this.src='/images/default-avatar.png';">
+                        </div>
+                        <div class="profile-name" id="profileName">Loading...</div>
+                        <div class="profile-email" id="profileEmail">Loading...</div>
+                        <p class="text-muted" id="profileMemberSince">Member since Loading...</p>
+                        
+                        <div class="profile-stats mt-3">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="stat-value" id="totalChats">0</div>
+                                    <div class="stat-label">Chats</div>
+                                </div>
+                                <div class="col">
+                                    <div class="stat-value" id="lastActive">-</div>
+                                    <div class="stat-label">Last Active</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="profile-menu">

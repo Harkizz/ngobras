@@ -4,6 +4,19 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
+
+// Add body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Configure CORS if needed
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
+
 const port = process.env.PORT || 3000;
 
 // Initialize Supabase client
@@ -35,8 +48,18 @@ app.get('/api/ai-assistants', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('ai_assistant')
-            .select('id, name, model_type, api_provider, base_prompt')
-            .eq('is_active', true);
+            .select(`
+                id,
+                name,
+                model_type,
+                api_provider,
+                base_prompt,
+                temperature,
+                max_tokens,
+                memory_max
+            `)
+            .eq('is_active', true)
+            .order('name');
 
         if (error) {
             console.error('Supabase error:', error);
@@ -46,8 +69,16 @@ app.get('/api/ai-assistants', async (req, res) => {
             });
         }
 
-        // Ensure we always return an array
-        const assistants = Array.isArray(data) ? data : [];
+        // Map the data to include only necessary information for the frontend
+        const assistants = (data || []).map(assistant => ({
+            id: assistant.id,
+            name: assistant.name,
+            model_type: assistant.model_type,
+            api_provider: assistant.api_provider,
+            base_prompt: assistant.base_prompt,
+            memory_max: assistant.memory_max // <-- add this
+        }));
+
         return res.json(assistants);
 
     } catch (error) {
@@ -107,6 +138,170 @@ app.get('/api/admins', async (req, res) => {
     }
 });
 
+// Add this route before other routes
+app.post('/api/chat', async (req, res) => {
+    try {
+        const { message, assistant_id, memory } = req.body;
+        
+        if (!message || !assistant_id) {
+            return res.status(400).json({
+                error: 'Missing required fields'
+            });
+        }
+
+        // Fetch assistant with all configuration
+        const { data: assistant, error } = await supabase
+            .from('ai_assistant')
+            .select('*')
+            .eq('id', assistant_id)
+            .eq('is_active', true)
+            .single();
+
+        if (error || !assistant) {
+            console.error('Database error:', error);
+            return res.status(404).json({
+                error: 'Assistant not found or inactive'
+            });
+        }
+
+        // Before using assistant.max_tokens and assistant.temperature:
+        const maxTokens = Math.max(1, parseInt(assistant.max_tokens) || 1000);
+        const temperature = Math.min(1, Math.max(0, parseFloat(assistant.temperature) || 0.7));
+
+        // Prepare headers based on provider
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        switch (assistant.api_provider) {
+            case 'google':
+                assistant.endpoint_url = `${assistant.endpoint_url}?key=${assistant.api_key}`;
+                delete headers['Authorization'];
+                break;
+            case 'openai':
+                headers['Authorization'] = `Bearer ${assistant.api_key}`;
+                break;
+            case 'anthropic':
+                headers['x-api-key'] = assistant.api_key;
+                break;
+        }
+
+        // Prepare request body based on provider
+        let requestBody;
+        switch (assistant.api_provider) {
+            case 'openai':
+                requestBody = {
+                    model: assistant.model_type,
+                    messages: [
+                        { role: 'system', content: assistant.base_prompt },
+                        ...(Array.isArray(memory) ? memory : [{ role: 'user', content: message }])
+                    ],
+                    temperature: temperature,
+                    max_tokens: maxTokens
+                };
+                break;
+            case 'anthropic':
+                // For Anthropic, you may need to concatenate memory into a single prompt
+                let anthropicPrompt = assistant.base_prompt + '\n\n';
+                if (Array.isArray(memory)) {
+                    memory.forEach(msg => {
+                        anthropicPrompt += (msg.role === 'user' ? 'User: ' : 'Assistant: ') + msg.content + '\n';
+                    });
+                } else {
+                    anthropicPrompt += 'User: ' + message + '\n';
+                }
+                requestBody = {
+                    model: assistant.model_type,
+                    messages: [{ role: 'user', content: anthropicPrompt }],
+                    max_tokens: assistant.max_tokens
+                };
+                break;
+            case 'google':
+                // For Gemini, use the memory as parts
+                let parts = [];
+                if (Array.isArray(memory)) {
+                    parts = memory.map(msg => ({ text: msg.content }));
+                } else {
+                    parts = [{ text: message }];
+                }
+                requestBody = {
+                    contents: [{ parts }],
+                    generationConfig: {
+                        temperature: assistant.temperature,
+                        maxOutputTokens: assistant.max_tokens
+                    }
+                };
+                break;
+            default:
+                requestBody = {
+                    messages: [{ role: 'user', content: message }],
+                    model: assistant.model_type,
+                    temperature: assistant.temperature,
+                    max_tokens: assistant.max_tokens
+                };
+        }
+
+        // Log the memory context being sent to the AI provider
+        console.log('Sending memory context to AI:', memory);
+
+        // Make API request
+        const aiResponse = await fetch(assistant.endpoint_url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!aiResponse.ok) {
+            const errorData = await aiResponse.json();
+            console.error('AI provider error details:', errorData);
+            throw new Error(`AI provider error: ${aiResponse.statusText}\n${JSON.stringify(errorData)}`);
+        }
+
+        // Parse response based on provider
+        const aiData = await aiResponse.json();
+        let responseText;
+
+        switch (assistant.api_provider) {
+            case 'openai':
+                responseText = aiData.choices[0].message.content;
+                break;
+            case 'anthropic':
+                responseText = aiData.content[0].text;
+                break;
+            case 'google':
+                responseText = aiData.candidates[0].content.parts[0].text;
+                break;
+            default:
+                responseText = aiData.text || aiData.message || aiData.content;
+        }
+
+        return res.status(200).json({
+            reply: responseText,
+            assistant: {
+                name: assistant.name,
+                model_type: assistant.model_type,
+                provider: assistant.api_provider
+            }
+        });
+
+    } catch (error) {
+        console.error('Chat error:', error);
+        return res.status(500).json({
+            error: 'Internal server error',
+            details: error.message
+        });
+    }
+});
+
+// Add this route before other routes
+app.get('/api/supabase-config', (req, res) => {
+    // Only send public configuration
+    res.json({
+        url: process.env.SUPABASE_URL,
+        anonKey: process.env.SUPABASE_ANON_KEY
+    });
+});
+
 // Handle PWA routes
 app.get('/manifest.json', (req, res) => {
     res.setHeader('Content-Type', 'application/manifest+json');
@@ -152,15 +347,34 @@ app.get('*', (req, res) => {
 });
 
 // Add after require statements
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = process.env.NODE_ENV === 'development';
 
-// Add development middleware
+// Add development middleware - place this before other routes
 if (isDev) {
     app.use((req, res, next) => {
         // Set headers to prevent caching in development
         res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         res.set('Expires', '-1');
         res.set('Pragma', 'no-cache');
+        
+        // Clear service worker cache on each request in development
+        if (req.url === '/sw.js') {
+            res.set('Service-Worker-Allowed', '/');
+            res.send(`
+                // Development mode - clear cache
+                self.addEventListener('install', event => {
+                    event.waitUntil(
+                        caches.keys().then(cacheNames => {
+                            return Promise.all(
+                                cacheNames.map(cacheName => caches.delete(cacheName))
+                            );
+                        })
+                    );
+                    self.skipWaiting();
+                });
+            `);
+            return;
+        }
         next();
     });
 }

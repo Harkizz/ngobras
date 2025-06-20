@@ -1,0 +1,129 @@
+-- Buat file baru: d:\ICT\Project - NGOBRAS\data\ai-assistant-setup.sql
+
+-- Create AI Assistant table
+CREATE TABLE public.ai_assistant (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    model_type VARCHAR(100) NOT NULL,
+    api_provider VARCHAR(100) NOT NULL,
+    api_key TEXT,
+    base_prompt TEXT,
+    temperature DECIMAL(3,2) DEFAULT 0.7,
+    max_tokens INTEGER DEFAULT 2000,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::TEXT, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::TEXT, NOW()) NOT NULL,
+    CONSTRAINT valid_temperature CHECK (temperature >= 0 AND temperature <= 1)
+);
+
+-- Add indexes
+CREATE INDEX idx_ai_assistant_name ON public.ai_assistant(name);
+CREATE INDEX idx_ai_assistant_model ON public.ai_assistant(model_type);
+CREATE INDEX idx_ai_assistant_active ON public.ai_assistant(is_active);
+
+-- Enable RLS
+ALTER TABLE public.ai_assistant ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+CREATE POLICY "Admins can manage AI assistants"
+ON public.ai_assistant
+FOR ALL
+USING (auth.uid() IN (
+    SELECT id FROM public.profiles WHERE role = 'admin'
+));
+
+CREATE POLICY "Users can view active AI assistants"
+ON public.ai_assistant
+FOR SELECT
+USING (is_active = true);
+
+-- This is example AI assistants
+INSERT INTO public.ai_assistant (
+    name,
+    model_type,
+    api_provider,
+    base_prompt,
+    temperature,
+    max_tokens
+) VALUES 
+(
+    'NGOBRAS General Assistant',
+    'gpt-3.5-turbo',
+    'openai',
+    'Anda adalah asisten konseling yang empatis dan profesional. Berikan tanggapan yang mendukung dan konstruktif untuk membantu pengguna mengatasi masalah mereka.',
+    0.7,
+    2000
+),
+(
+    'Mental Health Specialist',
+    'claude-2',
+    'anthropic',
+    'Anda adalah spesialis kesehatan mental yang berfokus pada teknik CBT dan mindfulness. Berikan saran praktis dan dukungan emosional.',
+    0.8,
+    2500
+),
+(
+    'Crisis Counselor',
+    'gemini-pro',
+    'google',
+    'Anda adalah konselor krisis yang terlatih. Prioritaskan keselamatan pengguna dan berikan dukungan dengan tenang dan profesional.',
+    0.6,
+    1500
+);
+
+-- Create function to update timestamp
+CREATE OR REPLACE FUNCTION update_ai_assistant_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for timestamp
+CREATE TRIGGER update_ai_assistant_timestamp
+    BEFORE UPDATE ON public.ai_assistant
+    FOR EACH ROW
+    EXECUTE FUNCTION update_ai_assistant_timestamp();
+
+-- Create view for active assistants
+CREATE VIEW active_ai_assistants AS
+SELECT id, name, model_type, api_provider, base_prompt
+FROM public.ai_assistant
+WHERE is_active = true;
+
+-- Hapus policy lama
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can update any profile" ON public.profiles;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+
+-- Buat policy baru yang lebih baik
+CREATE POLICY "Enable read access for all users" ON public.profiles
+    FOR SELECT USING (true);
+
+CREATE POLICY "Enable insert for users based on id" ON public.profiles
+    FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Enable update for users based on id" ON public.profiles
+    FOR UPDATE USING (
+        auth.uid() = id 
+        OR 
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );
+
+CREATE POLICY "Enable delete for admins only" ON public.profiles
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );
+
+        -- Tambah kolom memory_max ke tabel ai_assistant
+    ALTER TABLE public.ai_assistant
+    ADD COLUMN memory_max INTEGER DEFAULT 10;

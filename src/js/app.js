@@ -1,3 +1,6 @@
+// Check if running in development mode
+const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
 // Register service worker and handle notifications
 async function initializeApp() {
     try {
@@ -6,15 +9,23 @@ async function initializeApp() {
             const registration = await navigator.serviceWorker.register('/sw.js', {
                 scope: '/'
             });
-            
-            // Wait for the service worker to be activated
-            if (registration.waiting) {
-                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
-
-            // Wait for the service worker to be ready
-            await navigator.serviceWorker.ready;
             console.log('ServiceWorker registration successful');
+
+            // Add development mode hot reload
+            if (isDev) {
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
+
+                // Clear cache in development mode
+                registration.addEventListener('updatefound', () => {
+                    clearCacheOnDev();
+                });
+            }
         }
     } catch (error) {
         console.error('ServiceWorker registration failed:', error);
@@ -362,23 +373,6 @@ window.addEventListener('load', () => {
     // Clear cache in development mode
     clearCacheOnDev();
 });
-
-// Add after initializeApp function
-async function clearCacheOnDev() {
-    // Ganti process.env check dengan window check
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        try {
-            // Clear all caches
-            const cacheNames = await caches.keys();
-            await Promise.all(
-                cacheNames.map(cacheName => caches.delete(cacheName))
-            );
-            console.log('Cache cleared in development mode');
-        } catch (error) {
-            console.error('Error clearing cache:', error);
-        }
-    }
-}
 
 // Listen for the appinstalled event
 window.addEventListener('appinstalled', (event) => {

@@ -30,30 +30,18 @@ let isInstalled = false;
 
 // Install Service Worker
 self.addEventListener('install', event => {
-    self.skipWaiting();
+    if (isDev) {
+        // In development mode, skip caching
+        self.skipWaiting();
+        return;
+    }
+
+    // Production mode caching
     event.waitUntil(
         (async () => {
             try {
-                if ('Notification' in self && Notification.permission === 'granted') {
-                    await self.registration.showNotification('NGOBRAS', {
-                        body: 'Memulai penginstalan aplikasi...',
-                        icon: '/images/icons/icon-192x192.png',
-                        tag: 'install-progress'
-                    });
-                }
-
                 const cache = await caches.open(CACHE_NAME);
                 await Promise.all(urlsToCache.map(url => cache.add(url)));
-
-                // Mark installation as complete
-                if ('Notification' in self && Notification.permission === 'granted') {
-                    await self.registration.showNotification('NGOBRAS', {
-                        body: 'Aplikasi berhasil diinstall!',
-                        icon: '/images/icons/icon-192x192.png',
-                        tag: 'install-complete',
-                        actions: [{ action: 'open-app', title: 'Buka Aplikasi' }]
-                    });
-                }
             } catch (error) {
                 console.error('Installation failed:', error);
             }
@@ -159,64 +147,69 @@ self.addEventListener('install', (event) => {
 
 // Update fetch event handler
 self.addEventListener('fetch', event => {
-  // Skip chrome-extension requests
-  if (event.request.url.startsWith('chrome-extension://')) {
-    return;
-  }
+    if (isDev) {
+        // In development mode, always go to network
+        return;
+    }
 
-  event.respondWith(
-    (async () => {
-      try {
-        // Try to get preloaded response
-        const preloadResponse = await event.preloadResponse;
-        if (preloadResponse) {
-          return preloadResponse;
-        }
+    // Skip chrome-extension requests
+    if (event.request.url.startsWith('chrome-extension://')) {
+        return;
+    }
 
-        // Check if request is for CDN resource
-        if (event.request.url.includes('cdnjs.cloudflare.com')) {
-          try {
-            // Try network first for CDN
-            const networkResponse = await fetch(event.request);
-            if (networkResponse.ok) {
-              const cache = await caches.open(CACHE_NAME);
-              await cache.put(event.request, networkResponse.clone());
-              return networkResponse;
+    event.respondWith(
+        (async () => {
+            try {
+                // Try to get preloaded response
+                const preloadResponse = await event.preloadResponse;
+                if (preloadResponse) {
+                    return preloadResponse;
+                }
+
+                // Check if request is for CDN resource
+                if (event.request.url.includes('cdnjs.cloudflare.com')) {
+                    try {
+                        // Try network first for CDN
+                        const networkResponse = await fetch(event.request);
+                        if (networkResponse.ok) {
+                          const cache = await caches.open(CACHE_NAME);
+                          await cache.put(event.request, networkResponse.clone());
+                          return networkResponse;
+                        }
+                        throw new Error('CDN response not ok');
+                      } catch (error) {
+                        // If network fails, try cache
+                        const cachedResponse = await caches.match(event.request);
+                        if (cachedResponse) {
+                          return cachedResponse;
+                        }
+                        // If no cache, try local fallback
+                        return await handleCDNFallback(event.request);
+                      }
+                }
+
+                // Try cache first for other requests
+                const cachedResponse = await caches.match(event.request);
+                if (cachedResponse) {
+                  return cachedResponse;
+                }
+
+                // If not in cache, try network
+                const networkResponse = await fetch(event.request);
+                if (networkResponse.ok) {
+                  const cache = await caches.open(CACHE_NAME);
+                  cache.put(event.request, networkResponse.clone());
+                  return networkResponse;
+                }
+
+                throw new Error('Network response was not ok');
+
+            } catch (error) {
+                console.error('Fetch error:', error);
+                return handleOfflineFallback(event.request);
             }
-            throw new Error('CDN response not ok');
-          } catch (error) {
-            // If network fails, try cache
-            const cachedResponse = await caches.match(event.request);
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // If no cache, try local fallback
-            return await handleCDNFallback(event.request);
-          }
-        }
-
-        // Try cache first for other requests
-        const cachedResponse = await caches.match(event.request);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        // If not in cache, try network
-        const networkResponse = await fetch(event.request);
-        if (networkResponse.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, networkResponse.clone());
-          return networkResponse;
-        }
-
-        throw new Error('Network response was not ok');
-
-      } catch (error) {
-        console.error('Fetch error:', error);
-        return handleOfflineFallback(event.request);
-      }
-    })()
-  );
+        })()
+    );
 });
 
 // Handle CDN fallbacks
