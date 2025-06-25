@@ -267,27 +267,6 @@ function addChatMessage() {
     return () => clearInterval(intervalId);
 }
 
-// Wait for Supabase library to be loaded before running the rest of the code
-function waitForSupabase(retries = 10, delay = 200) {
-    return new Promise((resolve, reject) => {
-        function check() {
-            if (typeof supabase !== 'undefined') {
-                resolve();
-            } else if (retries > 0) {
-                setTimeout(() => check(--retries, delay), delay);
-            } else {
-                reject(new Error('Supabase library failed to load.'));
-            }
-        }
-        check();
-    });
-}
-
-// Initialize Supabase client
-const supabaseUrl = "https://vdszykgrgbszuzybmzle.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkc3p5a2dyZ2JzenV6eWJtemxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5ODE2NTAsImV4cCI6MjA2NTU1NzY1MH0.XzLkCYEcFOOjFeoFlh6PjZmTxTrg-tblQXST37aIzDk";
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-
 // Main initialization when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize service worker and notifications

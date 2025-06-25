@@ -14,109 +14,8 @@ function waitForSupabase(retries = 10, delay = 200) {
     });
 }
 
-// Initialize Supabase client
-const supabaseUrl = "https://vdszykgrgbszuzybmzle.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkc3p5a2dyZ2JzenV6eWJtemxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5ODE2NTAsImV4cCI6MjA2NTU1NzY1MH0.XzLkCYEcFOOjFeoFlh6PjZmTxTrg-tblQXST37aIzDk";
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await waitForSupabase();
-        // --- AUTO LOGIN FLOW ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasSession = urlParams.has('access_token') || urlParams.has('session_id') || urlParams.has('refresh_token');
-
-        if (hasSession) {
-            // Hide the login form and show the spinner
-            document.querySelector('.login-card').style.display = 'none';
-            const autoLoginStatus = document.getElementById('autoLoginStatus');
-            autoLoginStatus.style.display = 'block';
-            document.getElementById('autoLoginSpinner').style.display = 'flex';
-            document.getElementById('autoLoginSuccess').style.display = 'none';
-
-            // Wait 3 seconds (simulate loading)
-            await new Promise(res => setTimeout(res, 3000));
-
-            // Try to get the session from Supabase
-            if (typeof supabase === 'undefined') {
-                // Show error if Supabase not loaded
-                document.getElementById('autoLoginSpinner').style.display = 'none';
-                autoLoginStatus.innerHTML = '<div style="color:#DC3545;">Supabase library not loaded!</div>';
-                return;
-            }
-
-            // Supabase will automatically pick up the session from the URL
-            const { data, error } = await supabaseClient.auth.getSession();
-            if (data.session && data.session.user) {
-                // Optionally, check if user is admin
-                const { user } = data.session;
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('id, email, role, is_active')
-                    .eq('id', user.id)
-                    .single();
-
-                if (profile && profile.role === 'admin' && profile.is_active) {
-                    // Show success tick
-                    document.getElementById('autoLoginSpinner').style.display = 'none';
-                    document.getElementById('autoLoginSuccess').style.display = 'flex';
-
-                    // Save admin info to localStorage
-                    localStorage.setItem('ngobras_admin_id', profile.id);
-                    localStorage.setItem('ngobras_admin_email', profile.email);
-
-                    // Wait 1.5 seconds, then redirect
-                    setTimeout(() => {
-                        window.location.href = 'admin.html';
-                    }, 1500);
-                    return;
-                }
-            }
-
-            // If failed, show error and show login form again
-            document.getElementById('autoLoginSpinner').style.display = 'none';
-            autoLoginStatus.innerHTML = '<div style="color:#DC3545;">Gagal login otomatis. Silakan login manual.</div>';
-            setTimeout(() => {
-                autoLoginStatus.style.display = 'none';
-                document.querySelector('.login-card').style.display = '';
-            }, 2000);
-            return;
-        }
-
-        // Make sure supabase is loaded
-        if (typeof supabase === 'undefined') {
-            document.body.innerHTML = '<div class="alert alert-danger text-center"><h4>Application Error</h4><p>Failed to load required libraries. Please refresh the page.</p><button onclick="window.location.reload()" class="btn btn-primary">Refresh</button></div>';
-            console.error('Supabase JS library not loaded!');
-            return;
-        }
-
-        // Check for magic link session in URL
-        const { data, error } = await supabaseClient.auth.getSession();
-        if (data.session) {
-            // Get user info
-            const { user } = data.session;
-            // Optionally, check if user is admin in your profiles table
-            const { data: profile, error: profileError } = await supabaseClient
-                .from('profiles')
-                .select('id, email, role, is_active')
-                .eq('id', user.id)
-                .single();
-            if (profile && profile.role === 'admin' && profile.is_active) {
-                // Save admin info to localStorage
-                localStorage.setItem('ngobras_admin_id', profile.id);
-                localStorage.setItem('ngobras_admin_email', profile.email);
-                // Redirect to admin dashboard
-                window.location.href = 'admin.html';
-            } else {
-                showMessage('error', 'Akun Anda bukan admin atau tidak aktif.');
-                // Optionally, sign out
-                await supabaseClient.auth.signOut();
-            }
-        }
-    } catch (err) {
-        document.body.innerHTML = '<div class="alert alert-danger text-center"><h4>Application Error</h4><p>Failed to load required libraries. Please refresh the page.</p><button onclick="window.location.reload()" class="btn btn-primary">Refresh</button></div>';
-        console.error(err);
-    }
+    // No more Supabase session check in frontend. All admin login handled via backend.
 });
 
 // Form elements
@@ -183,21 +82,27 @@ if (loginForm) {
         }
         loginButton.disabled = true;
         buttonText.textContent = 'Mengirim...';
-
-        // Send magic link
         try {
-            const { error } = await supabaseClient.auth.signInWithOtp({
-                email,
-                options: {
-                    shouldCreateUser: false, // Only allow existing admins
-                    emailRedirectTo: window.location.origin + '/login_admin.html'
-                }
+            // Send admin login request to backend
+            const response = await fetch('/api/admin-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, uuid: uuidInput.value.trim() })
             });
-            if (error) throw error;
-            showMessage('success', 'Magic link telah dikirim ke email Anda. Silakan cek inbox/spam.');
-            buttonText.textContent = 'Magic Link Terkirim!';
+            const result = await response.json();
+            if (response.ok && result.success && result.admin) {
+                showMessage('success', 'Login admin berhasil! Redirecting...');
+                localStorage.setItem('ngobras_admin_id', result.admin.id);
+                localStorage.setItem('ngobras_admin_email', result.admin.email);
+                setTimeout(() => {
+                    window.location.href = 'admin.html';
+                }, 1200);
+            } else {
+                showMessage('error', result.error || 'Gagal login admin.');
+            }
+            buttonText.textContent = 'Kirim Magic Link';
         } catch (err) {
-            showMessage('error', err.message || 'Gagal mengirim magic link.');
+            showMessage('error', err.message || 'Gagal login admin.');
             buttonText.textContent = 'Kirim Magic Link';
         }
         loginButton.disabled = false;

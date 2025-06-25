@@ -10,10 +10,6 @@ if (typeof supabase === 'undefined') {
     `;
 }
 
-const supabaseUrl = "https://vdszykgrgbszuzybmzle.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkc3p5a2dyZ2JzenV6eWJtemxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5ODE2NTAsImV4cCI6MjA2NTU1NzY1MH0.XzLkCYEcFOOjFeoFlh6PjZmTxTrg-tblQXST37aIzDk";
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-
 // Password strength checker
 document.getElementById('password').addEventListener('input', function() {
     const password = this.value;
@@ -115,49 +111,36 @@ document.getElementById('signupForm').addEventListener('submit', async function(
     
     if (isValid) {
         try {
-            // Update UI to show loading state
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing up...';
             button.disabled = true;
-            
-            // Step 1: Create auth user
-            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                    data: {
-                        username: email.split('@')[0], // Create username from email
-                        full_name: document.getElementById('fullName').value,
-                        phone: document.getElementById('phone').value,
-                        gender: document.getElementById('gender').value,
-                        avatar_url: '', // Default empty avatar
-                        role: 'user' // Default role
-                    }
-                }
+
+            // Step 1: Create user via backend API
+            const response = await fetch('/api/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email,
+                    password: password,
+                    full_name: document.getElementById('fullName').value,
+                    phone: document.getElementById('phone').value,
+                    gender: document.getElementById('gender').value
+                })
             });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed to create account');
 
-            if (authError) throw authError;
-
-            // Update step indicator
             updateStepIndicator(1);
-
-            // Show success message
             showAlert('Sign up successful! Please check your email for verification.', 'success');
-
-            // Redirect after 3 seconds
             setTimeout(() => {
                 window.location.href = '/ngobras.html';
             }, 3000);
-
         } catch (error) {
             console.error('Signup error:', error);
             if (error && error.message && error.message.toLowerCase().includes('already registered')) {
                 showAlert('Email sudah terdaftar. Silakan login atau gunakan email lain.', 'danger');
-                // Optionally, redirect to login page with email pre-filled:
-                // window.location.href = `/login.html?email=${encodeURIComponent(email)}`;
             } else {
                 showAlert(error.message || 'Failed to create account', 'danger');
             }
-            // Reset button state so it can be clicked again
             button.innerHTML = originalText;
             button.disabled = false;
         }

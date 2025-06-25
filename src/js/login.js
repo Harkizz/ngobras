@@ -14,10 +14,6 @@ function waitForSupabase(retries = 10, delay = 200) {
     });
 }
 
-const supabaseUrl = "https://vdszykgrgbszuzybmzle.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkc3p5a2dyZ2JzenV6eWJtemxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5ODE2NTAsImV4cCI6MjA2NTU1NzY1MH0.XzLkCYEcFOOjFeoFlh6PjZmTxTrg-tblQXST37aIzDk";
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-
 // Autofill email if present in URL
 const params = new URLSearchParams(window.location.search);
 const email = params.get('email');
@@ -37,28 +33,26 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     button.disabled = true;
 
     try {
-        await waitForSupabase();
-        // Try to sign in with Supabase
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email,
-            password
+        // Login via backend API
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
         });
+        const result = await response.json();
 
-        if (data.user) {
+        if (response.ok && result.user) {
             // Login successful
             showAlert('Login berhasil! Redirecting...', 'success');
             setTimeout(() => {
                 window.location.href = '/ngobras';
             }, 1200);
+        } else if (result.error && result.error.toLowerCase().includes('invalid')) {
+            showAlert('Wrong password, please try again.', 'danger');
+            // Stop process, do not redirect
         } else {
-            // If error is "Invalid login credentials", show fast popup and stop
-            if (error && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
-                showAlert('Wrong password, please try again.', 'danger');
-                // Stop process, do not redirect
-            } else {
-                // For other errors, redirect to signup
-                window.location.href = `/signup.html?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-            }
+            // For other errors, redirect to signup
+            window.location.href = `/signup.html?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
         }
     } catch (err) {
         showAlert('Terjadi kesalahan. Silakan coba lagi.', 'danger');
