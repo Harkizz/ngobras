@@ -4,21 +4,31 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
   }
 
   const { email, password } = req.body;
+
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
+    res.status(400).json({ error: 'Email and password required' });
+    return;
   }
 
-  // Login ke Supabase
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    return res.status(401).json({ error: error.message });
+  // Lakukan query ke Supabase sesuai kebutuhan
+  // Contoh: cek user di table profiles
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('email', email)
+    .single();
+
+  if (error || !data) {
+    res.status(401).json({ error: 'Invalid credentials' });
+    return;
   }
 
-  // Kirim data user ke frontend
-  return res.status(200).json({ user: data.user });
+  // Cek password (hash/compare sesuai implementasi Anda)
+  // Jika cocok:
+  res.status(200).json({ user: data });
 }

@@ -482,33 +482,6 @@ app.get('/api/messages/:userId/:adminId', async (req, res) => {
     }
 });
 
-// Add this endpoint for user login
-app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
-    }
-    try {
-        // Use Supabase Auth API to sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        });
-        if (error || !data.user) {
-            return res.status(401).json({ error: error?.message || 'Invalid login credentials' });
-        }
-        // Optionally, you can return a session or just user info
-        return res.json({ user: {
-            id: data.user.id,
-            email: data.user.email,
-            full_name: data.user.user_metadata?.full_name || '',
-            // add more fields if needed
-        }});
-    } catch (err) {
-        return res.status(500).json({ error: 'Server error', details: err.message });
-    }
-});
-
 // Handle all other routes
 app.get('*', (req, res) => {
     // Check if it's a PWA request
