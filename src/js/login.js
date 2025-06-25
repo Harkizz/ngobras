@@ -41,13 +41,13 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 window.location.href = '/ngobras';
             }, 1200);
         } else {
-            // If error is "Invalid login credentials", show fast popup and stop
-            if (error && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
+            // Jika error karena email tidak terdaftar (Bad Request dari Supabase)
+            if (error && error.status === 400 && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
+                showEmailNotRegisteredModal(email, password);
+            } else if (error && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
                 showAlert('Wrong password, please try again.', 'danger');
-                // Stop process, do not redirect
             } else {
-                // For other errors, redirect to signup
-                window.location.href = `/signup.html?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+                showAlert('Terjadi kesalahan. Silakan coba lagi.', 'danger');
             }
         }
     } catch (err) {
@@ -57,6 +57,16 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         button.disabled = false;
     }
 });
+
+// Fungsi untuk menampilkan modal email belum terdaftar
+function showEmailNotRegisteredModal(email, password) {
+    document.getElementById('modalEmailText').textContent = email;
+    const modal = new bootstrap.Modal(document.getElementById('emailNotRegisteredModal'));
+    modal.show();
+    document.getElementById('btnDaftarSekarang').onclick = function() {
+        window.location.href = `/signup.html?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+    };
+}
 
 // Helper function to show alerts
 function showAlert(message, type = 'info') {
