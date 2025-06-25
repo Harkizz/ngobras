@@ -1,14 +1,21 @@
-// Add safety check at the top
-if (typeof supabase === 'undefined') {
-    console.error('Supabase library not loaded');
-    document.body.innerHTML = `
-        <div class="alert alert-danger text-center">
-            <h4>Application Error</h4>
-            <p>Failed to load required libraries. Please refresh the page.</p>
-            <button onclick="window.location.reload()" class="btn btn-primary">Refresh</button>
-        </div>
-    `;
-}
+// Initialize Supabase client
+let supabaseClient;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Fetch Supabase configuration from server
+        const response = await fetch('/api/supabase-config');
+        const config = await response.json();
+        
+        // Initialize Supabase client
+        supabaseClient = supabase.createClient(config.url, config.anonKey);
+        
+        console.log('Supabase initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+        showAlert('Error initializing application', 'danger');
+    }
+});
 
 // Password strength checker
 document.getElementById('password').addEventListener('input', function() {
@@ -111,36 +118,49 @@ document.getElementById('signupForm').addEventListener('submit', async function(
     
     if (isValid) {
         try {
+            // Update UI to show loading state
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing up...';
             button.disabled = true;
-
-            // Step 1: Create user via backend API
-            const response = await fetch('/api/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: email,
-                    password: password,
-                    full_name: document.getElementById('fullName').value,
-                    phone: document.getElementById('phone').value,
-                    gender: document.getElementById('gender').value
-                })
+            
+            // Step 1: Create auth user
+            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        username: email.split('@')[0], // Create username from email
+                        full_name: document.getElementById('fullName').value,
+                        phone: document.getElementById('phone').value,
+                        gender: document.getElementById('gender').value,
+                        avatar_url: '', // Default empty avatar
+                        role: 'user' // Default role
+                    }
+                }
             });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Failed to create account');
 
+            if (authError) throw authError;
+
+            // Update step indicator
             updateStepIndicator(1);
+
+            // Show success message
             showAlert('Sign up successful! Please check your email for verification.', 'success');
+
+            // Redirect after 3 seconds
             setTimeout(() => {
                 window.location.href = '/ngobras.html';
             }, 3000);
+
         } catch (error) {
             console.error('Signup error:', error);
             if (error && error.message && error.message.toLowerCase().includes('already registered')) {
                 showAlert('Email sudah terdaftar. Silakan login atau gunakan email lain.', 'danger');
+                // Optionally, redirect to login page with email pre-filled:
+                // window.location.href = `/login.html?email=${encodeURIComponent(email)}`;
             } else {
                 showAlert(error.message || 'Failed to create account', 'danger');
             }
+            // Reset button state so it can be clicked again
             button.innerHTML = originalText;
             button.disabled = false;
         }
