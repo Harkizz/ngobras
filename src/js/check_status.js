@@ -15,10 +15,36 @@ window.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-    // Inisialisasi Supabase client (ganti dengan config Anda)
-    const supabaseUrl = 'https://vdszykgrgbszuzybmzle.supabase.co';
-    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkc3p5a2dyZ2JzenV6eWJtemxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5ODE2NTAsImV4cCI6MjA2NTU1NzY1MH0.XzLkCYEcFOOjFeoFlh6PjZmTxTrg-tblQXST37aIzDk';
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+    // Ambil config Supabase dari backend
+    let config;
+    try {
+        const resp = await fetch('/api/supabase-config');
+        config = await resp.json();
+    } catch (e) {
+        document.getElementById('statusLoading').style.display = 'none';
+        const resultDiv = document.getElementById('statusResult');
+        resultDiv.textContent = 'Gagal mengambil konfigurasi Supabase.';
+        resultDiv.classList.remove('success');
+        resultDiv.style.display = 'block';
+        setTimeout(function() {
+            window.location.replace('login_admin.html');
+        }, 2000);
+        return;
+    }
+    if (!config || !config.url || !config.anonKey) {
+        document.getElementById('statusLoading').style.display = 'none';
+        const resultDiv = document.getElementById('statusResult');
+        resultDiv.textContent = 'Konfigurasi Supabase tidak valid.';
+        resultDiv.classList.remove('success');
+        resultDiv.style.display = 'block';
+        setTimeout(function() {
+            window.location.replace('login_admin.html');
+        }, 2000);
+        return;
+    }
+
+    // Inisialisasi Supabase client
+    const supabaseClient = supabase.createClient(config.url, config.anonKey);
 
     // Set session dengan access token
     const { data: { user }, error } = await supabaseClient.auth.getUser(accessToken);
@@ -47,8 +73,8 @@ window.addEventListener('DOMContentLoaded', async function() {
         // Simpan ke localStorage
         localStorage.setItem('ngobras_admin_id', user.id);
         localStorage.setItem('ngobras_admin_email', user.email);
-        // Redirect ke admin.html/(id admin)
-        window.location.replace('admin.html/' + user.id);
+        // Redirect ke admin.html
+        window.location.replace('admin.html');
     } else {
         document.getElementById('statusLoading').style.display = 'none';
         const resultDiv = document.getElementById('statusResult');
