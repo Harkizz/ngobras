@@ -45,6 +45,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
         if (response.ok && result.user) {
             // Login successful
+            // SIMPAN USER KE LOCALSTORAGE
+            localStorage.setItem('ngobras_user_profile', JSON.stringify(result.user));
             showAlert('Login berhasil! Redirecting...', 'success');
             setTimeout(() => {
                 window.location.href = '/ngobras';
