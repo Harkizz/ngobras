@@ -529,6 +529,27 @@ if (isDev) {
     });
 }
 
+// Tambahkan sebelum app.listen(...);
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+        if (error || !data.user) {
+            return res.status(401).json({ error: error?.message || 'Invalid credentials' });
+        }
+        // Simpan user info ke localStorage di frontend jika perlu
+        return res.status(200).json({ user: { id: data.user.id, email: data.user.email } });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
