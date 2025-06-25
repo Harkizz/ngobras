@@ -602,15 +602,33 @@ function addAdminResponse(userMessage) {
 
 // Load messages for admin chat from Supabase
 async function loadAdminMessagesFromDB(userId, adminId) {
-    try {
-        const res = await fetch(`/api/messages/${userId}/${adminId}`);
-        if (!res.ok) throw new Error('Failed to fetch messages');
-        const messages = await res.json();
-        console.log('Messages between user and admin:', messages); // <-- LOG TO CONSOLE
-        // Optionally, render messages to UI here
-    } catch (err) {
-        console.error('Error loading messages from DB:', err);
+    // Pastikan Supabase client sudah siap
+    if (!window.supabaseClient) {
+        const resp = await fetch('/api/supabase-config');
+        const config = await resp.json();
+        if (window.supabase && config.url && config.anonKey) {
+            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+        } else {
+            throw new Error('Supabase client not initialized');
+        }
     }
+    // Query pesan antara user dan admin (dua arah)
+    const { data: messages, error } = await window.supabaseClient
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
+        .order('created_at', { ascending: true });
+    if (error) throw error;
+
+    // Simpan ke localStorage (dua key: user-admin dan admin-user)
+    const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
+    const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
+    localStorage.setItem(key1, JSON.stringify(messages));
+    localStorage.setItem(key2, JSON.stringify(messages));
+
+    // Render ke UI jika perlu
+    // ...render logic...
+    console.log('Messages between user and admin:', messages);
 }
 
 // Typing indicator
