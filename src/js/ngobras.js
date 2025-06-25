@@ -136,8 +136,8 @@ async function openChat(type, name, assistantId) {
             const userProfileStr = localStorage.getItem('ngobras_user_profile');
             const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
             if (userId) {
-                // Load messages from DB and log to console
-                await loadAdminMessagesFromDB(userId, adminId);
+                // Fetch & simpan messages ke localStorage, lalu render
+                await fetchAndStoreAdminMessages(userId, adminId);
             } else {
                 console.log("User ID not found");
             }
@@ -610,6 +610,47 @@ async function loadAdminMessagesFromDB(userId, adminId) {
         // Optionally, render messages to UI here
     } catch (err) {
         console.error('Error loading messages from DB:', err);
+    }
+}
+
+// Fetch and store admin messages (user <-> admin) to localStorage
+async function fetchAndStoreAdminMessages(userId, adminId) {
+    try {
+        // Pastikan supabaseClient sudah siap
+        if (!window.supabaseClient) {
+            const resp = await fetch('/api/supabase-config');
+            const config = await resp.json();
+            if (window.supabase && config.url && config.anonKey) {
+                window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+            } else {
+                throw new Error('Supabase client not initialized');
+            }
+        }
+        // Query: user sebagai sender, admin sebagai receiver
+        const { data: sent, error: errSent } = await window.supabaseClient
+            .from('messages')
+            .select('*')
+            .eq('sender_id', userId)
+            .eq('receiver_id', adminId)
+            .order('created_at', { ascending: true });
+        // Query: admin sebagai sender, user sebagai receiver
+        const { data: received, error: errReceived } = await window.supabaseClient
+            .from('messages')
+            .select('*')
+            .eq('sender_id', adminId)
+            .eq('receiver_id', userId)
+            .order('created_at', { ascending: true });
+        if (errSent || errReceived) throw new Error('Gagal fetch messages');
+        // Gabungkan dan urutkan berdasarkan created_at
+        let allMessages = [...(sent || []), ...(received || [])];
+        allMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        // Simpan ke localStorage
+        const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
+        localStorage.setItem(chatKey, JSON.stringify(allMessages));
+        // Render ke UI
+        renderAdminMessagesFromLocalStorage();
+    } catch (err) {
+        console.error('Gagal fetch & simpan messages:', err);
     }
 }
 
