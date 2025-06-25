@@ -1351,16 +1351,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!window.location.pathname.includes('ngobras')) return;
 
     // Ensure Supabase is loaded
-    if (typeof supabase === 'undefined') {
-        await new Promise(res => setTimeout(res, 300)); // Wait for supabase to load
-    }
+    if (typeof supabase === 'undefined') return;
     // Get config from backend
     let config;
     try {
-        const resp = await fetch('/api/supabase-config');
-        config = await resp.json();
+        const res = await fetch('/api/supabase-config');
+        config = await res.json();
     } catch (e) {
-        config = null;
+        showFastPopup('Gagal mengambil konfigurasi Supabase.');
+        return;
     }
     if (!config || !config.url || !config.anonKey) return;
 
@@ -1368,29 +1367,39 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Check user session
     const { data: { user } } = await supabaseClient.auth.getUser();
-
     if (!user) {
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('authModal'), {
-            backdrop: 'static',
-            keyboard: false
-        });
-        modal.show();
-
-        // Button handlers
-        document.getElementById('loginEmailBtn').onclick = function() {
-            window.location.href = '/login.html';
-        };
-        document.getElementById('loginGoogleBtn').onclick = async function() {
-            await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/ngobras'
-                }
-            });
-        };
-        console.log('User is not logged in.');
+        showAuthModal();
         return;
+    }
+
+    // === FETCH & SIMPAN PROFIL USER ===
+    try {
+        // Cek apakah sudah ada di localStorage, jika belum atau user berbeda, fetch ulang
+        const localProfileStr = localStorage.getItem('ngobras_user_profile');
+        let needFetch = true;
+        if (localProfileStr) {
+            try {
+                const localProfile = JSON.parse(localProfileStr);
+                if (localProfile && localProfile.id === user.id) {
+                    needFetch = false;
+                }
+            } catch {}
+        }
+        if (needFetch) {
+            // Ambil data lengkap user dari tabel 'profiles'
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+            if (error || !profile) {
+                showFastPopup('Gagal mengambil profil user.');
+            } else {
+                localStorage.setItem('ngobras_user_profile', JSON.stringify(profile));
+            }
+        }
+    } catch (err) {
+        showFastPopup('Gagal mengambil data user.');
     }
 
     // Immediately check if user profile exists in the database
