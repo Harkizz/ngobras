@@ -600,7 +600,7 @@ function addAdminResponse(userMessage) {
     addMessage(randomResponse, false);
 }
 
-// Load messages for admin chat from backend API
+// Load messages for admin chat from Supabase
 async function loadAdminMessagesFromDB(userId, adminId) {
     try {
         const res = await fetch(`/api/messages/${userId}/${adminId}`);
@@ -609,7 +609,7 @@ async function loadAdminMessagesFromDB(userId, adminId) {
         console.log('Messages between user and admin:', messages); // <-- LOG TO CONSOLE
         // Optionally, render messages to UI here
     } catch (err) {
-        console.error('Error loading admin messages:', err);
+        console.error('Error loading messages from DB:', err);
     }
 }
 
@@ -774,246 +774,602 @@ function showNotifications() {
     alert('Notifikasi:\n• Dr. Sarah Wijaya mengirim pesan baru\n• Jadwal konsultasi minggu depan\n• Tips kesehatan mental harian');
 }
 
-// Load AI Assistants from backend API
+// Load AI Assistants
 async function loadAIAssistants() {
+    const aiListContainer = document.getElementById('ai-assistants-list');
+    const skeleton = document.getElementById('ai-assistants-list-skeleton');
+    if (skeleton) skeleton.style.display = 'block';
+    if (aiListContainer) aiListContainer.style.display = 'none';
+
+    const start = Date.now();
+    let data = [];
+    let error = null;
+
     try {
-        const res = await fetch('/api/ai-assistants');
-        if (!res.ok) throw new Error('Failed to fetch AI assistants');
-        const data = await res.json();
-
-        const aiListContainer = document.getElementById('ai-assistants-list');
-        const skeleton = document.getElementById('ai-assistants-list-skeleton');
-        if (skeleton) skeleton.style.display = 'block';
-        if (aiListContainer) aiListContainer.style.display = 'none';
-
-        // Wait until at least 3 seconds have passed
-        const start = Date.now();
-        const elapsed = Date.now() - start;
-        if (elapsed < 3000) {
-            await new Promise(res => setTimeout(res, 3000 - elapsed));
-        }
-
-        if (skeleton) skeleton.style.display = 'none';
-        if (aiListContainer) aiListContainer.style.display = 'block';
-
-        aiListContainer.innerHTML = '';
-        if (!data || data.length === 0) {
-            aiListContainer.innerHTML = `
-                <div class="chat-item">
-                    <div class="chat-info">
-                        <div class="chat-name">No AI Assistants Available</div>
-                        <div class="chat-preview">Please try again later</div>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        // Render assistants
-        data.forEach(assistant => {
-            const aiCard = document.createElement('div');
-            aiCard.className = 'chat-item ai-assistant-card';
-            aiCard.onclick = () => openChat('ai', assistant.name);
-
-            let roleDescription = '';
-            switch(assistant.name) {
-                case 'NGOBRAS General Assistant':
-                    roleDescription = 'Asisten konseling umum & profesional';
-                    break;
-                case 'Mental Health Specialist':
-                    roleDescription = 'Spesialis CBT & mindfulness';
-                    break;
-                case 'Crisis Counselor':
-                    roleDescription = 'Konselor krisis terlatih';
-                    break;
-                default:
-                    roleDescription = 'AI Assistant';
-            }
-
-            aiCard.innerHTML = `
-                <div class="chat-avatar ai">
-                    <i class="fas fa-robot"></i>
-                    <div class="online-indicator"></div>
-                </div>
-                <div class="chat-info">
-                    <div class="chat-name">
-                        ${assistant.name}
-                        <span class="ai-badge">AI</span>
-                    </div>
-                    <div class="chat-preview">${roleDescription}</div>
-                </div>
-                <div class="chat-meta">
-                    <span class="ai-provider">${assistant.api_provider.toUpperCase()}</span>
-                </div>
-            `;
-            
-            aiListContainer.appendChild(aiCard);
-        });
+        const response = await fetch('/api/ai-assistants');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        data = await response.json();
     } catch (err) {
-        console.error('Error loading AI assistants:', err);
+        error = err;
     }
+
+    // Wait until at least 3 seconds have passed
+    const elapsed = Date.now() - start;
+    if (elapsed < 3000) {
+        await new Promise(res => setTimeout(res, 3000 - elapsed));
+    }
+
+    if (skeleton) skeleton.style.display = 'none';
+    if (aiListContainer) aiListContainer.style.display = 'block';
+
+    if (error) {
+        aiListContainer.innerHTML = `
+            <div class="chat-item error">
+                <div class="chat-info">
+                    <div class="chat-name">Error Loading AI Assistants</div>
+                    <div class="chat-preview">${error.message}</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    aiListContainer.innerHTML = '';
+    if (!data || data.length === 0) {
+        aiListContainer.innerHTML = `
+            <div class="chat-item">
+                <div class="chat-info">
+                    <div class="chat-name">No AI Assistants Available</div>
+                    <div class="chat-preview">Please try again later</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Render assistants
+    data.forEach(assistant => {
+        const aiCard = document.createElement('div');
+        aiCard.className = 'chat-item ai-assistant-card';
+        aiCard.onclick = () => openChat('ai', assistant.name);
+
+        let roleDescription = '';
+        switch(assistant.name) {
+            case 'NGOBRAS General Assistant':
+                roleDescription = 'Asisten konseling umum & profesional';
+                break;
+            case 'Mental Health Specialist':
+                roleDescription = 'Spesialis CBT & mindfulness';
+                break;
+            case 'Crisis Counselor':
+                roleDescription = 'Konselor krisis terlatih';
+                break;
+            default:
+                roleDescription = 'AI Assistant';
+        }
+
+        aiCard.innerHTML = `
+            <div class="chat-avatar ai">
+                <i class="fas fa-robot"></i>
+                <div class="online-indicator"></div>
+            </div>
+            <div class="chat-info">
+                <div class="chat-name">
+                    ${assistant.name}
+                    <span class="ai-badge">AI</span>
+                </div>
+                <div class="chat-preview">${roleDescription}</div>
+            </div>
+            <div class="chat-meta">
+                <span class="ai-provider">${assistant.api_provider.toUpperCase()}</span>
+            </div>
+        `;
+        
+        aiListContainer.appendChild(aiCard);
+    });
 }
 
-// Load Admins from backend API
+// Load Admins
 async function loadAdminList() {
+    const adminListContainer = document.getElementById('admin-list');
+    const skeleton = document.getElementById('admin-list-skeleton');
+    if (skeleton) skeleton.style.display = 'block';
+    if (adminListContainer) adminListContainer.style.display = 'none';
+
+    const start = Date.now();
+    let data = [];
+    let error = null;
+
     try {
-        const res = await fetch('/api/admins');
-        if (!res.ok) throw new Error('Failed to fetch admins');
-        const data = await res.json();
-
-        const adminListContainer = document.getElementById('admin-list');
-        const skeleton = document.getElementById('admin-list-skeleton');
-        if (skeleton) skeleton.style.display = 'block';
-        if (adminListContainer) adminListContainer.style.display = 'none';
-
-        // Wait until at least 3 seconds have passed
-        const start = Date.now();
-        const elapsed = Date.now() - start;
-        if (elapsed < 3000) {
-            await new Promise(res => setTimeout(res, 3000 - elapsed));
-        }
-
-        if (skeleton) skeleton.style.display = 'none';
-        if (adminListContainer) adminListContainer.style.display = 'block';
-
-        adminListContainer.innerHTML = '';
-        if (data.length === 0) {
-            adminListContainer.innerHTML = `
-                <div class="chat-item">
-                    <div class="chat-info">
-                        <div class="chat-name">No Admin Available</div>
-                        <div class="chat-preview">Please try again later</div>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        // Render admins
-        data.forEach(admin => {
-            const adminCard = document.createElement('div');
-            adminCard.className = 'chat-item';
-            adminCard.onclick = () => openChat('admin', admin.full_name || admin.username);
-            
-            adminCard.innerHTML = `
-                <div class="chat-avatar admin">
-                    ${admin.avatar_url ? 
-                        `<img src="${admin.avatar_url}" alt="${admin.username}">` :
-                        '<i class="fas fa-user-md"></i>'}
-                    <div class="online-indicator"></div>
-                </div>
-                <div class="chat-info">
-                    <div class="chat-name">
-                        ${admin.full_name || admin.username}
-                        <span class="admin-badge">ADMIN</span>
-                    </div>
-                    <div class="chat-preview">Online - Siap membantu</div>
-                </div>
-                <div class="chat-meta">
-                    <span class="chat-status">Available</span>
-                </div>
-            `;
-            
-            adminListContainer.appendChild(adminCard);
-        });
+        const response = await fetch('/api/admins');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        data = await response.json();
     } catch (err) {
-        console.error('Error loading admins:', err);
+        error = err;
+    }
+
+    // Wait until at least 3 seconds have passed
+    const elapsed = Date.now() - start;
+    if (elapsed < 3000) {
+        await new Promise(res => setTimeout(res, 3000 - elapsed));
+    }
+
+    if (skeleton) skeleton.style.display = 'none';
+    if (adminListContainer) adminListContainer.style.display = 'block';
+
+    adminListContainer.innerHTML = '';
+    if (error) {
+        adminListContainer.innerHTML = `
+            <div class="chat-item error">
+                <div class="chat-info">
+                    <div class="chat-name">Error Loading Admins</div>
+                    <div class="chat-preview">${error.message}</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Ensure we have an array
+    const admins = Array.isArray(data) ? data : [];
+    if (admins.length === 0) {
+        adminListContainer.innerHTML = `
+            <div class="chat-item">
+                <div class="chat-info">
+                    <div class="chat-name">No Admin Available</div>
+                    <div class="chat-preview">Please try again later</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Render admins
+    admins.forEach(admin => {
+        const adminCard = document.createElement('div');
+        adminCard.className = 'chat-item';
+        adminCard.onclick = () => openChat('admin', admin.full_name || admin.username);
+        
+        adminCard.innerHTML = `
+            <div class="chat-avatar admin">
+                ${admin.avatar_url ? 
+                    `<img src="${admin.avatar_url}" alt="${admin.username}">` :
+                    '<i class="fas fa-user-md"></i>'}
+                <div class="online-indicator"></div>
+            </div>
+            <div class="chat-info">
+                <div class="chat-name">
+                    ${admin.full_name || admin.username}
+                    <span class="admin-badge">ADMIN</span>
+                </div>
+                <div class="chat-preview">Online - Siap membantu</div>
+            </div>
+            <div class="chat-meta">
+                <span class="chat-status">Available</span>
+            </div>
+        `;
+        
+        adminListContainer.appendChild(adminCard);
+    });
+}
+
+// Wait for Supabase library to be loaded before running the rest of the code
+function waitForSupabase(retries = 10, delay = 200) {
+    return new Promise((resolve, reject) => {
+        function check() {
+            if (typeof supabase !== 'undefined') {
+                resolve();
+            } else if (retries > 0) {
+                setTimeout(() => check(--retries, delay), delay);
+            } else {
+                reject(new Error('Supabase library failed to load.'));
+            }
+        }
+        check();
+    });
+}
+
+// Supabase
+let supabaseClient;
+
+// Initialize Supabase
+async function initializeSupabase() {
+    try {
+        await waitForSupabase();
+        const response = await fetch('/api/supabase-config');
+        const config = await response.json();
+        supabaseClient = supabase.createClient(config.url, config.anonKey);
+        // Check if user is authenticated
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        if (error) throw error;
+        if (user) {
+            await loadUserProfile(user.id);
+        } else {
+            // Redirect to login if not authenticated
+            window.location.href = '/login.html';
+        }
+    } catch (error) {
+        document.body.innerHTML = '<div class="alert alert-danger text-center"><h4>Application Error</h4><p>Failed to load required libraries. Please refresh the page.</p><button onclick="window.location.reload()" class="btn btn-primary">Refresh</button></div>';
+        console.error('Supabase initialization error:', error);
     }
 }
 
-// Load user profile from backend API
+// Load user profile
 async function loadUserProfile(userId) {
     try {
-        const res = await fetch(`/api/profiles/${userId}`);
-        if (!res.ok) throw new Error('Failed to fetch user profile');
-        const profile = await res.json();
+        showProfileLoading(true);
+
+        // Fetch profile data
+        const { data: profile, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        // If profile is missing, treat as not logged in
+        if (error && error.code === 'PGRST116') {
+            await supabaseClient.auth.signOut();
+            showAuthModal();
+            return;
+        }
+        if (error) {
+            // Show login modal for any error
+            showAuthModal();
+            return;
+        }
+        if (!profile) {
+            showAuthModal();
+            return;
+        }
+
+        // Update UI with profile data
         updateProfileUI(profile);
+
+        // Fetch chat statistics
+        const { data: chatStats, error: statsError } = await supabaseClient
+            .from('messages')
+            .select('created_at')
+            .eq('sender_id', userId);
+
+        updateProfileStats(chatStats);
+
     } catch (error) {
-        console.error('Error loading user profile:', error);
+        // Show login modal on error
+        showAuthModal();
+    } finally {
+        showProfileLoading(false);
     }
 }
 
 // Update profile UI
 function updateProfileUI(profile) {
-    const nameEl = document.getElementById('profileName');
-    const emailEl = document.getElementById('profileEmail');
-    const avatarEl = document.getElementById('profileAvatar');
-
-    if (nameEl) nameEl.textContent = profile.full_name || profile.username || 'User';
-    if (emailEl) emailEl.textContent = profile.email || 'No email found';
-    if (avatarEl) {
-        if (profile.avatar_url) {
-            avatarEl.src = profile.avatar_url;
-            avatarEl.style.display = 'block';
-        } else {
-            avatarEl.style.display = 'none';
-        }
+    // Update basic info
+    document.getElementById('profileName').textContent = profile.full_name || 'No Name Set';
+    document.getElementById('profileEmail').textContent = profile.email || '';
+    
+    // Update avatar
+    const avatarImg = document.getElementById('profileAvatar');
+    if (profile.avatar_url) {
+        avatarImg.src = profile.avatar_url;
     }
+    
+    // Update member since date
+    const memberSince = new Date(profile.created_at).toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: 'long'
+    });
+    document.getElementById('profileMemberSince').textContent = `Member since ${memberSince}`;
 }
 
-// Update profile stats
+// Update profile statistics
 function updateProfileStats(chatStats) {
-    const totalChatsEl = document.getElementById('totalChats');
-    const resolvedChatsEl = document.getElementById('resolvedChats');
-    const unresolvedChatsEl = document.getElementById('unresolvedChats');
-
-    if (totalChatsEl) totalChatsEl.textContent = chatStats.total || 0;
-    if (resolvedChatsEl) resolvedChatsEl.textContent = chatStats.resolved || 0;
-    if (unresolvedChatsEl) unresolvedChatsEl.textContent = chatStats.unresolved || 0;
-}
-
-// Show/hide profile loading indicator
-function showProfileLoading(show) {
-    const loader = document.getElementById('profileLoading');
-    if (show) {
-        if (loader) loader.style.display = 'block';
-    } else {
-        if (loader) loader.style.display = 'none';
+    if (!chatStats) return;
+    
+    // Update total chats
+    document.getElementById('totalChats').textContent = chatStats.length;
+    
+    // Update last active
+    if (chatStats.length > 0) {
+        const lastActive = new Date(Math.max(...chatStats.map(chat => new Date(chat.created_at))));
+        document.getElementById('lastActive').textContent = lastActive.toLocaleDateString('id-ID');
     }
 }
 
-// Update profile via backend API
+// Show/hide loading state
+function showProfileLoading(show) {
+    document.getElementById('profileLoading').style.display = show ? 'block' : 'none';
+    document.getElementById('profileContent').style.display = show ? 'none' : 'block';
+}
+
+// Add this function to handle profile updates
 async function updateProfile(data) {
     try {
-        const res = await fetch('/api/profiles/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        if (!res.ok) throw new Error('Failed to update profile');
-        const updatedProfile = await res.json();
-        updateProfileUI(updatedProfile);
-        showFastPopup('Profile updated successfully!');
+        const { data: profile, error } = await supabaseClient
+            .from('profiles')
+            .update(data)
+            .eq('id', supabaseClient.auth.user().id);
+            
+        if (error) throw error;
+        
+        showAlert('Profile updated successfully', 'success');
+        loadUserProfile(supabaseClient.auth.user().id);
     } catch (error) {
         console.error('Error updating profile:', error);
-        showFastPopup('Failed to update profile: ' + error.message);
+        showAlert('Failed to update profile', 'danger');
     }
 }
 
-// Logout via backend API (if needed)
+// Add logout functionality
 async function logout() {
     try {
-        // Optional: Call backend logout API if needed
-        // const res = await fetch('/api/logout', { method: 'POST' });
-        // if (!res.ok) throw new Error('Failed to logout');
-
-        // Clear localStorage/session
-        localStorage.clear();
-        location.reload();
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) throw error;
+        
+        // Redirect to login page
+        window.location.href = '/login.html';
     } catch (error) {
-        console.error('Error during logout:', error);
+        console.error('Error signing out:', error);
+        showAlert('Failed to sign out', 'danger');
     }
 }
 
 // Add to your existing event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on the chat page
+    const isChatPage = document.querySelector('.chat-room') !== null;
+    
+    if (isChatPage) {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+        
+        // Auto-scroll to bottom when page loads
+        setTimeout(scrollToBottom, 100);
+    }
+
+    // Load AI assistants and admins on home page
+    const isHomePage = document.getElementById('home-page')?.classList.contains('active');
+    if (isHomePage) {
+        loadAIAssistants();
+        loadAdminList(); // Add this line
+    }
+
+    // Load admins on admin page
+    const isAdminPage = document.getElementById('admin-page')?.classList.contains('active');
+    if (isAdminPage) {
+        loadAdminList();
+    }
+
+    // Add logout handler
+    const logoutBtn = document.querySelector('[onclick="logout()"]');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+});
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on the chat page
+    const isChatPage = document.querySelector('.chat-room') !== null;
+    
+    if (isChatPage) {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+        
+        // Auto-scroll to bottom when page loads
+        setTimeout(scrollToBottom, 100);
+    }
+
+    // Load AI assistants and admins on home page
+    const isHomePage = document.getElementById('home-page')?.classList.contains('active');
+    if (isHomePage) {
+        loadAIAssistants();
+        loadAdminList(); // Add this line
+    }
+
+    // Load admins on admin page
+    const isAdminPage = document.getElementById('admin-page')?.classList.contains('active');
+    if (isAdminPage) {
+        loadAdminList();
+    }
+});
+
+// Show greeting sphere animation
+function showGreetingSphere(assistantName) {
+    const greetingContainer = document.getElementById('greeting-sphere');
+    const greetingText = document.getElementById('greetingText');
+    const svg = document.getElementById('greetingSphereSVG');
+    const circle = document.getElementById('greetingSphereCircle');
+    const shadow = document.getElementById('greetingSphereShadow');
+    const eyeLeft = document.getElementById('eyeLeft');
+    const eyeRight = document.getElementById('eyeRight');
+     const chatId = `ai_${assistantName}`;
+    const history = getChatHistory(chatId);
+
+    // If there is chat history, do not show the greeting sphere
+    if (history && history.length > 0) {
+        if (greetingContainer) greetingContainer.style.display = 'none';
+        return;
+    }
+
+    if (!greetingContainer || !greetingText || !svg || !circle || !shadow || !eyeLeft || !eyeRight) return;
+
+    // Animate greeting text with typing effect
+    animateGreetingTyping(`Halo! Saya ${assistantName}. Apa yang bisa aku bantu?`);
+
+    // Reset SVG
+    circle.setAttribute('r', 48);
+    circle.setAttribute('fill', 'url(#sphereGradient)');
+    circle.setAttribute('opacity', 1);
+    shadow.setAttribute('rx', 32);
+    shadow.setAttribute('opacity', 0.35);
+    eyeLeft.setAttribute('x', 70 - 15 - GREETING_EYE_WIDTH / 2); // 70 is center, 15 is offset
+    eyeRight.setAttribute('x', 70 + 15 - GREETING_EYE_WIDTH / 2);
+
+    eyeLeft.setAttribute('y', 65);
+    eyeRight.setAttribute('y', 65);
+
+    greetingContainer.style.display = 'flex';
+
+    // Remove previous animations
+    anime.remove(circle);
+    anime.remove(svg);
+    anime.remove(shadow);
+    anime.remove(eyeLeft);
+    anime.remove(eyeRight);
+
+    // Animate the sphere: pulse, color shift, floating, and shadow scaling
+    anime({
+        targets: circle,
+        r: [
+            { value: 48, duration: 0 },
+            { value: 56, duration: 900, easing: 'easeInOutSine' },
+            { value: 48, duration: 900, easing: 'easeInOutSine' }
+        ],
+        opacity: [
+            { value: 1, duration: 0 },
+            { value: 0.92, duration: 900, easing: 'easeInOutSine' },
+            { value: 1, duration: 900, easing: 'easeInOutSine' }
+        ],
+        easing: 'easeInOutSine',
+        loop: true,
+        direction: 'alternate'
+    });
+
+    anime({
+        targets: svg,
+        translateY: [
+            { value: 0, duration: 0 },
+            { value: -18, duration: 1200, easing: 'easeInOutSine' },
+            { value: 0, duration: 1200, easing: 'easeInOutSine' }
+        ],
+        loop: true,
+        direction: 'alternate',
+        easing: 'easeInOutSine'
+    });
+
+    anime({
+        targets: shadow,
+        rx: [
+            { value: 32, duration: 0 },
+            { value: 40, duration: 1200, easing: 'easeInOutSine' },
+            { value: 32, duration: 1200, easing: 'easeInOutSine' }
+        ],
+        opacity: [
+            { value: 0.35, duration: 0 },
+            { value: 0.18, duration: 1200, easing: 'easeInOutSine' },
+            { value: 0.35, duration: 1200, easing: 'easeInOutSine' }
+        ],
+        loop: true,
+        direction: 'alternate',
+        easing: 'easeInOutSine'
+    });
+
+    // Eye blinking animation (both eyes blink together)
+    function blinkEyes() {
+        anime({
+            targets: [eyeLeft, eyeRight],
+            height: [
+                { value: 2, duration: 120, easing: 'easeInOutQuad' },
+                { value: 16, duration: 180, easing: 'easeInOutQuad' }
+            ],
+            y: [
+                { value: 73, duration: 120, easing: 'easeInOutQuad' },
+                { value: 65, duration: 180, easing: 'easeInOutQuad' }
+            ],
+            delay: 0,
+            complete: () => {
+                // Blink again after a random interval
+                setTimeout(blinkEyes, 1800 + Math.random() * 1200);
+            }
+        });
+    }
+    // Start blinking after a short delay
+    setTimeout(blinkEyes, 1200);
+
+    // Animate greeting text with typing effect (already called above)
+        greetingContainer.style.display = 'flex';
+
+}
+
+// Hide greeting sphere animation
+function hideGreetingSphere() {
+    const greetingContainer = document.getElementById('greeting-sphere');
+    if (greetingContainer) {
+        greetingContainer.style.display = 'none';
+    }
+    // Remove anime.js animations
+    anime.remove('#greetingSphereCircle');
+    anime.remove('#greetingSphereSVG');
+}
+
+// Show greeting when opening chat, hide on first user message
+const originalOpenChat = openChat;
+openChat = function(type, name) {
+    originalOpenChat(type, name);
+    if (type === 'ai') {
+        showGreetingSphere(name);
+    } else {
+        hideGreetingSphere();
+    }
+};
+
+// Hide greeting when user sends first message in AI chat
+const originalSendMessage = sendMessage;
+let greetingDismissed = false;
+sendMessage = function() {
+    if (currentChatType === 'ai' && !greetingDismissed) {
+        hideGreetingSphere();
+        greetingDismissed = true;
+    }
+    originalSendMessage.apply(this, arguments);
+};
+
+// Reset greetingDismissed when switching AI assistant
+const originalLoadAIMessages = loadAIMessages;
+loadAIMessages = function(assistantName) {
+    greetingDismissed = false;
+    originalLoadAIMessages.apply(this, arguments);
+};
+
+// Check login status and show modal if not logged in
 document.addEventListener('DOMContentLoaded', async function() {
     // Only run on ngobras.html
     if (!window.location.pathname.includes('ngobras')) return;
 
+    // Ensure Supabase is loaded
+    if (typeof supabase === 'undefined') {
+        await new Promise(res => setTimeout(res, 300)); // Wait for supabase to load
+    }
+    // Get config from backend
+    let config;
+    try {
+        const resp = await fetch('/api/supabase-config');
+        config = await resp.json();
+    } catch (e) {
+        config = null;
+    }
+    if (!config || !config.url || !config.anonKey) return;
+
+    const supabaseClient = supabase.createClient(config.url, config.anonKey);
+
     // Check user session
-    const userProfileStr = localStorage.getItem('ngobras_user_profile');
-    const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
-    if (!userId) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+
+    if (!user) {
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('authModal'), {
             backdrop: 'static',
@@ -1037,8 +1393,34 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-    // Load user profile immediately
-    loadUserProfile(userId);
+    // Immediately check if user profile exists in the database
+    try {
+        const { data: profile, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (profile) {
+            console.log('User profile exists:', profile);
+        } else {
+            console.log('User profile NOT found.');
+            // Log out the user session if profile not found
+            await supabaseClient.auth.signOut();
+            // Optionally, show the login modal or redirect
+            const modal = new bootstrap.Modal(document.getElementById('authModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+            modal.show();
+            return;
+        }
+        if (error) {
+            console.log('Error checking user profile:', error);
+        }
+    } catch (err) {
+        console.log('Error during profile existence check:', err);
+    }
 });
 
 function showAuthModal() {
