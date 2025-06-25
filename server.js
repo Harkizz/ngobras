@@ -463,25 +463,6 @@ app.get('/check-install', (req, res) => {
     });
 });
 
-// Add/replace this endpoint
-app.get('/api/messages/:userId/:adminId', async (req, res) => {
-    const { userId, adminId } = req.params;
-    try {
-        const { data, error } = await supabase
-            .from('messages')
-            .select('id, sender_id, receiver_id, content, created_at')
-            .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
-            .order('created_at', { ascending: true });
-
-        if (error) {
-            return res.status(500).json({ error: 'Database error', details: error.message });
-        }
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: 'Server error', details: err.message });
-    }
-});
-
 // Handle all other routes
 app.get('*', (req, res) => {
     // Check if it's a PWA request
