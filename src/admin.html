@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGOBRAS Admin Panel - Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="#" class="brand">
+                <i class="fas fa-comments"></i>
+                <span class="brand-text">NGOBRAS</span>
+            </a>
+        </div>
+        
+        <nav class="nav-menu">
+            <div class="nav-item">
+                <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('consultations')">
+                    <i class="fas fa-user-md"></i>
+                    <span>Konsultasi</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('therapists')">
+                    <i class="fas fa-users"></i>
+                    <span>Terapis</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('patients')">
+                    <i class="fas fa-user-friends"></i>
+                    <span>Pasien</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('reports')">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Laporan</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('appointments')">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Jadwal</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('messages')">
+                    <i class="fas fa-envelope"></i>
+                    <span>Pesan</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('settings')">
+                    <i class="fas fa-cog"></i>
+                    <span>Pengaturan</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <!-- Header -->
+        <div class="header">
+            <div class="welcome-text">
+                <h1>Selamat Datang, Admin!</h1>
+                <p>Kelola platform NGOBRAS dengan mudah dan efisien</p>
+            </div>
+            <div class="header-actions">
+                <button class="notification-btn">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge">3</span>
+                </button>
+                <button class="profile-btn">
+                    <i class="fas fa-user-circle"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="content-section">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card coral">
+                    <div class="stat-icon coral">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-value">1,245</div>
+                    <div class="stat-label">Total Pasien</div>
+                </div>
+                <div class="stat-card mint">
+                    <div class="stat-icon mint">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <div class="stat-value">32</div>
+                    <div class="stat-label">Terapis Aktif</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="stat-value">89</div>
+                    <div class="stat-label">Sesi Hari Ini</div>
+                </div>
+                <div class="stat-card peach">
+                    <div class="stat-icon coral">
+                        <i class="fas fa-heart"></i>
+                    </div>
+                    <div class="stat-value">4.8</div>
+                    <div class="stat-label">Rating Kepuasan</div>
+                </div>
+            </div>
+
+            <!-- Content Grid -->
+            <div class="content-grid">
+                <div class="card">
+                    <h5 class="card-title">
+                        <i class="fas fa-clock"></i>
+                        Konsultasi Terbaru
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Pasien</th>
+                                    <th>Terapis</th>
+                                    <th>Waktu</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Sarah Putri</td>
+                                    <td>Dr. Anita Sari</td>
+                                    <td>14:30</td>
+                                    <td><span class="status-badge status-active">Berlangsung</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">Lihat</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Ahmad Rizki</td>
+                                    <td>Dr. Budi Santoso</td>
+                                    <td>15:00</td>
+                                    <td><span class="status-badge status-pending">Menunggu</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">Lihat</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Maya Indira</td>
+                                    <td>Dr. Citra Dewi</td>
+                                    <td>13:45</td>
+                                    <td><span class="status-badge status-offline">Selesai</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">Lihat</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h5 class="card-title">
+                        <i class="fas fa-bell"></i>
+                        Aktivitas Terbaru
+                    </h5>
+                    <div class="recent-activity">
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background: var(--very-light-blue); color: var(--primary-blue);">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <h6>Pasien baru mendaftar</h6>
+                                <small>2 menit yang lalu</small>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background: rgba(128, 229, 209, 0.2); color: var(--mint);">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="activity-content">
+                                <h6>Konsultasi selesai</h6>
+                                <small>15 menit yang lalu</small>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background: rgba(255, 179, 128, 0.2); color: var(--peach);">
+                                <i class="fas fa-calendar-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <h6>Jadwal baru dibuat</h6>
+                                <small>1 jam yang lalu</small>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background: rgba(255, 138, 128, 0.2); color: var(--coral);">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="activity-content">
+                                <h6>Review baru diterima</h6>
+                                <small>2 jam yang lalu</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Other Sections (Hidden by default) -->
+        <div id="consultations-section" class="content-section" style="display: none;">
+            <div class="card">
+                <h5 class="card-title">
+                    <i class="fas fa-user-md"></i>
+                    Manajemen Konsultasi
+                </h5>
+                <div class="mb-3">
+                    <button class="btn btn-primary me-2">
+                        <i class="fas fa-plus"></i> Buat Konsultasi Baru
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                </div>
+                <p class="text-muted">Kelola semua sesi konsultasi antara pasien dan terapis.</p>
+            </div>
+        </div>
+
+        <div id="therapists-section" class="content-section" style="display: none;">
+            <div class="card">
+                <h5 class="card-title">
+                    <i class="fas fa-users"></i>
+                    Manajemen Terapis
+                </h5>
+                <div class="mb-3">
+                    <button class="btn btn-primary me-2">
+                        <i class="fas fa-user-plus"></i> Tambah Terapis
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-search"></i> Cari Terapis
+                    </button>
+                </div>
+                <p class="text-muted">Kelola profil terapis, jadwal, dan ketersediaan mereka.</p>
+            </div>
+        </div>
+
+        <div id="patients-section" class="content-section" style="display: none;">
+            <div class="card">
+                <h5 class="card-title">
+                    <i class="fas fa-user-friends"></i>
+                    Manajemen Pasien
+                </h5>
+                <div class="mb-3">
+                    <button class="btn btn-outline-primary me-2">
+                        <i class="fas fa-search"></i> Cari Pasien
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-download"></i> Ekspor Data
+                    </button>
+                </div>
+                <p class="text-muted">Lihat dan kelola informasi pasien yang terdaftar di platform.</p>
+            </div>
+        </div>
+
+        <div id="reports-section" class="content-section" style="display: none;">
+            <div class="card">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-line"></i>
+                    Laporan & Analitik
+                </h5>
+                <div class="mb-3">
+                    <button class="btn btn-primary me-2">
+                        <i class="fas fa-chart-bar"></i> Generate Laporan
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-calendar"></i> Pilih Periode
+                    </button>
+                </div>
+                <p class="text-muted">Analisis data platform, tingkat kepuasan, dan performa terapis.</p>
+            </div>
+        </div>
+
+        <div id="appointments-section" class="content-section" style="display: none;">
+            <div class="card">
+                <h5 class="card-title">
+                    <i class="fas fa-calendar-alt"></i>
+                    Manajemen Jadwal
+                </h5>
+                <div class="mb-3">
+                    <button class="btn btn-primary me-2">
+                        <i class="fas fa-calendar-plus"></i> Buat Jadwal
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-eye"></i> Lihat Kalender
+                    </button>
+                </div>
+                <p class="text-muted">Atur dan kelola jadwal konsultasi untuk semua terapis.</p>
+            </div>
+        </div>
+
+        <div id="messages-section" class="content-section" style="display: none;">
+            <div class="card">
+                <h5 class="card-title">
+                    <i class="fas fa-envelope"></i>
+                    Pusat Pesan
+                </h5>
+                <div class="mb-3">
+                    <button class="btn btn-primary me-2">
+                        <i class="fas fa-paper-plane"></i> Kirim Pesan
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-inbox"></i> Kotak Masuk
+                    </button>
+                </div>
+                <p class="text-muted">Kelola komunikasi dengan terapis dan pasien yang terdaftar.</p>
+                <hr>
+                <h6>Daftar Akun Pengguna</h6>
+                <div id="user-list" class="user-list"></div>
+            </div>
+        </div>
+
+        <div id="settings-section" class="content-section" style="display: none;">
+            <div class="card">
+                <h5 class="card-title">
+                    <i class="fas fa-cog"></i>
+                    Pengaturan Sistem
+                </h5>
+                <div class="mb-3">
+                    <button class="btn btn-primary me-2">
+                        <i class="fas fa-save"></i> Simpan Pengaturan
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-undo"></i> Reset ke Default
+                    </button>
+                </div>
+                <p class="text-muted">Konfigurasi pengaturan platform dan preferensi sistem.</p>
+            </div>
+        </div>
+
+        <div id="admin-chat-section" class="content-section" style="display: none;">
+            <div class="card">
+                <button class="btn btn-link mb-2" onclick="backToUserList()">
+                    <i class="fas fa-arrow-left"></i> Kembali ke daftar pengguna
+                </button>
+                <h5 class="card-title">
+                    <i class="fas fa-comments"></i>
+                    Chat dengan <span id="chatUserName">(Pengguna)</span>
+                </h5>
+                <div id="admin-chat-messages" style="min-height:300px;max-height:400px;overflow-y:auto;background:#f8fafc;border-radius:12px;padding:1rem;margin-bottom:1rem;"></div>
+                <form id="admin-chat-form" class="d-flex gap-2">
+                    <input type="text" id="admin-chat-input" class="form-control" placeholder="Tulis pesan..." autocomplete="off" required>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
