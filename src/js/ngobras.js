@@ -603,27 +603,13 @@ function addAdminResponse(userMessage) {
 // Load messages for admin chat from Supabase
 async function loadAdminMessagesFromDB(userId, adminId) {
     try {
-        // Pastikan Supabase client sudah siap
-        if (!window.supabaseClient) {
-            const resp = await fetch('/api/supabase-config');
-            const config = await resp.json();
-            if (window.supabase && config.url && config.anonKey) {
-                window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-            } else {
-                throw new Error('Supabase client not initialized');
-            }
-        }
-        // Query pesan antara user dan admin (dua arah)
-        const { data: messages, error } = await window.supabaseClient
-            .from('messages')
-            .select('*')
-            .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
-            .order('created_at', { ascending: true });
-        if (error) throw error;
+        const res = await fetch(`/api/messages/${userId}/${adminId}`);
+        if (!res.ok) throw new Error('Failed to fetch messages');
+        const messages = await res.json();
         console.log('Messages between user and admin:', messages); // <-- LOG TO CONSOLE
-        // TODO: Render messages ke UI jika perlu
+        // Optionally, render messages to UI here
     } catch (err) {
-        console.error('Error loading messages from Supabase:', err);
+        console.error('Error loading messages from DB:', err);
     }
 }
 
