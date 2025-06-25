@@ -9,26 +9,22 @@ export default async function handler(req, res) {
   }
 
   const { email, password } = req.body;
-
   if (!email || !password) {
     res.status(400).json({ error: 'Email and password required' });
     return;
   }
 
-  // Lakukan query ke Supabase sesuai kebutuhan
-  // Contoh: cek user di table profiles
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('email', email)
-    .single();
+  // Supabase Auth: sign in with email and password
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  if (error || !data) {
+  if (error || !data.user) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
 
-  // Cek password (hash/compare sesuai implementasi Anda)
-  // Jika cocok:
-  res.status(200).json({ user: data });
+  // Only return safe user info
+  res.status(200).json({ user: { id: data.user.id, email: data.user.email } });
 }
