@@ -141,26 +141,32 @@ app.get('/api/profiles/:userId', async (req, res) => {
 });
 
 app.post('/api/admin-login', async (req, res) => {
-    const { email, uuid } = req.body;
-    if (!email || !uuid) {
-        return res.status(400).json({ error: 'Email and UUID are required' });
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
     }
     try {
         const { data, error } = await supabase
             .from('profiles')
             .select('id, email, role')
             .eq('email', email)
-            .eq('id', uuid)
             .eq('role', 'admin')
             .eq('is_active', true)
             .single();
 
         if (error || !data) {
-            return res.status(401).json({ error: 'Email atau UUID tidak valid' });
+            return res.status(401).json({ error: 'Email ini bukan admin' });
         }
-        return res.json({ success: true, admin: { id: data.id, email: data.email } });
+
+        // Kirim magic link (gunakan Supabase Auth API)
+        const { error: magicLinkError } = await supabase.auth.signInWithOtp({ email });
+        if (magicLinkError) {
+            return res.status(500).json({ error: 'Gagal mengirim magic link' });
+        }
+
+        return res.json({ success: true });
     } catch (err) {
-        return res.status(500).json({ error: 'Server error', details: err.message });
+        return res.status(500).json({ error: err.message });
     }
 });
 
