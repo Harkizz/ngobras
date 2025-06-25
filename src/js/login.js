@@ -19,6 +19,8 @@ const params = new URLSearchParams(window.location.search);
 const email = params.get('email');
 if (email) document.getElementById('email').value = email;
 
+// Login handler for Vercel/Next.js API route
+// This will POST to /api/login, which must be implemented as an API route (not Express) on Vercel
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -33,7 +35,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     button.disabled = true;
 
     try {
-        // Login via backend API
+        // Login via backend API (Vercel API route)
         const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
