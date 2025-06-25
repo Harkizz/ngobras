@@ -3,38 +3,6 @@ let currentChatType = 'admin';
 let currentChatName = '';
 let chatHistory = {}; // Store chat messages for each assistant/admin
 
-// Supabase
-let supabaseReadyResolve;
-const supabaseReady = new Promise((resolve) => { supabaseReadyResolve = resolve; });
-
-if (typeof supabaseUrl === 'undefined') {
-    var supabaseUrl = "https://vdszykgrgbszuzybmzle.supabase.co";
-}
-if (typeof supabaseAnonKey === 'undefined') {
-    var supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkc3p5a2dyZ2JzenV6eWJtemxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5ODE2NTAsImV4cCI6MjA2NTU1NzY1MH0.XzLkCYEcFOOjFeoFlh6PjZmTxTrg-tblQXST37aIzDk";
-}
-if (typeof supabaseClient === 'undefined') {
-    var supabaseClient;
-}
-
-async function initializeSupabase() {
-    // Wait for Supabase library to be loaded
-    let retries = 10;
-    while (typeof supabase === 'undefined' && retries > 0) {
-        await new Promise(r => setTimeout(r, 200));
-        retries--;
-    }
-    if (typeof supabase !== 'undefined') {
-        supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-        supabaseReadyResolve();
-    } else {
-        console.error('Supabase library failed to load.');
-    }
-}
-
-// Immediately start initialization
-initializeSupabase();
-
 // --- Memory helpers ---
 function getChatHistory(chatId) {
     const key = `ngobras_chat_history_${chatId}`;
@@ -632,9 +600,8 @@ function addAdminResponse(userMessage) {
     addMessage(randomResponse, false);
 }
 
-// Load messages for admin chat from Supabase
+// Load messages for admin chat from backend API
 async function loadAdminMessagesFromDB(userId, adminId) {
-    await supabaseReady;
     try {
         const res = await fetch(`/api/messages/${userId}/${adminId}`);
         if (!res.ok) throw new Error('Failed to fetch messages');
@@ -642,7 +609,7 @@ async function loadAdminMessagesFromDB(userId, adminId) {
         console.log('Messages between user and admin:', messages); // <-- LOG TO CONSOLE
         // Optionally, render messages to UI here
     } catch (err) {
-        console.error('Error loading messages from DB:', err);
+        console.error('Error loading admin messages:', err);
     }
 }
 
@@ -807,212 +774,246 @@ function showNotifications() {
     alert('Notifikasi:\n• Dr. Sarah Wijaya mengirim pesan baru\n• Jadwal konsultasi minggu depan\n• Tips kesehatan mental harian');
 }
 
-// Load AI Assistants
+// Load AI Assistants from backend API
 async function loadAIAssistants() {
-    await supabaseReady;
-    const aiListContainer = document.getElementById('ai-assistants-list');
-    const skeleton = document.getElementById('ai-assistants-list-skeleton');
-    if (skeleton) skeleton.style.display = 'block';
-    if (aiListContainer) aiListContainer.style.display = 'none';
-
-    const start = Date.now();
-    let data = [];
-    let error = null;
-
     try {
-        const response = await fetch('/api/ai-assistants');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        data = await response.json();
-    } catch (err) {
-        error = err;
-    }
+        const res = await fetch('/api/ai-assistants');
+        if (!res.ok) throw new Error('Failed to fetch AI assistants');
+        const data = await res.json();
 
-    // Wait until at least 3 seconds have passed
-    const elapsed = Date.now() - start;
-    if (elapsed < 3000) {
-        await new Promise(res => setTimeout(res, 3000 - elapsed));
-    }
+        const aiListContainer = document.getElementById('ai-assistants-list');
+        const skeleton = document.getElementById('ai-assistants-list-skeleton');
+        if (skeleton) skeleton.style.display = 'block';
+        if (aiListContainer) aiListContainer.style.display = 'none';
 
-    if (skeleton) skeleton.style.display = 'none';
-    if (aiListContainer) aiListContainer.style.display = 'block';
-
-    if (error) {
-        aiListContainer.innerHTML = `
-            <div class="chat-item error">
-                <div class="chat-info">
-                    <div class="chat-name">Error Loading AI Assistants</div>
-                    <div class="chat-preview">${error.message}</div>
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    aiListContainer.innerHTML = '';
-    if (!data || data.length === 0) {
-        aiListContainer.innerHTML = `
-            <div class="chat-item">
-                <div class="chat-info">
-                    <div class="chat-name">No AI Assistants Available</div>
-                    <div class="chat-preview">Please try again later</div>
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    // Render assistants
-    data.forEach(assistant => {
-        const aiCard = document.createElement('div');
-        aiCard.className = 'chat-item ai-assistant-card';
-        aiCard.onclick = () => openChat('ai', assistant.name);
-
-        let roleDescription = '';
-        switch(assistant.name) {
-            case 'NGOBRAS General Assistant':
-                roleDescription = 'Asisten konseling umum & profesional';
-                break;
-            case 'Mental Health Specialist':
-                roleDescription = 'Spesialis CBT & mindfulness';
-                break;
-            case 'Crisis Counselor':
-                roleDescription = 'Konselor krisis terlatih';
-                break;
-            default:
-                roleDescription = 'AI Assistant';
+        // Wait until at least 3 seconds have passed
+        const start = Date.now();
+        const elapsed = Date.now() - start;
+        if (elapsed < 3000) {
+            await new Promise(res => setTimeout(res, 3000 - elapsed));
         }
 
-        aiCard.innerHTML = `
-            <div class="chat-avatar ai">
-                <i class="fas fa-robot"></i>
-                <div class="online-indicator"></div>
-            </div>
-            <div class="chat-info">
-                <div class="chat-name">
-                    ${assistant.name}
-                    <span class="ai-badge">AI</span>
+        if (skeleton) skeleton.style.display = 'none';
+        if (aiListContainer) aiListContainer.style.display = 'block';
+
+        aiListContainer.innerHTML = '';
+        if (!data || data.length === 0) {
+            aiListContainer.innerHTML = `
+                <div class="chat-item">
+                    <div class="chat-info">
+                        <div class="chat-name">No AI Assistants Available</div>
+                        <div class="chat-preview">Please try again later</div>
+                    </div>
                 </div>
-                <div class="chat-preview">${roleDescription}</div>
-            </div>
-            <div class="chat-meta">
-                <span class="ai-provider">${assistant.api_provider.toUpperCase()}</span>
-            </div>
-        `;
-        
-        aiListContainer.appendChild(aiCard);
-    });
-}
+            `;
+            return;
+        }
 
-// Load Admins
-async function loadAdminList() {
-    await supabaseReady;
-    const adminListContainer = document.getElementById('admin-list');
-    const skeleton = document.getElementById('admin-list-skeleton');
-    if (skeleton) skeleton.style.display = 'block';
-    if (adminListContainer) adminListContainer.style.display = 'none';
+        // Render assistants
+        data.forEach(assistant => {
+            const aiCard = document.createElement('div');
+            aiCard.className = 'chat-item ai-assistant-card';
+            aiCard.onclick = () => openChat('ai', assistant.name);
 
-    const start = Date.now();
-    let data = [];
-    let error = null;
+            let roleDescription = '';
+            switch(assistant.name) {
+                case 'NGOBRAS General Assistant':
+                    roleDescription = 'Asisten konseling umum & profesional';
+                    break;
+                case 'Mental Health Specialist':
+                    roleDescription = 'Spesialis CBT & mindfulness';
+                    break;
+                case 'Crisis Counselor':
+                    roleDescription = 'Konselor krisis terlatih';
+                    break;
+                default:
+                    roleDescription = 'AI Assistant';
+            }
 
-    try {
-        const response = await fetch('/api/admins');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        data = await response.json();
+            aiCard.innerHTML = `
+                <div class="chat-avatar ai">
+                    <i class="fas fa-robot"></i>
+                    <div class="online-indicator"></div>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-name">
+                        ${assistant.name}
+                        <span class="ai-badge">AI</span>
+                    </div>
+                    <div class="chat-preview">${roleDescription}</div>
+                </div>
+                <div class="chat-meta">
+                    <span class="ai-provider">${assistant.api_provider.toUpperCase()}</span>
+                </div>
+            `;
+            
+            aiListContainer.appendChild(aiCard);
+        });
     } catch (err) {
-        error = err;
+        console.error('Error loading AI assistants:', err);
     }
-
-    // Wait until at least 3 seconds have passed
-    const elapsed = Date.now() - start;
-    if (elapsed < 3000) {
-        await new Promise(res => setTimeout(res, 3000 - elapsed));
-    }
-
-    if (skeleton) skeleton.style.display = 'none';
-    if (adminListContainer) adminListContainer.style.display = 'block';
-
-    adminListContainer.innerHTML = '';
-    if (error) {
-        adminListContainer.innerHTML = `
-            <div class="chat-item error">
-                <div class="chat-info">
-                    <div class="chat-name">Error Loading Admins</div>
-                    <div class="chat-preview">${error.message}</div>
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    // Ensure we have an array
-    const admins = Array.isArray(data) ? data : [];
-    if (admins.length === 0) {
-        adminListContainer.innerHTML = `
-            <div class="chat-item">
-                <div class="chat-info">
-                    <div class="chat-name">No Admin Available</div>
-                    <div class="chat-preview">Please try again later</div>
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    // Render admins
-    admins.forEach(admin => {
-        const adminCard = document.createElement('div');
-        adminCard.className = 'chat-item';
-        adminCard.onclick = () => openChat('admin', admin.full_name || admin.username);
-        
-        adminCard.innerHTML = `
-            <div class="chat-avatar admin">
-                ${admin.avatar_url ? 
-                    `<img src="${admin.avatar_url}" alt="${admin.username}">` :
-                    '<i class="fas fa-user-md"></i>'}
-                <div class="online-indicator"></div>
-            </div>
-            <div class="chat-info">
-                <div class="chat-name">
-                    ${admin.full_name || admin.username}
-                    <span class="admin-badge">ADMIN</span>
-                </div>
-                <div class="chat-preview">Online - Siap membantu</div>
-            </div>
-            <div class="chat-meta">
-                <span class="chat-status">Available</span>
-            </div>
-        `;
-        
-        adminListContainer.appendChild(adminCard);
-    });
 }
 
-// Check login status and show modal if not logged in
+// Load Admins from backend API
+async function loadAdminList() {
+    try {
+        const res = await fetch('/api/admins');
+        if (!res.ok) throw new Error('Failed to fetch admins');
+        const data = await res.json();
+
+        const adminListContainer = document.getElementById('admin-list');
+        const skeleton = document.getElementById('admin-list-skeleton');
+        if (skeleton) skeleton.style.display = 'block';
+        if (adminListContainer) adminListContainer.style.display = 'none';
+
+        // Wait until at least 3 seconds have passed
+        const start = Date.now();
+        const elapsed = Date.now() - start;
+        if (elapsed < 3000) {
+            await new Promise(res => setTimeout(res, 3000 - elapsed));
+        }
+
+        if (skeleton) skeleton.style.display = 'none';
+        if (adminListContainer) adminListContainer.style.display = 'block';
+
+        adminListContainer.innerHTML = '';
+        if (data.length === 0) {
+            adminListContainer.innerHTML = `
+                <div class="chat-item">
+                    <div class="chat-info">
+                        <div class="chat-name">No Admin Available</div>
+                        <div class="chat-preview">Please try again later</div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        // Render admins
+        data.forEach(admin => {
+            const adminCard = document.createElement('div');
+            adminCard.className = 'chat-item';
+            adminCard.onclick = () => openChat('admin', admin.full_name || admin.username);
+            
+            adminCard.innerHTML = `
+                <div class="chat-avatar admin">
+                    ${admin.avatar_url ? 
+                        `<img src="${admin.avatar_url}" alt="${admin.username}">` :
+                        '<i class="fas fa-user-md"></i>'}
+                    <div class="online-indicator"></div>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-name">
+                        ${admin.full_name || admin.username}
+                        <span class="admin-badge">ADMIN</span>
+                    </div>
+                    <div class="chat-preview">Online - Siap membantu</div>
+                </div>
+                <div class="chat-meta">
+                    <span class="chat-status">Available</span>
+                </div>
+            `;
+            
+            adminListContainer.appendChild(adminCard);
+        });
+    } catch (err) {
+        console.error('Error loading admins:', err);
+    }
+}
+
+// Load user profile from backend API
+async function loadUserProfile(userId) {
+    try {
+        const res = await fetch(`/api/profiles/${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch user profile');
+        const profile = await res.json();
+        updateProfileUI(profile);
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+    }
+}
+
+// Update profile UI
+function updateProfileUI(profile) {
+    const nameEl = document.getElementById('profileName');
+    const emailEl = document.getElementById('profileEmail');
+    const avatarEl = document.getElementById('profileAvatar');
+
+    if (nameEl) nameEl.textContent = profile.full_name || profile.username || 'User';
+    if (emailEl) emailEl.textContent = profile.email || 'No email found';
+    if (avatarEl) {
+        if (profile.avatar_url) {
+            avatarEl.src = profile.avatar_url;
+            avatarEl.style.display = 'block';
+        } else {
+            avatarEl.style.display = 'none';
+        }
+    }
+}
+
+// Update profile stats
+function updateProfileStats(chatStats) {
+    const totalChatsEl = document.getElementById('totalChats');
+    const resolvedChatsEl = document.getElementById('resolvedChats');
+    const unresolvedChatsEl = document.getElementById('unresolvedChats');
+
+    if (totalChatsEl) totalChatsEl.textContent = chatStats.total || 0;
+    if (resolvedChatsEl) resolvedChatsEl.textContent = chatStats.resolved || 0;
+    if (unresolvedChatsEl) unresolvedChatsEl.textContent = chatStats.unresolved || 0;
+}
+
+// Show/hide profile loading indicator
+function showProfileLoading(show) {
+    const loader = document.getElementById('profileLoading');
+    if (show) {
+        if (loader) loader.style.display = 'block';
+    } else {
+        if (loader) loader.style.display = 'none';
+    }
+}
+
+// Update profile via backend API
+async function updateProfile(data) {
+    try {
+        const res = await fetch('/api/profiles/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Failed to update profile');
+        const updatedProfile = await res.json();
+        updateProfileUI(updatedProfile);
+        showFastPopup('Profile updated successfully!');
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showFastPopup('Failed to update profile: ' + error.message);
+    }
+}
+
+// Logout via backend API (if needed)
+async function logout() {
+    try {
+        // Optional: Call backend logout API if needed
+        // const res = await fetch('/api/logout', { method: 'POST' });
+        // if (!res.ok) throw new Error('Failed to logout');
+
+        // Clear localStorage/session
+        localStorage.clear();
+        location.reload();
+    } catch (error) {
+        console.error('Error during logout:', error);
+    }
+}
+
+// Add to your existing event listeners
 document.addEventListener('DOMContentLoaded', async function() {
     // Only run on ngobras.html
     if (!window.location.pathname.includes('ngobras')) return;
 
-    // Ensure Supabase is loaded
-    if (typeof supabase === 'undefined') {
-        await new Promise(res => setTimeout(res, 300)); // Wait for supabase to load
-    }
-    // Get config from backend
-    let config;
-    try {
-        const resp = await fetch('/api/supabase-config');
-        config = await resp.json();
-    } catch (e) {
-        config = null;
-    }
-    if (!config || !config.url || !config.anonKey) return;
-
-    const supabaseClient = supabase.createClient(config.url, config.anonKey);
-
     // Check user session
-    const { data: { user } } = await supabaseClient.auth.getUser();
-
-    if (!user) {
+    const userProfileStr = localStorage.getItem('ngobras_user_profile');
+    const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
+    if (!userId) {
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('authModal'), {
             backdrop: 'static',
@@ -1036,34 +1037,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-    // Immediately check if user profile exists in the database
-    try {
-        const { data: profile, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (profile) {
-            console.log('User profile exists:', profile);
-        } else {
-            console.log('User profile NOT found.');
-            // Log out the user session if profile not found
-            await supabaseClient.auth.signOut();
-            // Optionally, show the login modal or redirect
-            const modal = new bootstrap.Modal(document.getElementById('authModal'), {
-                backdrop: 'static',
-                keyboard: false
-            });
-            modal.show();
-            return;
-        }
-        if (error) {
-            console.log('Error checking user profile:', error);
-        }
-    } catch (err) {
-        console.log('Error during profile existence check:', err);
-    }
+    // Load user profile immediately
+    loadUserProfile(userId);
 });
 
 function showAuthModal() {
