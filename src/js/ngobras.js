@@ -136,8 +136,8 @@ async function openChat(type, name, assistantId) {
             const userProfileStr = localStorage.getItem('ngobras_user_profile');
             const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
             if (userId) {
-                // Fetch & simpan messages ke localStorage, lalu render
-                await fetchAndStoreAdminMessages(userId, adminId);
+                // Load messages from DB and log to console
+                await loadAdminMessagesFromDB(userId, adminId);
             } else {
                 console.log("User ID not found");
             }
@@ -613,47 +613,6 @@ async function loadAdminMessagesFromDB(userId, adminId) {
     }
 }
 
-// Fetch and store admin messages (user <-> admin) to localStorage
-async function fetchAndStoreAdminMessages(userId, adminId) {
-    try {
-        // Pastikan supabaseClient sudah siap
-        if (!window.supabaseClient) {
-            const resp = await fetch('/api/supabase-config');
-            const config = await resp.json();
-            if (window.supabase && config.url && config.anonKey) {
-                window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-            } else {
-                throw new Error('Supabase client not initialized');
-            }
-        }
-        // Query: user sebagai sender, admin sebagai receiver
-        const { data: sent, error: errSent } = await window.supabaseClient
-            .from('messages')
-            .select('*')
-            .eq('sender_id', userId)
-            .eq('receiver_id', adminId)
-            .order('created_at', { ascending: true });
-        // Query: admin sebagai sender, user sebagai receiver
-        const { data: received, error: errReceived } = await window.supabaseClient
-            .from('messages')
-            .select('*')
-            .eq('sender_id', adminId)
-            .eq('receiver_id', userId)
-            .order('created_at', { ascending: true });
-        if (errSent || errReceived) throw new Error('Gagal fetch messages');
-        // Gabungkan dan urutkan berdasarkan created_at
-        let allMessages = [...(sent || []), ...(received || [])];
-        allMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        // Simpan ke localStorage
-        const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
-        localStorage.setItem(chatKey, JSON.stringify(allMessages));
-        // Render ke UI
-        renderAdminMessagesFromLocalStorage();
-    } catch (err) {
-        console.error('Gagal fetch & simpan messages:', err);
-    }
-}
-
 // Typing indicator
 function showTypingIndicator() {
     let indicator = document.getElementById('typing-indicator');
@@ -1011,17 +970,24 @@ function waitForSupabase(retries = 10, delay = 200) {
 }
 
 // Supabase
-let supabaseClient;
+if (!window.supabaseClient) {
+    window.supabaseClient = null;
+}
 
-// Initialize Supabase
 async function initializeSupabase() {
     try {
         await waitForSupabase();
-        const response = await fetch('/api/supabase-config');
-        const config = await response.json();
-        supabaseClient = supabase.createClient(config.url, config.anonKey);
+        if (!window.supabaseClient) {
+            const response = await fetch('/api/supabase-config');
+            const config = await response.json();
+            if (window.supabase && config.url && config.anonKey) {
+                window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+            } else {
+                throw new Error('Supabase config missing');
+            }
+        }
         // Check if user is authenticated
-        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        const { data: { user }, error } = await window.supabaseClient.auth.getUser();
         if (error) throw error;
         if (user) {
             await loadUserProfile(user.id);
@@ -1392,15 +1358,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!window.location.pathname.includes('ngobras')) return;
 
     // Ensure Supabase is loaded
-    if (typeof supabase === 'undefined') return;
+    if (typeof supabase === 'undefined') {
+        await new Promise(res => setTimeout(res, 300)); // Wait for supabase to load
+    }
     // Get config from backend
     let config;
     try {
-        const res = await fetch('/api/supabase-config');
-        config = await res.json();
+        const resp = await fetch('/api/supabase-config');
+        config = await resp.json();
     } catch (e) {
-        showFastPopup('Gagal mengambil konfigurasi Supabase.');
-        return;
+        config = null;
     }
     if (!config || !config.url || !config.anonKey) return;
 
@@ -1408,39 +1375,29 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Check user session
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-        showAuthModal();
-        return;
-    }
 
-    // === FETCH & SIMPAN PROFIL USER ===
-    try {
-        // Cek apakah sudah ada di localStorage, jika belum atau user berbeda, fetch ulang
-        const localProfileStr = localStorage.getItem('ngobras_user_profile');
-        let needFetch = true;
-        if (localProfileStr) {
-            try {
-                const localProfile = JSON.parse(localProfileStr);
-                if (localProfile && localProfile.id === user.id) {
-                    needFetch = false;
+    if (!user) {
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('authModal'), {
+            backdrop: 'static',
+            keyboard: false
+        });
+        modal.show();
+
+        // Button handlers
+        document.getElementById('loginEmailBtn').onclick = function() {
+            window.location.href = '/login.html';
+        };
+        document.getElementById('loginGoogleBtn').onclick = async function() {
+            await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/ngobras'
                 }
-            } catch {}
-        }
-        if (needFetch) {
-            // Ambil data lengkap user dari tabel 'profiles'
-            const { data: profile, error } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single();
-            if (error || !profile) {
-                showFastPopup('Gagal mengambil profil user.');
-            } else {
-                localStorage.setItem('ngobras_user_profile', JSON.stringify(profile));
-            }
-        }
-    } catch (err) {
-        showFastPopup('Gagal mengambil data user.');
+            });
+        };
+        console.log('User is not logged in.');
+        return;
     }
 
     // Immediately check if user profile exists in the database
