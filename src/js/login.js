@@ -45,8 +45,21 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
         if (response.ok && result.user) {
             // Login successful
-            // SIMPAN USER KE LOCALSTORAGE
-            localStorage.setItem('ngobras_user_profile', JSON.stringify(result.user));
+            // Fetch user profile from backend
+            try {
+                const profileRes = await fetch(`/api/profiles/${result.user.id}`);
+                if (profileRes.ok) {
+                    const profile = await profileRes.json();
+                    // SIMPAN USER KE LOCALSTORAGE (lengkap)
+                    localStorage.setItem('ngobras_user_profile', JSON.stringify(profile));
+                } else {
+                    // Fallback: simpan minimal info jika gagal fetch profile
+                    localStorage.setItem('ngobras_user_profile', JSON.stringify(result.user));
+                }
+            } catch (e) {
+                // Fallback: simpan minimal info jika error
+                localStorage.setItem('ngobras_user_profile', JSON.stringify(result.user));
+            }
             showAlert('Login berhasil! Redirecting...', 'success');
             setTimeout(() => {
                 window.location.href = '/ngobras';
