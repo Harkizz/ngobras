@@ -44,40 +44,20 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         const result = await response.json();
 
         if (response.ok && result.user) {
-            // Login successful
-            // Simpan session Supabase ke localStorage
-            if (result.session) {
-                localStorage.setItem('ngobras_session', JSON.stringify(result.session));
-            } else if (result.access_token) {
-                // Jika session tidak ada, simpan seluruh result (untuk kompatibilitas)
-                localStorage.setItem('ngobras_session', JSON.stringify(result));
+            // Save login resource to localStorage for ngobras.js
+            const resource = {
+                access_token: result.access_token,
+                refresh_token: result.refresh_token,
+                expires_in: result.expires_in,
+                expires_at: result.expires_at,
+                token_type: result.token_type,
+                user: result.user
+            };
+            // For compatibility, also flatten user.id to top-level for ngobras.js
+            if (result.user && result.user.id) {
+                resource.id = result.user.id;
             }
-            // Fetch user profile dari backend
-            try {
-                const profileRes = await fetch(`/api/profiles/${result.user.id}`);
-                let profile;
-                if (profileRes.ok) {
-                    profile = await profileRes.json();
-                } else {
-                    profile = result.user;
-                }
-                // Pastikan field penting selalu ada
-                profile.id = profile.id || result.user.id;
-                profile.email = profile.email || result.user.email;
-                profile.username = profile.username || '';
-                profile.full_name = profile.full_name || '';
-                profile.avatar_url = profile.avatar_url || '';
-                localStorage.setItem('ngobras_user_profile', JSON.stringify(profile));
-            } catch (e) {
-                const fallback = {
-                    id: result.user.id,
-                    email: result.user.email,
-                    username: '',
-                    full_name: '',
-                    avatar_url: ''
-                };
-                localStorage.setItem('ngobras_user_profile', JSON.stringify(fallback));
-            }
+            localStorage.setItem('ngobras_user_profile', JSON.stringify(resource));
             showAlert('Login berhasil! Redirecting...', 'success');
             setTimeout(() => {
                 window.location.href = '/ngobras';
