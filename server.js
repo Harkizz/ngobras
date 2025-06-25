@@ -550,6 +550,30 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+app.post('/api/signup', async (req, res) => {
+    const { email, password, full_name } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+    try {
+        // Sign up user with Supabase Auth
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password
+        });
+        if (error || !data.user) {
+            return res.status(400).json({ error: error?.message || 'Signup failed' });
+        }
+        // Optionally, insert profile data into 'profiles' table
+        if (full_name) {
+            await supabase.from('profiles').update({ full_name }).eq('id', data.user.id);
+        }
+        return res.status(201).json({ user: { id: data.user.id, email: data.user.email } });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
