@@ -1,26 +1,19 @@
-// Wait for Supabase library to be loaded before running the rest of the code
-function waitForSupabase(retries = 10, delay = 200) {
-    return new Promise((resolve, reject) => {
-        function check() {
-            if (typeof supabase !== 'undefined') {
-                resolve();
-            } else if (retries > 0) {
-                setTimeout(() => check(--retries, delay), delay);
-            } else {
-                reject(new Error('Supabase library failed to load.'));
-            }
-        }
-        check();
-    });
-}
+// Initialize Supabase client
+let supabaseClient;
 
-// Autofill email if present in URL
-const params = new URLSearchParams(window.location.search);
-const email = params.get('email');
-if (email) document.getElementById('email').value = email;
+document.addEventListener('DOMContentLoaded', async () => {
+    // Fetch Supabase config from backend
+    const resp = await fetch('/api/supabase-config');
+    const config = await resp.json();
+    supabaseClient = supabase.createClient(config.url, config.anonKey);
+});
 
-// Login handler for Vercel/Next.js API route
-// This will POST to /api/login, which must be implemented as an API route (not Express) on Vercel
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email');
+    if (email) document.getElementById('email').value = email;
+});
+
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -35,39 +28,27 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     button.disabled = true;
 
     try {
-        // Login via backend API (Vercel API route)
-        const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+        // Try to sign in with Supabase
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
         });
-        const result = await response.json();
 
-        if (response.ok && result.user) {
-            // Save login resource to localStorage for ngobras.js
-            const resource = {
-                access_token: result.access_token,
-                refresh_token: result.refresh_token,
-                expires_in: result.expires_in,
-                expires_at: result.expires_at,
-                token_type: result.token_type,
-                user: result.user
-            };
-            // For compatibility, also flatten user.id to top-level for ngobras.js
-            if (result.user && result.user.id) {
-                resource.id = result.user.id;
-            }
-            localStorage.setItem('ngobras_user_profile', JSON.stringify(resource));
+        if (data.user) {
+            // Login successful
             showAlert('Login berhasil! Redirecting...', 'success');
             setTimeout(() => {
                 window.location.href = '/ngobras';
             }, 1200);
-        } else if (result.error && result.error.toLowerCase().includes('invalid')) {
-            showAlert('Wrong password, please try again.', 'danger');
-            // Stop process, do not redirect
         } else {
-            // For other errors, redirect to signup
-            window.location.href = `/signup.html?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+            // If error is "Invalid login credentials", show fast popup and stop
+            if (error && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
+                showAlert('Wrong password, please try again.', 'danger');
+                // Stop process, do not redirect
+            } else {
+                // For other errors, redirect to signup
+                window.location.href = `/signup.html?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+            }
         }
     } catch (err) {
         showAlert('Terjadi kesalahan. Silakan coba lagi.', 'danger');
