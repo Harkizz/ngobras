@@ -343,11 +343,15 @@ async function subscribeToAdminMessages(userId, adminId) {
                 const isSent = payload.new.sender_id === userId;
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
-            } else {
-                // Tampilkan badge unread pada daftar admin
+            } else if (payload.new.is_read === false) {
+                // Tampilkan badge unread pada daftar admin, tambah jumlah
                 const badge = document.querySelector(`.unread-count[data-admin-id='${adminId}']`);
-                if (badge) badge.style.display = 'inline-block';
-                // Optionally, tambahkan efek animasi
+                if (badge) {
+                    let count = parseInt(badge.textContent) || 0;
+                    count++;
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                }
             }
 
             // Logging pesan baru
@@ -417,7 +421,10 @@ openChat = async function(type, name, assistantId) {
         } catch {}
         if (adminId) {
             const badge = document.querySelector(`.unread-count[data-admin-id='${adminId}']`);
-            if (badge) badge.style.display = 'none';
+            if (badge) {
+                badge.textContent = 0;
+                badge.style.display = 'none';
+            }
         }
     }
 };

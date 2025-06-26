@@ -413,7 +413,7 @@ async function loadAdminList() {
             </div>
             <div class="chat-meta">
                 <span class="chat-status">Available</span>
-                <span class="unread-count" style="display:none;" data-admin-id="${admin.id}">●</span>
+                <span class="unread-count" style="display:none;" data-admin-id="${admin.id}">0</span>
             </div>
         `;
         
