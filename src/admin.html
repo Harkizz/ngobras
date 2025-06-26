@@ -374,15 +374,16 @@
                 <div id="admin-chat-messages" style="min-height:300px;max-height:400px;overflow-y:auto;background:#f8fafc;border-radius:12px;padding:1rem;margin-bottom:1rem;"></div>
                 <form id="admin-chat-form" class="d-flex gap-2">
                     <input type="text" id="admin-chat-input" class="form-control" placeholder="Tulis pesan..." autocomplete="off" required>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <button type="submit" class="btn btn-primary no-loading" id="sendBtn" disabled>
+    <i class="fas fa-paper-plane"></i>
+</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>
