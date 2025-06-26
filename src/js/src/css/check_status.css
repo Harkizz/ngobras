@@ -1,0 +1,29 @@
+/* ...existing code... */
+.status-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2rem;
+}
+.spinner {
+    border: 6px solid #e8f4fd;
+    border-top: 6px solid #4A90E2;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.status-result {
+    margin-top: 2rem;
+    font-size: 1.2rem;
+    color: #DC3545;
+    text-align: center;
+}
+.status-result.success {
+    color: #28A745;
+}

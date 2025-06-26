@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGOBRAS Admin - Login</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/login_admin.css">
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="brand-section">
+                <div class="brand-logo">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h1 class="brand-title">NGOBRAS</h1>
+                <p class="brand-subtitle">Ngobrol Asik Sosiologi</p>
+                <span class="admin-badge">
+                    <i class="fas fa-shield-alt"></i>
+                    Admin Portal
+                </span>
+            </div>
+
+            <div class="error-message" id="errorMessage">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="errorText"></span>
+            </div>
+
+            <div class="success-message" id="successMessage">
+                <i class="fas fa-check-circle"></i>
+                <span id="successText"></span>
+            </div>
+
+            <form class="form-section" id="loginForm" novalidate>
+                <div class="form-group">
+                    <label for="adminEmail" class="form-label">
+                        <i class="fas fa-envelope"></i>
+                        Email Admin
+                    </label>
+                    <div style="position: relative;">
+                        <i class="input-icon fas fa-envelope"></i>
+                        <input 
+                            type="email" 
+                            class="form-control" 
+                            id="adminEmail" 
+                            name="adminEmail"
+                            placeholder="masukkan email admin..."
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                    <div class="form-validation" id="emailValidation"></div>
+                </div>
+                <button type="submit" class="login-button" id="loginButton">
+                    <div class="button-content">
+                        <div class="loading-spinner" id="loadingSpinner"></div>
+                        <i class="fas fa-sign-in-alt" id="loginIcon"></i>
+                        <span id="buttonText">Kirim Magic Link</span>
+                    </div>
+                </button>
+            </form>
+
+            <div class="footer-section">
+                <p class="footer-text">
+                    Platform konsultasi kesehatan mental terpercaya
+                </p>
+                <div class="security-badge">
+                    <i class="fas fa-lock"></i>
+                    Koneksi Aman & Terenkripsi
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="autoLoginStatus" style="display:none; text-align:center; margin-top:2rem;">
+        <div id="autoLoginSpinner" style="display:flex; flex-direction:column; align-items:center;">
+            <div class="loading-spinner" style="display:block; margin-bottom:1rem; width:48px; height:48px; border-width:4px;"></div>
+            <div style="font-size:1.1rem; color:#4A90E2;">Menyelesaikan login admin...</div>
+        </div>
+        <div id="autoLoginSuccess" style="display:none; flex-direction:column; align-items:center;">
+            <i class="fas fa-check-circle" style="font-size:3rem; color:#28A745; margin-bottom:1rem; animation:pop 0.5s;"></i>
+            <div style="font-size:1.2rem; color:#28A745;">Anda berhasil login sebagai admin</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script type="module" src="js/login_admin.js"></script>
+</body>
+</html>

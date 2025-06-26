@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#4a90e2">
+    <meta name="description" content="NGOBRAS - Aplikasi Konsultasi Online">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NGOBRAS">
+    
+    <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon.png">
+    <link rel="apple-touch-icon" href="images/icons/apple-touch-icon.png">
+    <title>NGOBRAS - Chat App</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/ngobras.css">
+        <!-- Add Anime.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+        <!-- Add in ngobras.html head section, before other scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="logo">
+            <i class="fas fa-comments me-2"></i>NGOBRAS
+        </div>
+        <button class="notification-btn" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge">3</span>
+        </button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Home Page (Chat List) -->
+        <div id="home-page" class="page active">            <h3 class="section-title">AI Assistants</h3>
+            <div id="ai-assistants-list" class="chat-list">
+                <!-- AI Assistants will be loaded dynamically -->
+            </div>
+            
+            <div id="ai-assistants-list-skeleton" class="chat-list">
+                <!-- Skeleton items will be shown here while loading -->
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar ai skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 120px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 180px;"></div>
+                    </div>
+                </div>
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar ai skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 100px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 150px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 class="section-title">Our Admins</h3>
+            <div class="chat-list" id="admin-list">
+                <!-- Admins will be loaded dynamically -->
+            </div>
+            
+            <div id="admin-list-skeleton" class="chat-list">
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar admin skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 100px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 120px;"></div>
+                    </div>
+                </div>
+                <div class="chat-item skeleton">
+                    <div class="chat-avatar admin skeleton-avatar"></div>
+                    <div class="chat-info">
+                        <div class="chat-name skeleton-text" style="width: 90px;"></div>
+                        <div class="chat-preview skeleton-text" style="width: 100px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Room -->
+        <div id="chat-page" class="page">
+            <div class="chat-room">                <div class="chat-header">
+                    <button class="back-btn" onclick="goBack()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="chat-avatar" id="current-chat-avatar">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name" id="current-chat-name">Dr. Sarah Wijaya</div>
+                        <div class="chat-time" id="current-chat-status">Online</div>
+                    </div>
+                </div><div class="chat-messages" id="chat-messages">
+                    <!-- Greeting sphere stays here -->
+                    <div id="greeting-sphere" class="greeting-sphere-container" style="display:none;">
+                        <svg id="greetingSphereSVG" width="140" height="140" viewBox="0 0 140 140">
+  <defs>
+    <radialGradient id="sphereGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#6C63FF" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#4a90e2" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="eyeGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="100%" stop-color="#e0f7fa"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle id="greetingSphereCircle" cx="70" cy="70" r="48" fill="url(#sphereGradient)" filter="url(#glow)" />
+  <!-- Eyes: 9x16 rounded rectangles, centered horizontally -->
+  <rect id="eyeLeft" x="50" y="65" width="9" height="16" rx="4.5" fill="url(#eyeGradient)" />
+  <rect id="eyeRight" x="81" y="65" width="9" height="16" rx="4.5" fill="url(#eyeGradient)" />
+  <ellipse id="greetingSphereShadow" cx="70" cy="120" rx="32" ry="8" fill="#b3c6ff" opacity="0.35"/>
+</svg>
+                        <div class="greeting-text">
+                            <span id="greetingText"></span>
+                        </div>
+                    </div>
+                    <!-- Only this will be replaced by JS -->
+                    <div id="messages-list"></div>
+                    <div id="typing-indicator" class="typing-indicator" style="display: none;"></div>
+                </div><div class="chat-input">
+                    <!-- Photo preview area (keep above input row) -->
+                    <div id="photo-preview-container" class="photo-preview-container" style="display:none;"></div>
+                    <!-- Input row: action menu, input, send -->
+                    <div class="chat-input-row">
+                        <button class="action-btn" onclick="toggleActionMenu()" id="actionMenuBtn" type="button">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <!-- Action menu (hidden by default) -->
+                        <div id="action-menu" class="action-menu" style="display:none;">
+                            <button class="action-menu-item" onclick="triggerFileUpload()">
+                                <i class="fas fa-file-upload"></i> Upload file
+                            </button>
+                            <button class="action-menu-item" onclick="triggerTakePhoto()">
+                                <i class="fas fa-camera"></i> Ambil Foto
+                            </button>
+                        </div>
+                        <!-- Hidden file input for upload -->
+                        <input type="file" id="fileInput" style="display:none;" onchange="handleFileUpload(event)">
+                        <div class="input-group">
+                            <textarea class="message-input" placeholder="Ketik pesan..." id="messageInput" onkeypress="handleKeyPress(event)" rows="1"></textarea>
+                            <button class="action-btn" onclick="toggleEmoji()" type="button">
+                                <i class="fas fa-smile"></i>
+                            </button>
+                        </div>
+                        <button class="send-btn" onclick="sendMessage(); renderAdminMessagesFromLocalStorage();" id="sendBtn" type="button">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Add emoji picker here -->
+                <div id="emoji-picker" class="emoji-picker" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- History Page -->
+        <div id="history-page" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-history me-2"></i>Riwayat Konsultasi</h2>
+                <p>Lihat kembali sesi konsultasi Anda</p>
+            </div>
+            <div class="page-content">
+                        <!-- History items will be loaded dynamically here -->
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profile-page" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-user me-2"></i>Profil Saya</h2>
+                <p>Kelola informasi akun Anda</p>
+            </div>
+            <div class="page-content">
+                <div class="profile-card">
+                    <div id="profileLoading" class="text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    
+                    <div id="profileContent">
+                        <div class="profile-avatar">
+                            <img id="profileAvatar" src="/images/default-avatar.png" alt="Profile" 
+                                 onerror="this.onerror=null; this.src='/images/default-avatar.png';">
+                        </div>
+                        <div class="profile-name" id="profileName">Loading...</div>
+                        <div class="profile-email" id="profileEmail">Loading...</div>
+                        <p class="text-muted" id="profileMemberSince">Member since Loading...</p>
+                        
+                        <div class="profile-stats mt-3">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="stat-value" id="totalChats">0</div>
+                                    <div class="stat-label">Chats</div>
+                                </div>
+                                <div class="col">
+                                    <div class="stat-value" id="lastActive">-</div>
+                                    <div class="stat-label">Last Active</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-menu">
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit Profil</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-bell"></i>
+                        <span>Notifikasi</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Privasi & Keamanan</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Pembayaran</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-question-circle"></i>
+                        <span>Bantuan</span>
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Tentang NGOBRAS</span>
+                    </a>
+                    <a href="#" class="profile-menu-item" style="color: var(--coral);" onclick="showLogoutModal(); return false;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Keluar</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active" data-page="home" onclick="showPage('home')">
+            <i class="fas fa-home"></i>
+            <span>Beranda</span>
+        </a>
+<a href="#" class="nav-item" data-page="chat" onclick="goToLastChat()">
+            <i class="fas fa-comments"></i>
+            <span>Konsultasi</span>
+        </a>
+        <a href="#" class="nav-item" data-page="history" onclick="showPage('history')">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Riwayat</span>
+        </a>
+        <a href="#" class="nav-item" data-page="profile" onclick="showPage('profile')">
+            <i class="fas fa-user"></i>
+            <span>Profil</span>
+        </a>
+    </div>
+
+    <!-- Upgraded Login/Signup Modal -->
+<div class="modal fade" id="authModal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content auth-modal-content">
+      <div class="modal-header border-0 flex-column align-items-center">
+        <div class="auth-modal-icon mb-2">
+          <i class="fas fa-user-lock"></i>
+        </div>
+        <h5 class="modal-title w-100 text-center" id="authModalLabel">You are not logged in</h5>
+      </div>
+      <div class="modal-body">
+        <p class="auth-modal-desc mb-4">Please login or sign up to continue using NGOBRAS.</p>
+        <button class="btn btn-primary w-100 mb-3 auth-btn" id="loginEmailBtn">
+          <i class="fas fa-envelope me-2"></i>Login / Signup with Email
+        </button>
+        <button class="btn btn-google w-100 mb-2 auth-btn" id="loginGoogleBtn">
+          <i class="fab fa-google me-2"></i>Login / Signup with Google
+        </button>
+        <div class="auth-modal-divider my-3">
+          <span>or</span>
+        </div>
+        <small class="text-muted">Your data is safe and private.</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title w-100 text-center" id="logoutModalLabel">Are you sure you want to Log out?</h5>
+      </div>
+      <div class="modal-footer justify-content-center border-0">
+        <button type="button" class="btn btn-danger" id="confirmLogoutBtn">Log Out</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module" src="js/ngobras.utils.js"></script>
+    <script type="module" src="js/ngobras.supabase.js"></script>
+    <script type="module" src="js/ngobras.ui.js"></script>
+    <script type="module" src="js/ngobras.navigation.js"></script>
+    <script type="module" src="js/ngobras.chat.js"></script>
+    <script type="module" src="js/ngobras.js"></script>
+</body>
+</html>

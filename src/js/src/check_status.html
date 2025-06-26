@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGOBRAS - Cek Status</title>
+    <link rel="stylesheet" href="css/check_status.css">
+</head>
+<body>
+    <div class="status-container">
+        <h1 id="statusTitle">Cek Status</h1>
+        <div id="statusLoading" class="status-loading">
+            <div class="spinner"></div>
+            <p>Memeriksa status Anda...</p>
+        </div>
+        <div id="statusResult" class="status-result" style="display:none;"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="js/check_status.js"></script>
+</body>
+</html>
