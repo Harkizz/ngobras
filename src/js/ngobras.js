@@ -755,14 +755,23 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // --- SUBSCRIBE REALTIME KE SEMUA ADMIN ---
-    // Dihapus: subscribeToAdminMessages di sini, cukup load pesan saja
     try {
         const adminResp = await fetch('/api/admins');
         const admins = await adminResp.json();
         if (Array.isArray(admins) && admins.length > 0) {
             // Logging admin IDs
             console.log('[NGOBRAS] Admin IDs:', admins.map(a => a.id));
-            // Tidak perlu subscribeToAdminMessages di sini, cukup load pesan saja
+            // Import subscribeToAdminMessages dari ngobras.chat.js jika belum ada
+            if (typeof subscribeToAdminMessages === 'undefined') {
+                // Dynamic import jika perlu (untuk browser, pastikan sudah di-load di HTML)
+                console.warn('subscribeToAdminMessages belum terdefinisi! Pastikan ngobras.chat.js sudah di-load sebelum ngobras.js');
+            } else {
+                admins.forEach(admin => {
+                    subscribeToAdminMessages(user.id, admin.id)
+                        .then(() => console.log(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} success`))
+                        .catch(e => console.warn(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} FAILED:`, e));
+                });
+            }
         } else {
             console.warn('[NGOBRAS] Tidak ada admin ditemukan untuk subscribe realtime.');
         }
@@ -1057,90 +1066,3 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 });
-
-// --- Realtime Supabase Chat Subscription ---
-// (DIPINDAHKAN KE ngobras.chat.js AGAR TIDAK DOUBLE)
-// let chatSubscription = null;
-
-// async function subscribeToAdminMessages(userId, adminId) {
-//     // Pastikan client sudah ada
-//     if (!window.supabaseClient) {
-//         throw new Error('Supabase client not initialized');
-//     }
-//     // Unsubscribe previous
-//     if (chatSubscription) {
-//         await chatSubscription.unsubscribe();
-//         chatSubscription = null;
-//     }
-//     // Logging subscription
-//     console.log('[Realtime] Subscribing to messages for user:', userId, 'admin:', adminId);
-//     chatSubscription = window.supabaseClient
-//         .channel('messages')
-//         .on('postgres_changes', {
-//             event: 'INSERT',
-//             schema: 'public',
-//             table: 'messages',
-//             filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
-//         }, payload => {
-//             console.log('[Realtime] Received message (admin > user):', payload);
-//             // Simpan pesan baru ke localStorage
-//             const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
-//             let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
-//             messages.push(payload.new);
-//             localStorage.setItem(chatKey, JSON.stringify(messages));
-//             // Render pesan baru ke chat room
-//             const isSent = payload.new.sender_id === userId;
-//             addMessage(payload.new.content, isSent);
-//             scrollToBottom();
-//         })
-//         .on('postgres_changes', {
-//             event: 'INSERT',
-//             schema: 'public',
-//             table: 'messages',
-//             filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
-//         }, payload => {
-//             console.log('[Realtime] Sent message (user > admin):', payload);
-//             // Simpan pesan baru ke localStorage
-//             const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
-//             let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
-//             messages.push(payload.new);
-//             localStorage.setItem(chatKey, JSON.stringify(messages));
-//             // Render pesan baru ke chat room
-//             const isSent = payload.new.sender_id === userId;
-//             addMessage(payload.new.content, isSent);
-//             scrollToBottom();
-//         })
-//         .subscribe(status => {
-//             if (status === 'SUBSCRIBED') {
-//                 console.log('[Realtime] Subscription success');
-//             } else {
-//                 console.warn('[Realtime] Subscription status:', status);
-//             }
-//         });
-// }
-
-// Update openChat to subscribe realtime
-window._originalOpenChat = window.openChat;
-window.openChat = async function(type, name, assistantId) {
-    if (type !== 'ai') {
-        let adminId = null;
-        try {
-            const res = await fetch('/api/admins');
-            const admins = await res.json();
-            const found = admins.find(a => (a.full_name || a.username) === name);
-            if (found) {
-                adminId = found.id;
-            }
-        } catch (e) { console.error('Error fetching admins:', e); }
-        window.currentAdminId = adminId;
-        if (adminId) {
-            localStorage.setItem('ngobras_current_admin_id', adminId);
-            const userProfileStr = localStorage.getItem('ngobras_user_profile');
-            const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
-            if (userId) {
-                await loadAdminMessagesFromDB(userId, adminId);
-            }
-        }
-    }
-    window._originalOpenChat(type, name, assistantId);
-};

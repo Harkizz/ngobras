@@ -354,6 +354,8 @@ async function subscribeToAdminMessages(userId, adminId) {
                     count++;
                     badge.textContent = count;
                     badge.style.display = 'inline-block';
+                } else if (!badge) {
+                    console.warn(`[Realtime][badge] Element not found for adminId: ${adminId}`);
                 }
             }
 
@@ -374,7 +376,6 @@ async function subscribeToAdminMessages(userId, adminId) {
             table: 'messages',
             filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
         }, async payload => {
-            console.log('[Realtime][payload][self]', payload);
             // Simpan pesan baru ke localStorage dua arah
             const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
             const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
@@ -388,17 +389,18 @@ async function subscribeToAdminMessages(userId, adminId) {
                 const isSent = payload.new.sender_id === userId;
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
+            } else {
+                // Logging pesan baru dari user sendiri (opsional, bisa dihapus jika hanya ingin log pesan masuk)
+                let senderName = payload.new.sender_id;
+                try {
+                    const res = await fetch(`/api/profiles/${payload.new.sender_id}`);
+                    if (res.ok) {
+                        const profile = await res.json();
+                        senderName = profile.full_name || profile.username || profile.email || senderName;
+                    }
+                } catch {}
+                console.log(`[new message] (${senderName}) : "${payload.new.content}"`);
             }
-            // Logging pesan baru dari user sendiri
-            let senderName = payload.new.sender_id;
-            try {
-                const res = await fetch(`/api/profiles/${payload.new.sender_id}`);
-                if (res.ok) {
-                    const profile = await res.json();
-                    senderName = profile.full_name || profile.username || profile.email || senderName;
-                }
-            } catch {}
-            console.log(`[new message] (${senderName}) : "${payload.new.content}"`);
         })
         .subscribe(status => {
             if (status === 'SUBSCRIBED') {
