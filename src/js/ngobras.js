@@ -720,7 +720,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     if (!config || !config.url || !config.anonKey) return;
 
-    const supabaseClient = supabase.createClient(config.url, config.anonKey);
+    // Inisialisasi client hanya sekali, simpan di window
+    if (!window.supabaseClient) {
+        window.supabaseClient = supabase.createClient(config.url, config.anonKey);
+    }
+    const supabaseClient = window.supabaseClient;
 
     // Check user session
     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -749,33 +753,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-    // Immediately check if user profile exists in the database
-    try {
-        const { data: profile, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+    // Setelah user login, simpan userId ke localStorage jika belum ada
+    let userProfileStr = localStorage.getItem('ngobras_user_profile');
+    if (!userProfileStr) {
+        localStorage.setItem('ngobras_user_profile', JSON.stringify(user));
+    }
 
-        if (profile) {
-            console.log('User profile exists:', profile);
-        } else {
-            console.log('User profile NOT found.');
-            // Log out the user session if profile not found
-            await supabaseClient.auth.signOut();
-            // Optionally, show the login modal or redirect
-            const modal = new bootstrap.Modal(document.getElementById('authModal'), {
-                backdrop: 'static',
-                keyboard: false
-            });
-            modal.show();
-            return;
-        }
-        if (error) {
-            console.log('Error checking user profile:', error);
-        }
-    } catch (err) {
-        console.log('Error during profile existence check:', err);
+    // Jika sudah ada adminId di localStorage, langsung subscribe
+    const adminId = localStorage.getItem('ngobras_current_admin_id');
+    if (adminId) {
+        await loadAdminMessagesFromDB(user.id, adminId);
+        renderAdminMessagesFromLocalStorage();
+        subscribeToAdminMessages(user.id, adminId);
     }
 });
 
@@ -1064,14 +1053,9 @@ document.addEventListener('DOMContentLoaded', function() {
 let chatSubscription = null;
 
 async function subscribeToAdminMessages(userId, adminId) {
+    // Pastikan client sudah ada
     if (!window.supabaseClient) {
-        const resp = await fetch('/api/supabase-config');
-        const config = await resp.json();
-        if (window.supabase && config.url && config.anonKey) {
-            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-        } else {
-            throw new Error('Supabase client not initialized');
-        }
+        throw new Error('Supabase client not initialized');
     }
     // Unsubscribe previous
     if (chatSubscription) {
