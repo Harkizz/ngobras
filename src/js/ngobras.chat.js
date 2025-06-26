@@ -329,31 +329,39 @@ async function subscribeToAdminMessages(userId, adminId) {
             table: 'messages',
             filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
         }, async payload => {
-            // Ambil nama sender (admin)
-            let senderName = 'Admin';
-            try {
-                const res = await fetch(`/api/profiles/${adminId}`);
-                if (res.ok) {
-                    const adminProfile = await res.json();
-                    senderName = adminProfile.full_name || adminProfile.username || senderName;
-                }
-            } catch (e) {}
-            // Logging pesan baru
-            console.log(`[new message] (${senderName}) : "${payload.new.content}"`);
+            // Simpan pesan baru ke localStorage dua arah
+            const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
+            const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
+            let messages1 = JSON.parse(localStorage.getItem(key1) || '[]');
+            let messages2 = JSON.parse(localStorage.getItem(key2) || '[]');
+            messages1.push(payload.new);
+            messages2.push(payload.new);
+            localStorage.setItem(key1, JSON.stringify(messages1));
+            localStorage.setItem(key2, JSON.stringify(messages2));
             // Render pesan baru jika chat aktif
             if (window.currentAdminId === adminId) {
                 const isSent = payload.new.sender_id === userId;
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
             }
+
+            // Logging pesan baru
+            let senderName = payload.new.sender_id;
+            try {
+                const res = await fetch(`/api/profiles/${payload.new.sender_id}`);
+                if (res.ok) {
+                    const profile = await res.json();
+                    senderName = profile.full_name || profile.username || profile.email || senderName;
+                }
+            } catch {}
+            console.log(`[new message] (${senderName}) : "${payload.new.content}"`);
         })
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
             table: 'messages',
             filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
-        }, payload => {
-            console.log('[Realtime] Sent message (user > admin):', payload);
+        }, async payload => {
             // Simpan pesan baru ke localStorage dua arah
             const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
             const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
@@ -368,6 +376,17 @@ async function subscribeToAdminMessages(userId, adminId) {
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
             }
+
+            // Logging pesan baru dari user sendiri (opsional, bisa dihapus jika hanya ingin log pesan masuk)
+            let senderName = payload.new.sender_id;
+            try {
+                const res = await fetch(`/api/profiles/${payload.new.sender_id}`);
+                if (res.ok) {
+                    const profile = await res.json();
+                    senderName = profile.full_name || profile.username || profile.email || senderName;
+                }
+            } catch {}
+            console.log(`[new message] (${senderName}) : "${payload.new.content}"`);
         })
         .subscribe(status => {
             if (status === 'SUBSCRIBED') {
