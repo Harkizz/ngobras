@@ -328,17 +328,18 @@ async function subscribeToAdminMessages(userId, adminId) {
             schema: 'public',
             table: 'messages',
             filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
-        }, payload => {
-            console.log('[Realtime] Received message (admin > user):', payload);
-            // Simpan pesan baru ke localStorage dua arah
-            const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
-            const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
-            let messages1 = JSON.parse(localStorage.getItem(key1) || '[]');
-            let messages2 = JSON.parse(localStorage.getItem(key2) || '[]');
-            messages1.push(payload.new);
-            messages2.push(payload.new);
-            localStorage.setItem(key1, JSON.stringify(messages1));
-            localStorage.setItem(key2, JSON.stringify(messages2));
+        }, async payload => {
+            // Ambil nama sender (admin)
+            let senderName = 'Admin';
+            try {
+                const res = await fetch(`/api/profiles/${adminId}`);
+                if (res.ok) {
+                    const adminProfile = await res.json();
+                    senderName = adminProfile.full_name || adminProfile.username || senderName;
+                }
+            } catch (e) {}
+            // Logging pesan baru
+            console.log(`[new message] (${senderName}) : "${payload.new.content}"`);
             // Render pesan baru jika chat aktif
             if (window.currentAdminId === adminId) {
                 const isSent = payload.new.sender_id === userId;
