@@ -267,6 +267,13 @@ sendMessage = function() {
     originalSendMessage.apply(this, arguments);
 };
 
+// Reset greetingDismissed when switching AI assistant
+const originalLoadAIMessages = loadAIMessages;
+loadAIMessages = function(assistantName) {
+    greetingDismissed = false;
+    originalLoadAIMessages.apply(this, arguments);
+};
+
 // Supabase
 if (!window.supabaseClient) {
     window.supabaseClient = null;

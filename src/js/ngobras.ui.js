@@ -405,13 +405,6 @@ function hideGreetingSphere() {
     anime.remove('#greetingSphereSVG');
 }
 
-// Reset greetingDismissed when switching AI assistant
-const originalLoadAIMessages = loadAIMessages;
-loadAIMessages = function(assistantName) {
-    greetingDismissed = false;
-    originalLoadAIMessages.apply(this, arguments);
-};
-
 function animateGreetingTyping(text) {
     const greetingText = document.getElementById('greetingText');
     if (!greetingText) return;
