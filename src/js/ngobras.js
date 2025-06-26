@@ -5,7 +5,7 @@ let chatHistory = {}; // Store chat messages for each assistant/admin
 
 // --- Memory helpers ---
 function getChatHistory(chatId) {
-    // Hanya untuk AI, bukan admin
+    // Hanya untuk AI
     if (chatId.startsWith('ai_')) {
         const key = `ngobras_chat_history_${chatId}`;
         const data = localStorage.getItem(key);
@@ -15,7 +15,7 @@ function getChatHistory(chatId) {
 }
 
 function saveChatMessage(chatId, text, isSent) {
-    // Hanya untuk AI, bukan admin
+    // Hanya untuk AI
     if (chatId.startsWith('ai_')) {
         const key = `ngobras_chat_history_${chatId}`;
         let history = getChatHistory(chatId);
@@ -36,7 +36,6 @@ function loadAIMessages(assistantName = currentChatName) {
     const messagesList = document.getElementById('messages-list');
     const chatId = `ai_${assistantName}`;
     const history = getChatHistory(chatId);
-
     if (messagesList) {
         messagesList.innerHTML = '';
         if (history.length > 0) {
@@ -70,17 +69,6 @@ function goBack() {
     }
 
     showPage('home');
-}
-
-function renderAdminMessages(messages, userId) {
-    const messagesList = document.getElementById('messages-list');
-    if (!messagesList) return;
-    messagesList.innerHTML = '';
-    messages.forEach(msg => {
-        const isSent = msg.sender_id === userId;
-        addMessage(msg.content, isSent);
-    });
-    scrollToBottom();
 }
 
 // Switch chat type
@@ -752,37 +740,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     let userProfileStr = localStorage.getItem('ngobras_user_profile');
     if (!userProfileStr) {
         localStorage.setItem('ngobras_user_profile', JSON.stringify(user));
-    }
-
-    // --- SUBSCRIBE REALTIME KE SEMUA ADMIN ---
-    try {
-        const adminResp = await fetch('/api/admins');
-        const admins = await adminResp.json();
-        if (Array.isArray(admins) && admins.length > 0) {
-            // Logging admin IDs
-            console.log('[NGOBRAS] Admin IDs:', admins.map(a => a.id));
-            // Import subscribeToAdminMessages dari ngobras.chat.js jika belum ada
-            if (typeof subscribeToAdminMessages === 'undefined') {
-                // Dynamic import jika perlu (untuk browser, pastikan sudah di-load di HTML)
-                console.warn('subscribeToAdminMessages belum terdefinisi! Pastikan ngobras.chat.js sudah di-load sebelum ngobras.js');
-            } else {
-                admins.forEach(admin => {
-                    subscribeToAdminMessages(user.id, admin.id)
-                        .then(() => console.log(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} success`))
-                        .catch(e => console.warn(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} FAILED:`, e));
-                });
-            }
-        } else {
-            console.warn('[NGOBRAS] Tidak ada admin ditemukan untuk subscribe realtime.');
-        }
-    } catch (e) {
-        console.error('[NGOBRAS] Gagal fetch admin list:', e);
-    }
-
-    // Tidak perlu subscribe lagi di openChat, cukup load pesan saja jika adminId sudah ada
-    const adminId = localStorage.getItem('ngobras_current_admin_id');
-    if (adminId) {
-        await loadAdminMessagesFromDB(user.id, adminId);
     }
 });
 
