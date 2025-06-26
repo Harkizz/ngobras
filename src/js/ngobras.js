@@ -1062,7 +1062,8 @@ async function subscribeToAdminMessages(userId, adminId) {
         await chatSubscription.unsubscribe();
         chatSubscription = null;
     }
-    // Supabase v2: Use .on('postgres_changes', ...) with column filter
+    // Logging subscription
+    console.log('[Realtime] Subscribing to messages for user:', userId, 'admin:', adminId);
     chatSubscription = window.supabaseClient
         .channel('messages')
         .on('postgres_changes', {
@@ -1071,10 +1072,16 @@ async function subscribeToAdminMessages(userId, adminId) {
             table: 'messages',
             filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
         }, payload => {
-            // Pesan baru dari admin ke user
-            loadAdminMessagesFromDB(userId, adminId).then(() => {
-                renderAdminMessagesFromLocalStorage();
-            });
+            console.log('[Realtime] Received message (admin > user):', payload);
+            // Simpan pesan baru ke localStorage
+            const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
+            let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+            messages.push(payload.new);
+            localStorage.setItem(chatKey, JSON.stringify(messages));
+            // Render pesan baru ke chat room
+            const isSent = payload.new.sender_id === userId;
+            addMessage(payload.new.content, isSent);
+            scrollToBottom();
         })
         .on('postgres_changes', {
             event: 'INSERT',
@@ -1082,12 +1089,24 @@ async function subscribeToAdminMessages(userId, adminId) {
             table: 'messages',
             filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
         }, payload => {
-            // Pesan baru dari user ke admin (jika ingin update juga)
-            loadAdminMessagesFromDB(userId, adminId).then(() => {
-                renderAdminMessagesFromLocalStorage();
-            });
+            console.log('[Realtime] Sent message (user > admin):', payload);
+            // Simpan pesan baru ke localStorage
+            const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
+            let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+            messages.push(payload.new);
+            localStorage.setItem(chatKey, JSON.stringify(messages));
+            // Render pesan baru ke chat room
+            const isSent = payload.new.sender_id === userId;
+            addMessage(payload.new.content, isSent);
+            scrollToBottom();
         })
-        .subscribe();
+        .subscribe(status => {
+            if (status === 'SUBSCRIBED') {
+                console.log('[Realtime] Subscription success');
+            } else {
+                console.warn('[Realtime] Subscription status:', status);
+            }
+        });
 }
 
 // Update openChat to subscribe realtime
