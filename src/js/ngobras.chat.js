@@ -2,56 +2,39 @@
 async function openChat(type, name, assistantId) {
     currentChatType = type;
     currentChatName = name;
-    if (type === 'ai') {
-        loadAIMessages(name);
-    } else {
-        // ADMIN CHAT: fetch dari Supabase, simpan ke localStorage, lalu render dari localStorage
-        let adminId = null;
-        try {
-            const res = await fetch('/api/admins');
-            const admins = await res.json();
-            const found = admins.find(a => (a.full_name || a.username) === name);
-            if (found) {
-                adminId = found.id;
-            }
-        } catch (e) {
-            console.error('Error fetching admins:', e);
-        }
-        window.currentAdminId = adminId;
-        if (adminId) {
-            localStorage.setItem('ngobras_current_admin_id', adminId);
-            const userProfileStr = localStorage.getItem('ngobras_user_profile');
-            const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
-            if (userId) {
-                await loadAdminMessagesFromDB(userId, adminId);
-                renderAdminMessagesFromLocalStorage();
-            } else {
-                console.log("User ID not found");
-            }
-        } else {
-            console.log("Admin ID not found");
-        }
-    }
-
     const chatNameEl = document.getElementById('current-chat-name');
     const avatar = document.getElementById('current-chat-avatar');
     const status = document.getElementById('current-chat-status');
     const messagesList = document.getElementById('messages-list');
     if (messagesList) messagesList.innerHTML = ''; // <-- Clear messages
-
     if (chatNameEl) chatNameEl.textContent = name;
-
     if (avatar && status) {
         if (type === 'ai') {
             avatar.className = 'chat-avatar ai';
             avatar.innerHTML = '<i class="fas fa-robot"></i>';
             status.textContent = 'AI Assistant - Online';
-                            renderAdminMessagesFromLocalStorage();
+            loadAIMessages(name);
         } else {
             avatar.className = 'chat-avatar admin';
             avatar.innerHTML = '<i class="fas fa-user-md"></i>';
             status.textContent = 'Online';
-                           renderAdminMessagesFromLocalStorage();
+            // Ambil userId dan adminId
+            const userProfileStr = localStorage.getItem('ngobras_user_profile');
+            const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
+            let adminId = null;
+            try {
+                const res = await fetch('/api/admins');
+                const admins = await res.json();
+                const found = admins.find(a => (a.full_name || a.username) === name);
+                if (found) {
+                    adminId = found.id;
+                }
+            } catch (e) { console.error('Error fetching admins:', e); }
+            window.currentAdminId = adminId;
+            if (userId && adminId) {
+                localStorage.setItem('ngobras_current_admin_id', adminId);
+                await loadAdminMessagesFromDB(userId, adminId);
+            }
         }
     }
 

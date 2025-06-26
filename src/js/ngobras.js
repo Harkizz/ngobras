@@ -5,23 +5,30 @@ let chatHistory = {}; // Store chat messages for each assistant/admin
 
 // --- Memory helpers ---
 function getChatHistory(chatId) {
-    const key = `ngobras_chat_history_${chatId}`;
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
+    // Hanya untuk AI, bukan admin
+    if (chatId.startsWith('ai_')) {
+        const key = `ngobras_chat_history_${chatId}`;
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : [];
+    }
+    return [];
 }
 
 function saveChatMessage(chatId, text, isSent) {
-    const key = `ngobras_chat_history_${chatId}`;
-    let history = getChatHistory(chatId);
-    history.push({
-        text: text,
-        isSent: isSent,
-        timestamp: new Date().toLocaleTimeString('id-ID', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        })
-    });
-    localStorage.setItem(key, JSON.stringify(history));
+    // Hanya untuk AI, bukan admin
+    if (chatId.startsWith('ai_')) {
+        const key = `ngobras_chat_history_${chatId}`;
+        let history = getChatHistory(chatId);
+        history.push({
+            text: text,
+            isSent: isSent,
+            timestamp: new Date().toLocaleTimeString('id-ID', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            })
+        });
+        localStorage.setItem(key, JSON.stringify(history));
+    }
 }
 
 // --- Load messages for AI chat ---
@@ -65,13 +72,9 @@ function goBack() {
     showPage('home');
 }
 
-function renderAdminMessagesFromLocalStorage() {
+function renderAdminMessages(messages, userId) {
     const messagesList = document.getElementById('messages-list');
-    const userProfileStr = localStorage.getItem('ngobras_user_profile');
-    const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
-    const adminId = localStorage.getItem('ngobras_current_admin_id');
-    const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
-    const messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+    if (!messagesList) return;
     messagesList.innerHTML = '';
     messages.forEach(msg => {
         const isSent = msg.sender_id === userId;
@@ -101,19 +104,20 @@ function switchToAI() {
 
 function switchToAdmin() {
     currentChatType = 'admin';
-    // ADMIN CHAT: render dari localStorage key baru
-    renderAdminMessagesFromLocalStorage();
-    
+    // Ambil userId dan adminId
+    const userProfileStr = localStorage.getItem('ngobras_user_profile');
+    const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
+    const adminId = localStorage.getItem('ngobras_current_admin_id');
+    if (userId && adminId) {
+        loadAdminMessagesFromDB(userId, adminId);
+    }
     // Update header
     const avatar = document.getElementById('current-chat-avatar');
     const status = document.getElementById('current-chat-status');
-    
     avatar.className = 'chat-avatar admin';
     avatar.innerHTML = '<i class="fas fa-user-md"></i>';
     document.getElementById('current-chat-name').textContent = currentChatName || 'Dr. Sarah Wijaya';
     status.textContent = 'Online';
-    
-    // Update switch buttons
     document.querySelector('.switch-btn.admin').classList.add('active');
     document.querySelector('.switch-btn.ai').classList.remove('active');
 }
@@ -208,7 +212,6 @@ function addAdminResponse(userMessage) {
 
 // Load messages for admin chat from Supabase
 async function loadAdminMessagesFromDB(userId, adminId) {
-    // Pastikan Supabase client sudah siap
     if (!window.supabaseClient) {
         const resp = await fetch('/api/supabase-config');
         const config = await resp.json();
@@ -218,23 +221,13 @@ async function loadAdminMessagesFromDB(userId, adminId) {
             throw new Error('Supabase client not initialized');
         }
     }
-    // Query pesan antara user dan admin (dua arah)
     const { data: messages, error } = await window.supabaseClient
         .from('messages')
         .select('*')
         .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
         .order('created_at', { ascending: true });
     if (error) throw error;
-
-    // Simpan ke localStorage (dua key: user-admin dan admin-user)
-    const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
-    const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
-    localStorage.setItem(key1, JSON.stringify(messages));
-    localStorage.setItem(key2, JSON.stringify(messages));
-
-    // Render ke UI jika perlu
-    // ...render logic...
-    console.log('Messages between user and admin:', messages);
+    renderAdminMessages(messages, userId);
 }   
 
         // Emoji Picker Data (a subset of standard emojis, you can expand this)
@@ -763,7 +756,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const adminId = localStorage.getItem('ngobras_current_admin_id');
     if (adminId) {
         await loadAdminMessagesFromDB(user.id, adminId);
-        renderAdminMessagesFromLocalStorage();
         // subscribeToAdminMessages(user.id, adminId);
     }
 });
@@ -1130,7 +1122,6 @@ window.openChat = async function(type, name, assistantId) {
             const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
             if (userId) {
                 await loadAdminMessagesFromDB(userId, adminId);
-                renderAdminMessagesFromLocalStorage();
                 // subscribeToAdminMessages(userId, adminId); // SUBSCRIBE REALTIME
             }
         }
