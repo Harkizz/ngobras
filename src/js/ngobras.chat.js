@@ -343,6 +343,11 @@ async function subscribeToAdminMessages(userId, adminId) {
                 const isSent = payload.new.sender_id === userId;
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
+            } else {
+                // Tampilkan badge unread pada daftar admin
+                const badge = document.querySelector(`.unread-count[data-admin-id='${adminId}']`);
+                if (badge) badge.style.display = 'inline-block';
+                // Optionally, tambahkan efek animasi
             }
 
             // Logging pesan baru
@@ -397,16 +402,22 @@ async function subscribeToAdminMessages(userId, adminId) {
         });
 }
 
-// HAPUS PATCH openChat subscribe realtime agar tidak double
-// const _originalOpenChat = openChat;
-// openChat = async function(type, name, assistantId) {
-//     await _originalOpenChat(type, name, assistantId);
-//     if (type !== 'ai') {
-//         const userProfileStr = localStorage.getItem('ngobras_user_profile');
-//         const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
-//         const adminId = localStorage.getItem('ngobras_current_admin_id');
-//         if (userId && adminId) {
-//             subscribeToAdminMessages(userId, adminId);
-//         }
-//     }
-// };
+// Patch openChat agar reset badge unread saat user buka chat admin
+const _originalOpenChat = openChat;
+openChat = async function(type, name, assistantId) {
+    await _originalOpenChat(type, name, assistantId);
+    if (type === 'admin') {
+        // Cari adminId dari name
+        let adminId = null;
+        try {
+            const res = await fetch('/api/admins');
+            const admins = await res.json();
+            const found = admins.find(a => (a.full_name || a.username) === name);
+            if (found) adminId = found.id;
+        } catch {}
+        if (adminId) {
+            const badge = document.querySelector(`.unread-count[data-admin-id='${adminId}']`);
+            if (badge) badge.style.display = 'none';
+        }
+    }
+};

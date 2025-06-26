@@ -394,6 +394,7 @@ async function loadAdminList() {
     admins.forEach(admin => {
         const adminCard = document.createElement('div');
         adminCard.className = 'chat-item';
+        adminCard.setAttribute('data-admin-id', admin.id);
         adminCard.onclick = () => openChat('admin', admin.full_name || admin.username);
         
         adminCard.innerHTML = `
@@ -412,6 +413,7 @@ async function loadAdminList() {
             </div>
             <div class="chat-meta">
                 <span class="chat-status">Available</span>
+                <span class="unread-count" style="display:none;" data-admin-id="${admin.id}">●</span>
             </div>
         `;
         
