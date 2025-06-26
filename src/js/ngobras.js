@@ -755,23 +755,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // --- SUBSCRIBE REALTIME KE SEMUA ADMIN ---
+    // Dihapus: subscribeToAdminMessages di sini, cukup load pesan saja
     try {
         const adminResp = await fetch('/api/admins');
         const admins = await adminResp.json();
         if (Array.isArray(admins) && admins.length > 0) {
             // Logging admin IDs
             console.log('[NGOBRAS] Admin IDs:', admins.map(a => a.id));
-            // Import subscribeToAdminMessages dari ngobras.chat.js jika belum ada
-            if (typeof subscribeToAdminMessages === 'undefined') {
-                // Dynamic import jika perlu (untuk browser, pastikan sudah di-load di HTML)
-                console.warn('subscribeToAdminMessages belum terdefinisi! Pastikan ngobras.chat.js sudah di-load sebelum ngobras.js');
-            } else {
-                admins.forEach(admin => {
-                    subscribeToAdminMessages(user.id, admin.id)
-                        .then(() => console.log(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} success`))
-                        .catch(e => console.warn(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} FAILED:`, e));
-                });
-            }
+            // Tidak perlu subscribeToAdminMessages di sini, cukup load pesan saja
         } else {
             console.warn('[NGOBRAS] Tidak ada admin ditemukan untuk subscribe realtime.');
         }

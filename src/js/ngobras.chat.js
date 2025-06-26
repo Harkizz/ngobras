@@ -329,6 +329,7 @@ async function subscribeToAdminMessages(userId, adminId) {
             table: 'messages',
             filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
         }, async payload => {
+            console.log('[Realtime][payload]', payload);
             // Simpan pesan baru ke localStorage dua arah
             const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
             const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
@@ -343,10 +344,12 @@ async function subscribeToAdminMessages(userId, adminId) {
                 const isSent = payload.new.sender_id === userId;
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
-            } else if (payload.new.is_read === false) {
-                // Tampilkan badge unread pada daftar admin, tambah jumlah
+            } else {
+                // Logging badge logic
+                console.log('[Realtime][badge-check] is_read:', payload.new.is_read, 'adminId:', adminId);
                 const badge = document.querySelector(`.unread-count[data-admin-id='${adminId}']`);
-                if (badge) {
+                console.log('[Realtime][badge-element]', badge);
+                if (payload.new.is_read === false && badge) {
                     let count = parseInt(badge.textContent) || 0;
                     count++;
                     badge.textContent = count;
@@ -371,6 +374,7 @@ async function subscribeToAdminMessages(userId, adminId) {
             table: 'messages',
             filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
         }, async payload => {
+            console.log('[Realtime][payload][self]', payload);
             // Simpan pesan baru ke localStorage dua arah
             const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
             const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
@@ -385,8 +389,7 @@ async function subscribeToAdminMessages(userId, adminId) {
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
             }
-
-            // Logging pesan baru dari user sendiri (opsional, bisa dihapus jika hanya ingin log pesan masuk)
+            // Logging pesan baru dari user sendiri
             let senderName = payload.new.sender_id;
             try {
                 const res = await fetch(`/api/profiles/${payload.new.sender_id}`);
