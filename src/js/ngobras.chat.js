@@ -1,5 +1,9 @@
 // Open chat
-async function openChat(type, name, assistantId) {
+import { currentChatType, currentChatName, getChatHistory, saveChatMessage, loadAIMessages, formatAIResponse } from './ngobras.js';
+import { showPage } from './ngobras.navigation.js';
+import { scrollToBottom } from './ngobras.utils.js';
+
+export async function openChat(type, name, assistantId) {
     currentChatType = type;
     currentChatName = name;
     const chatNameEl = document.getElementById('current-chat-name');
@@ -57,7 +61,7 @@ async function openChat(type, name, assistantId) {
     localStorage.setItem('ngobras_last_chat', JSON.stringify({ type, name }));
 }
 
-function switchToAdmin() {
+export function switchToAdmin() {
     currentChatType = 'admin';
     // Ambil userId dan adminId
     const userProfileStr = localStorage.getItem('ngobras_user_profile');
@@ -78,7 +82,7 @@ function switchToAdmin() {
 }
 
 // Send message (restore AI memory logic)
-async function sendMessage() {
+export async function sendMessage() {
     const input = document.getElementById('messageInput');
     const message = input.value.trim();
     const photo = window._ngobrasPhotoPreview;
@@ -241,7 +245,7 @@ async function sendMessage() {
 }
 
 // Add message to chat
-function addMessage(text, isSent = false) {
+export function addMessage(text, isSent = false) {
     const messagesList = document.getElementById('messages-list');
     const messageDiv = document.createElement('div');
     const currentTime = new Date().toLocaleTimeString('id-ID', { 
@@ -310,7 +314,7 @@ function addMessage(text, isSent = false) {
 }
 
 // Update goToLastChat to use the animation
-function goToLastChat() {
+export function goToLastChat() {
     const lastChat = localStorage.getItem('ngobras_last_chat');
     if (lastChat) {
         try {
@@ -326,7 +330,7 @@ function goToLastChat() {
 
 let chatSubscription = null;
 
-async function subscribeToAdminMessages(userId, adminId) {
+export async function subscribeToAdminMessages(userId, adminId) {
     if (!window.supabaseClient) {
         const resp = await fetch('/api/supabase-config');
         const config = await resp.json();
@@ -455,7 +459,7 @@ openChat = async function(type, name, assistantId) {
 };
 
 // Load messages for admin chat from Supabase
-async function loadAdminMessagesFromDB(userId, adminId) {
+export async function loadAdminMessagesFromDB(userId, adminId) {
     if (!window.supabaseClient) {
         const resp = await fetch('/api/supabase-config');
         const config = await resp.json();
@@ -474,8 +478,24 @@ async function loadAdminMessagesFromDB(userId, adminId) {
     renderAdminMessages(messages, userId);
 } 
 
+// Render admin messages from DB to chat UI
+export function renderAdminMessages(messages, userId) {
+    const messagesList = document.getElementById('messages-list');
+    if (!messagesList) return;
+    messagesList.innerHTML = '';
+    if (!Array.isArray(messages) || messages.length === 0) {
+        messagesList.innerHTML = '<div class="no-messages">Belum ada pesan.</div>';
+        return;
+    }
+    messages.forEach(msg => {
+        const isSent = msg.sender_id === userId;
+        addMessage(msg.content, isSent);
+    });
+    scrollToBottom();
+}
+
 // Load Admins
-async function loadAdminList() {
+export async function loadAdminList() {
     const adminListContainer = document.getElementById('admin-list');
     const skeleton = document.getElementById('admin-list-skeleton');
     if (skeleton) skeleton.style.display = 'block';
