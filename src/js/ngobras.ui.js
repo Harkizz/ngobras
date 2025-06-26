@@ -280,7 +280,7 @@ function animateChatPageOpen(callback) {
 }
 
 // Show greeting sphere animation
-function showGreetingSphere(assistantName) {
+export function showGreetingSphere(assistantName) {
     const greetingContainer = document.getElementById('greeting-sphere');
     const greetingText = document.getElementById('greetingText');
     const svg = document.getElementById('greetingSphereSVG');
@@ -398,7 +398,7 @@ function showGreetingSphere(assistantName) {
 }
 
 // Hide greeting sphere animation
-function hideGreetingSphere() {
+export function hideGreetingSphere() {
     const greetingContainer = document.getElementById('greeting-sphere');
     if (greetingContainer) {
         greetingContainer.style.display = 'none';
