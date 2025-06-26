@@ -752,11 +752,35 @@ document.addEventListener('DOMContentLoaded', async function() {
         localStorage.setItem('ngobras_user_profile', JSON.stringify(user));
     }
 
-    // Jika sudah ada adminId di localStorage, langsung subscribe
+    // --- SUBSCRIBE REALTIME KE SEMUA ADMIN ---
+    try {
+        const adminResp = await fetch('/api/admins');
+        const admins = await adminResp.json();
+        if (Array.isArray(admins) && admins.length > 0) {
+            // Logging admin IDs
+            console.log('[NGOBRAS] Admin IDs:', admins.map(a => a.id));
+            // Import subscribeToAdminMessages dari ngobras.chat.js jika belum ada
+            if (typeof subscribeToAdminMessages === 'undefined') {
+                // Dynamic import jika perlu (untuk browser, pastikan sudah di-load di HTML)
+                console.warn('subscribeToAdminMessages belum terdefinisi! Pastikan ngobras.chat.js sudah di-load sebelum ngobras.js');
+            } else {
+                admins.forEach(admin => {
+                    subscribeToAdminMessages(user.id, admin.id)
+                        .then(() => console.log(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} success`))
+                        .catch(e => console.warn(`[NGOBRAS] Subscribe realtime ke admin ${admin.id} FAILED:`, e));
+                });
+            }
+        } else {
+            console.warn('[NGOBRAS] Tidak ada admin ditemukan untuk subscribe realtime.');
+        }
+    } catch (e) {
+        console.error('[NGOBRAS] Gagal fetch admin list:', e);
+    }
+
+    // Tidak perlu subscribe lagi di openChat, cukup load pesan saja jika adminId sudah ada
     const adminId = localStorage.getItem('ngobras_current_admin_id');
     if (adminId) {
         await loadAdminMessagesFromDB(user.id, adminId);
-        // subscribeToAdminMessages(user.id, adminId);
     }
 });
 
@@ -1122,7 +1146,6 @@ window.openChat = async function(type, name, assistantId) {
             const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
             if (userId) {
                 await loadAdminMessagesFromDB(userId, adminId);
-                // subscribeToAdminMessages(userId, adminId); // SUBSCRIBE REALTIME
             }
         }
     }

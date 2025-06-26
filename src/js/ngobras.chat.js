@@ -397,16 +397,16 @@ async function subscribeToAdminMessages(userId, adminId) {
         });
 }
 
-// Patch openChat agar subscribe realtime hanya di sini
-const _originalOpenChat = openChat;
-openChat = async function(type, name, assistantId) {
-    await _originalOpenChat(type, name, assistantId);
-    if (type !== 'ai') {
-        const userProfileStr = localStorage.getItem('ngobras_user_profile');
-        const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
-        const adminId = localStorage.getItem('ngobras_current_admin_id');
-        if (userId && adminId) {
-            subscribeToAdminMessages(userId, adminId);
-        }
-    }
-};
+// HAPUS PATCH openChat subscribe realtime agar tidak double
+// const _originalOpenChat = openChat;
+// openChat = async function(type, name, assistantId) {
+//     await _originalOpenChat(type, name, assistantId);
+//     if (type !== 'ai') {
+//         const userProfileStr = localStorage.getItem('ngobras_user_profile');
+//         const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
+//         const adminId = localStorage.getItem('ngobras_current_admin_id');
+//         if (userId && adminId) {
+//             subscribeToAdminMessages(userId, adminId);
+//         }
+//     }
+// };
