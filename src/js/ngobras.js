@@ -256,6 +256,17 @@ openChat = function(type, name) {
     }
 };
 
+// Hide greeting when user sends first message in AI chat
+const originalSendMessage = sendMessage;
+let greetingDismissed = false;
+sendMessage = function() {
+    if (currentChatType === 'ai' && !greetingDismissed) {
+        hideGreetingSphere();
+        greetingDismissed = true;
+    }
+    originalSendMessage.apply(this, arguments);
+};
+
 // Supabase
 if (!window.supabaseClient) {
     window.supabaseClient = null;

@@ -405,17 +405,6 @@ function hideGreetingSphere() {
     anime.remove('#greetingSphereSVG');
 }
 
-// Hide greeting when user sends first message in AI chat
-const originalSendMessage = sendMessage;
-let greetingDismissed = false;
-sendMessage = function() {
-    if (currentChatType === 'ai' && !greetingDismissed) {
-        hideGreetingSphere();
-        greetingDismissed = true;
-    }
-    originalSendMessage.apply(this, arguments);
-};
-
 // Reset greetingDismissed when switching AI assistant
 const originalLoadAIMessages = loadAIMessages;
 loadAIMessages = function(assistantName) {
