@@ -1,8 +1,8 @@
 // Check if running in development mode
-const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+export const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
 // Register service worker and handle notifications
-async function initializeApp() {
+export async function initializeApp() {
     try {
         if ('serviceWorker' in navigator) {
             // Register new service worker
@@ -41,7 +41,7 @@ async function initializeApp() {
 let deferredPrompt = null;
 
 // Update isPWAInstalled function
-async function isPWAInstalled() {
+export async function isPWAInstalled() {
     // Check if running in standalone mode
     if (window.matchMedia('(display-mode: standalone)').matches || 
         window.navigator.standalone) {

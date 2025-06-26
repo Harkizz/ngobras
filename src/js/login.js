@@ -1,71 +1,73 @@
 // Initialize Supabase client
-let supabaseClient;
+export let supabaseClient;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Fetch Supabase config from backend
-    const resp = await fetch('/api/supabase-config');
-    const config = await resp.json();
-    supabaseClient = supabase.createClient(config.url, config.anonKey);
-});
+export function initializeLogin() {
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Fetch Supabase config from backend
+        const resp = await fetch('/api/supabase-config');
+        const config = await resp.json();
+        supabaseClient = supabase.createClient(config.url, config.anonKey);
+    });
 
-document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const email = params.get('email');
-    if (email) document.getElementById('email').value = email;
-});
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const email = params.get('email');
+        if (email) document.getElementById('email').value = email;
+    });
 
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
 
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
 
-    if (!email || !password) return;
+        if (!email || !password) return;
 
-    const button = e.target.querySelector('.btn-login');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Masuk...';
-    button.disabled = true;
+        const button = e.target.querySelector('.btn-login');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Masuk...';
+        button.disabled = true;
 
-    try {
-        // Try to sign in with Supabase
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email,
-            password
-        });
+        try {
+            // Try to sign in with Supabase
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
 
-        if (data.user) {
-            // Ambil profil user dari Supabase
-            const { data: profile, error: profileError } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('id', data.user.id)
-                .single();
-            if (!profileError && profile) {
-                localStorage.setItem('ngobras_user_profile', JSON.stringify(profile));
-            }
-            // Login successful
-            showAlert('Login berhasil! Redirecting...', 'success');
-            setTimeout(() => {
-                window.location.href = '/ngobras';
-            }, 1200);
-        } else {
-            // Jika error karena email tidak terdaftar (Bad Request dari Supabase)
-            if (error && error.status === 400 && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
-                showEmailNotRegisteredModal(email, password);
-            } else if (error && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
-                showAlert('Wrong password, please try again.', 'danger');
+            if (data.user) {
+                // Ambil profil user dari Supabase
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .single();
+                if (!profileError && profile) {
+                    localStorage.setItem('ngobras_user_profile', JSON.stringify(profile));
+                }
+                // Login successful
+                showAlert('Login berhasil! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/ngobras';
+                }, 1200);
             } else {
-                showAlert('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                // Jika error karena email tidak terdaftar (Bad Request dari Supabase)
+                if (error && error.status === 400 && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
+                    showEmailNotRegisteredModal(email, password);
+                } else if (error && error.message && error.message.toLowerCase().includes('invalid login credentials')) {
+                    showAlert('Wrong password, please try again.', 'danger');
+                } else {
+                    showAlert('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                }
             }
+        } catch (err) {
+            showAlert('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+        } finally {
+            button.innerHTML = originalText;
+            button.disabled = false;
         }
-    } catch (err) {
-        showAlert('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-    } finally {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }
-});
+    });
+}
 
 // Fungsi untuk menampilkan modal email belum terdaftar
 function showEmailNotRegisteredModal(email, password) {
@@ -95,7 +97,7 @@ function showAlert(message, type = 'info') {
     }, 3000);
 }
 
-function showSignup() {
+export function showSignup() {
     window.location.href = '/signup.html';
 }
 

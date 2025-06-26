@@ -1,5 +1,5 @@
 // Navigation
-function showPage(page) {
+export function showPage(page) {
     // First check if nav items exist before trying to modify them
     const navItems = document.querySelectorAll('.nav-item');
     const bottomNav = document.querySelector('.bottom-nav');

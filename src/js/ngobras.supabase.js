@@ -1,5 +1,5 @@
 // Wait for Supabase library to be loaded before running the rest of the code
-function waitForSupabase(retries = 10, delay = 200) {
+export function waitForSupabase(retries = 10, delay = 200) {
     return new Promise((resolve, reject) => {
         function check() {
             if (typeof supabase !== 'undefined') {
@@ -14,7 +14,7 @@ function waitForSupabase(retries = 10, delay = 200) {
     });
 }
 
-async function initializeSupabase() {
+export async function initializeSupabase() {
     try {
         await waitForSupabase();
         if (!window.supabaseClient) {
@@ -42,7 +42,7 @@ async function initializeSupabase() {
 }
 
 // Load user profile
-async function loadUserProfile(userId) {
+export async function loadUserProfile(userId) {
     try {
         showProfileLoading(true);
 
@@ -89,7 +89,7 @@ async function loadUserProfile(userId) {
 }
 
 // Update profile UI
-function updateProfileUI(profile) {
+export function updateProfileUI(profile) {
     // Update basic info
     document.getElementById('profileName').textContent = profile.full_name || 'No Name Set';
     document.getElementById('profileEmail').textContent = profile.email || '';
@@ -109,7 +109,7 @@ function updateProfileUI(profile) {
 }
 
 // Update profile statistics
-function updateProfileStats(chatStats) {
+export function updateProfileStats(chatStats) {
     if (!chatStats) return;
     
     // Update total chats
@@ -123,7 +123,7 @@ function updateProfileStats(chatStats) {
 }
 
 // Add this function to handle profile updates
-async function updateProfile(data) {
+export async function updateProfile(data) {
     try {
         const { data: profile, error } = await supabaseClient
             .from('profiles')
@@ -141,7 +141,7 @@ async function updateProfile(data) {
 }
 
 // Show/hide loading state
-function showProfileLoading(show) {
+export function showProfileLoading(show) {
     document.getElementById('profileLoading').style.display = show ? 'block' : 'none';
     document.getElementById('profileContent').style.display = show ? 'none' : 'block';
 }

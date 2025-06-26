@@ -1,18 +1,20 @@
 // Identity check before loading admin.html
-(function() {
-    // Use unique variable names to avoid redeclaration
-    const _adminId = localStorage.getItem('ngobras_admin_id');
-    const _adminEmail = localStorage.getItem('ngobras_admin_email');
+export function identityCheck() {
+    (function() {
+        // Use unique variable names to avoid redeclaration
+        const _adminId = localStorage.getItem('ngobras_admin_id');
+        const _adminEmail = localStorage.getItem('ngobras_admin_email');
 
-    if (!_adminId || !_adminEmail) {
-        // Not logged in, redirect to check_status.html first
-        window.location.replace('check_status.html');
-        throw new Error('Redirecting to check_status.html for identity check.');
-    }
-    // Optionally, you can add further validation here (e.g., check token/session)
-})();
+        if (!_adminId || !_adminEmail) {
+            // Not logged in, redirect to check_status.html first
+            window.location.replace('check_status.html');
+            throw new Error('Redirecting to check_status.html for identity check.');
+        }
+        // Optionally, you can add further validation here (e.g., check token/session)
+    })();
+}
 
-function toggleSidebar() {
+export function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
             
@@ -24,7 +26,7 @@ function toggleSidebar() {
             }
         }
 
-        function showSection(sectionName) {
+export function showSection(sectionName) {
             // Hide all sections
             const sections = document.querySelectorAll('.content-section');
             sections.forEach(section => {
@@ -315,7 +317,7 @@ async function openAdminChatRoom(userId) {
     }, 200);
 }
 
-function backToUserList() {
+export function backToUserList() {
     // Hapus ngobras_current_user_id dari localStorage
     if (localStorage.getItem('ngobras_current_user_id')) {
         localStorage.removeItem('ngobras_current_user_id');

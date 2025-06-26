@@ -1,21 +1,23 @@
 // Initialize Supabase client
-let supabaseClient;
+export let supabaseClient;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // Fetch Supabase configuration from server
-        const response = await fetch('/api/supabase-config');
-        const config = await response.json();
-        
-        // Initialize Supabase client
-        supabaseClient = supabase.createClient(config.url, config.anonKey);
-        
-        console.log('Supabase initialized successfully');
-    } catch (error) {
-        console.error('Failed to initialize Supabase:', error);
-        showAlert('Error initializing application', 'danger');
-    }
-});
+export function initializeSupabaseSignup() {
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // Fetch Supabase configuration from server
+            const response = await fetch('/api/supabase-config');
+            const config = await response.json();
+            
+            // Initialize Supabase client
+            supabaseClient = supabase.createClient(config.url, config.anonKey);
+            
+            console.log('Supabase initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize Supabase:', error);
+            showAlert('Error initializing application', 'danger');
+        }
+    });
+}
 
 // Password strength checker
 document.getElementById('password').addEventListener('input', function() {

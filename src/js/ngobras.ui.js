@@ -1,10 +1,13 @@
-       // Emoji Picker Data (a subset of standard emojis, you can expand this)
+import { currentChatType } from './ngobras.js';
+import { scrollToBottom } from './ngobras.utils.js';
+
+// Emoji Picker Data (a subset of standard emojis, you can expand this)
 const EMOJI_LIST = [
     "😀","😁","😂","🤣","😃","😄","😅","😆","😉","😊","😋","😎","😍","😘","🥰","😗","😙","😚","🙂","🤗","🤩","🤔","🤨","😐","😑","😶","🙄","😏","😣","😥","😮","🤐","😯","😪","😫","🥱","😴","😌","😛","😜","😝","🤤","😒","😓","😔","😕","🙃","🤑","😲","☹️","🙁","😖","😞","😟","😤","😢","😭","😦","😧","😨","😩","🤯","😬","😰","😱","🥵","🥶","😳","🤪","😵","😡","😠","🤬","😷","🤒","🤕","🤢","🤮","🥴","😇","🥳","🥺","🤠","🤡","🤥","🤫","🤭","🧐","🤓","😈","👿","👹","👺","💀","👻","👽","🤖","💩","😺","😸","😹","😻","😼","😽","🙀","😿","😾"
 ];
 
 // Typing indicator
-function showTypingIndicator() {
+export function showTypingIndicator() {
     let indicator = document.getElementById('typing-indicator');
     if (!indicator) {
         indicator = document.createElement('div');
@@ -61,7 +64,7 @@ function showTypingIndicator() {
     scrollToBottom();
 }
 
-function hideTypingIndicator() {
+export function hideTypingIndicator() {
     const indicator = document.getElementById('typing-indicator');
     if (indicator && indicator.parentNode) {
         indicator.style.display = 'none';
@@ -70,14 +73,14 @@ function hideTypingIndicator() {
 }
 
 // Handle enter key
-function handleKeyPress(event) {
+export function handleKeyPress(event) {
     if (event.key === 'Enter') {
         sendMessage();
     }
 }     
 
 // Show/hide emoji picker
-function toggleEmoji() {
+export function toggleEmoji() {
     const picker = document.getElementById('emoji-picker');
     if (!picker) return;
     if (picker.style.display === 'none' || picker.style.display === '') {

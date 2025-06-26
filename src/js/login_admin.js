@@ -1,5 +1,5 @@
 // Wait for Supabase library to be loaded before running the rest of the code
-function waitForSupabase(retries = 10, delay = 200) {
+export function waitForSupabase(retries = 10, delay = 200) {
     return new Promise((resolve, reject) => {
         function check() {
             if (typeof supabase !== 'undefined') {
