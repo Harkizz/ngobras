@@ -335,6 +335,14 @@
             transform: translateY(-2px);
         }
 
+        .btn-secondary {
+            background: #e0e0e0 !important;
+            color: #888 !important;
+            border: none !important;
+            cursor: not-allowed !important;
+            /* Tombol abu-abu dan tidak aktif */
+        }
+
         .recent-activity {
             max-height: 400px;
             overflow-y: auto;

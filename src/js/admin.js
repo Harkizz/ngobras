@@ -225,10 +225,14 @@ async function loadAdminChatMessages(userId) {
     }
 
     try {
-        const res = await fetch(`/api/messages/${userId}/${adminId}`);
-        if (!res.ok) throw new Error('Gagal memuat pesan');
-        const messages = await res.json();
+        // Fetch langsung dari Supabase client-side (bukan endpoint backend)
+        const { data: messages, error } = await supabaseClient
+            .from('messages')
+            .select('*')
+            .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
+            .order('created_at', { ascending: true });
 
+        if (error) throw new Error(error.message);
         if (!Array.isArray(messages) || messages.length === 0) {
             chatDiv.innerHTML = '<div class="text-muted">Belum ada pesan.</div>';
             return;
@@ -254,6 +258,44 @@ async function loadAdminChatMessages(userId) {
 
 // When opening a chat room, call the loader
 async function openAdminChatRoom(userId) {
+    const adminId = localStorage.getItem('ngobras_admin_id');
+    if (!adminId) {
+        console.log('adminId tidak ditemukan');
+        return;
+    }
+    if (!userId) {
+        console.log('userId tidak ditemukan');
+        return;
+    }
+    // Simpan userId ke localStorage
+    localStorage.setItem('ngobras_current_user_id', userId);
+    console.log('userId didapatkan:', userId);
+
+    // Fetch messages langsung dari Supabase client
+    try {
+        // Pastikan window.supabase sudah ada (CDN: https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2)
+        if (typeof window.supabase === 'undefined') {
+            throw new Error('Supabase JS library belum dimuat. Pastikan <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> sudah ada sebelum admin.js!');
+        }
+        if (typeof window.supabaseClient === 'undefined') {
+            const resp = await fetch('/api/supabase-config');
+            const config = await resp.json();
+            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+        }
+        const { data: messages, error } = await window.supabaseClient
+            .from('messages')
+            .select('*')
+            .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
+            .order('created_at', { ascending: true });
+
+        if (error) throw new Error(error.message);
+        if (!Array.isArray(messages)) throw new Error('Format messages tidak valid');
+        localStorage.setItem('ngobras_current_messages', JSON.stringify(messages));
+        console.log('Messages berhasil di-fetch dan disimpan ke localStorage.');
+    } catch (err) {
+        console.error('Gagal fetch messages:', err.message);
+    }
+
     document.getElementById('messages-section').style.display = 'none';
     document.getElementById('admin-chat-section').style.display = 'block';
 
@@ -274,21 +316,119 @@ async function openAdminChatRoom(userId) {
 }
 
 function backToUserList() {
+    // Hapus ngobras_current_user_id dari localStorage
+    if (localStorage.getItem('ngobras_current_user_id')) {
+        localStorage.removeItem('ngobras_current_user_id');
+        console.log('userId dikembalikan');
+    }
     document.getElementById('admin-chat-section').style.display = 'none';
     document.getElementById('messages-section').style.display = 'block';
 }
 
-// Handle sending message
-document.getElementById('admin-chat-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const input = document.getElementById('admin-chat-input');
-    const message = input.value.trim();
-    if (!message) return;
-    // TODO: Send message to backend here
-    // For now, just append to chat
-    const chatDiv = document.getElementById('admin-chat-messages');
-    const msgHtml = `<div class="mb-2 text-end"><span class="badge bg-primary">${message}</span></div>`;
-    chatDiv.innerHTML += msgHtml;
-    input.value = '';
-    chatDiv.scrollTop = chatDiv.scrollHeight;
-});
+// --- ADMIN CHAT MESSAGE SENDING SYSTEM ---
+
+// Helper: Validate input (not empty, not just whitespace)
+function validateAdminChatInput(input) {
+    return input && input.trim().length > 0;
+}
+
+// Helper: Log admin message actions
+function logAdminMessageAction(success, adminName, userName, error) {
+    const msg = success
+        ? `${adminName} successfully sent a message to ${userName}`
+        : `${adminName} failed to send a message to ${userName}`;
+    if (success) {
+        console.log(msg);
+    } else {
+        console.error(msg + (error ? `: ${error}` : ''));
+    }
+    adminUILog(msg + (error ? `: ${error}` : ''), success ? 'success' : 'error');
+}
+
+// Helper: Send message to Supabase 'messages' table
+async function sendAdminMessageToUser({ senderId, receiverId, content }) {
+    try {
+        if (!window.supabaseClient) {
+            throw new Error('Supabase client not initialized');
+        }
+        // Adapt to your messages table structure
+        const { data, error, status } = await window.supabaseClient
+            .from('messages')
+            .insert([
+                {
+                    sender_id: senderId,
+                    receiver_id: receiverId,
+                    content: content,
+                    // Add other required fields if needed (e.g., is_read, created_at)
+                }
+            ]);
+        if (error) throw error;
+        return { success: true, data, status };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+}
+
+// Event: Enable send button only if input is valid
+const adminChatInput = document.getElementById('admin-chat-input');
+const sendBtn = document.getElementById('sendBtn');
+if (adminChatInput && sendBtn) {
+    adminChatInput.addEventListener('input', function() {
+        sendBtn.disabled = !validateAdminChatInput(adminChatInput.value);
+    });
+}
+
+// Event: Handle send button (form submit)
+const adminChatForm = document.getElementById('admin-chat-form');
+if (adminChatForm) {
+    adminChatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const content = adminChatInput.value;
+        if (!validateAdminChatInput(content)) {
+            logAdminMessageAction(false, 'Admin', currentChatUserName, 'Input kosong');
+            return;
+        }
+        const senderId = localStorage.getItem('ngobras_admin_id');
+        const receiverId = localStorage.getItem('ngobras_current_user_id');
+        const adminName = localStorage.getItem('ngobras_admin_email') || 'Admin';
+        try {
+            const result = await sendAdminMessageToUser({ senderId, receiverId, content });
+            if (result.success) {
+                logAdminMessageAction(true, adminName, currentChatUserName);
+                adminChatInput.value = '';
+                sendBtn.disabled = true;
+                // Reload chat messages
+                loadAdminChatMessages(receiverId);
+            } else {
+                logAdminMessageAction(false, adminName, currentChatUserName, result.error);
+            }
+        } catch (err) {
+            logAdminMessageAction(false, adminName, currentChatUserName, err.message);
+        }
+    });
+}
+
+// Utility: Log to both console and UI log panel
+function adminUILog(message, type = 'info') {
+    const logPanel = document.getElementById('admin-log-messages');
+    if (logPanel) {
+        const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const entry = document.createElement('div');
+        entry.textContent = `[${time}] ${message}`;
+        entry.style.marginBottom = '2px';
+        if (type === 'error') entry.style.color = '#ff6b6b';
+        if (type === 'success') entry.style.color = '#4caf50';
+        logPanel.appendChild(entry);
+        // Scroll to bottom
+        logPanel.parentElement.scrollTop = logPanel.parentElement.scrollHeight;
+        // Limit log entries
+        while (logPanel.children.length > 30) logPanel.removeChild(logPanel.firstChild);
+    }
+    if (type === 'error') {
+        console.error(message);
+    } else if (type === 'success') {
+        console.log(message);
+    } else {
+        console.info(message);
+    }
+}

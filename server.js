@@ -161,7 +161,7 @@ app.post('/api/admin-login', async (req, res) => {
     const { error: magicLinkError } = await supabase.auth.signInWithOtp({
         email,
         options: {
-            emailRedirectTo: 'https://ngobras.vercel.app/check_status.html' // Ganti dengan domain Anda
+            emailRedirectTo: 'http://localhost:3000/check_status.html' // Ganti dengan domain Anda
         }
     });
     if (magicLinkError) {

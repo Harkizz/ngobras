@@ -1,9 +1,10 @@
 window.addEventListener('DOMContentLoaded', async function() {
-    // Ambil access_token dari URL hash
+    // Ambil access_token dan refresh_token dari URL hash
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.replace('#', ''));
     const accessToken = params.get('access_token');
-    if (!accessToken) {
+    const refreshToken = params.get('refresh_token');
+    if (!accessToken || !refreshToken) {
         document.getElementById('statusLoading').style.display = 'none';
         const resultDiv = document.getElementById('statusResult');
         resultDiv.textContent = 'Akses tidak valid. Silakan login ulang.';
@@ -46,8 +47,14 @@ window.addEventListener('DOMContentLoaded', async function() {
     // Inisialisasi Supabase client
     const supabaseClient = supabase.createClient(config.url, config.anonKey);
 
-    // Set session dengan access token
-    const { data: { user }, error } = await supabaseClient.auth.getUser(accessToken);
+    // Set session Supabase di browser
+    await supabaseClient.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+    });
+
+    // Dapatkan user dari session
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
     if (error || !user) {
         document.getElementById('statusLoading').style.display = 'none';
         const resultDiv = document.getElementById('statusResult');

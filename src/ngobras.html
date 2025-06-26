@@ -157,7 +157,7 @@
                                 <i class="fas fa-smile"></i>
                             </button>
                         </div>
-                        <button class="send-btn" onclick="sendMessage()" id="sendBtn" type="button">
+                        <button class="send-btn" onclick="sendMessage(); renderAdminMessagesFromLocalStorage();" id="sendBtn" type="button">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
@@ -312,6 +312,11 @@
   </div>
 </div>
 
+    <script src="js/ngobras.utils.js"></script>
+    <script src="js/ngobras.supabase.js"></script>
+    <script src="js/ngobras.ui.js"></script>
+    <script src="js/ngobras.navigation.js"></script>
+    <script src="js/ngobras.chat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="js/ngobras.js"></script>
 </body>

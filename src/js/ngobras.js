@@ -41,152 +41,6 @@ function loadAIMessages(assistantName = currentChatName) {
     scrollToBottom();
 }
 
-// Navigation
-function showPage(page) {
-    // First check if nav items exist before trying to modify them
-    const navItems = document.querySelectorAll('.nav-item');
-    const bottomNav = document.querySelector('.bottom-nav');
-    const topBar = document.querySelector('.top-bar');
-
-    if (page === 'chat') {
-        // Hide bottom nav and top bar in chat page
-        if (bottomNav) bottomNav.style.display = 'none';
-        if (topBar) topBar.style.display = 'none';
-        
-        // Adjust main content margin when top bar is hidden
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.style.marginTop = '0';
-        }
-    } else {
-        // Show bottom nav and top bar in other pages
-        if (bottomNav) bottomNav.style.display = 'flex';
-        if (topBar) topBar.style.display = 'flex';
-        
-        // Reset main content margin
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.style.marginTop = '60px';
-        }
-    }
-
-    if (navItems) {
-        // Remove active class from all nav items
-        navItems.forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Add active class to clicked nav item if it exists
-        const clickedItem = document.querySelector(`.nav-item[data-page="${page}"]`);
-        if (clickedItem) {
-            clickedItem.classList.add('active');
-        }
-    }
-    
-    // Hide all pages
-    const pages = document.querySelectorAll('.page');
-    if (pages) {
-        pages.forEach(p => {
-            p.classList.remove('active');
-        });
-    }
-    
-    // Show selected page
-    const targetPage = document.getElementById(`${page}-page`);
-    if (targetPage) {
-        targetPage.classList.add('active');
-    }
-
-    if (page === 'profile') {
-        initializeSupabase(); // Load profile data when profile page is shown
-    }
-}
-
-// Open chat
-async function openChat(type, name, assistantId) {
-    currentChatType = type;
-    currentChatName = name;
-    if (type === 'ai') {
-        window.currentAssistantId = assistantId;
-        loadAIMessages(name);
-        window.currentAdminId = null; // Clear admin ID if switching to AI
-        // Remove admin ID from localStorage if switching to AI
-        if (localStorage.getItem('ngobras_current_admin_id')) {
-            localStorage.removeItem('ngobras_current_admin_id');
-            console.log("Admin ID returned");
-        }
-    } else {
-        // Find admin by name to get their ID
-        let adminId = null;
-        try {
-            const res = await fetch('/api/admins');
-            const admins = await res.json();
-            const found = admins.find(a => (a.full_name || a.username) === name);
-            if (found) {
-                adminId = found.id; // <-- FIXED: assign adminId
-            }
-        } catch (e) {
-            console.error('Error fetching admins:', e);
-        }
-        window.currentAdminId = adminId;
-        if (adminId) {
-            // Save admin ID to localStorage for later use
-            localStorage.setItem('ngobras_current_admin_id', adminId);
-            // Get user ID from localStorage
-            const userProfileStr = localStorage.getItem('ngobras_user_profile');
-            const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
-            if (userId) {
-                // Load messages from DB and log to console
-                await loadAdminMessagesFromDB(userId, adminId);
-            } else {
-                console.log("User ID not found");
-            }
-        } else {
-            console.log("Admin ID not found");
-        }
-    }
-
-    const chatNameEl = document.getElementById('current-chat-name');
-    const avatar = document.getElementById('current-chat-avatar');
-    const status = document.getElementById('current-chat-status');
-    const messagesList = document.getElementById('messages-list');
-    if (messagesList) messagesList.innerHTML = ''; // <-- Clear messages
-
-    if (chatNameEl) chatNameEl.textContent = name;
-
-    if (avatar && status) {
-        if (type === 'ai') {
-            avatar.className = 'chat-avatar ai';
-            avatar.innerHTML = '<i class="fas fa-robot"></i>';
-            status.textContent = 'AI Assistant - Online';
-            loadAIMessages(name);
-        } else {
-            avatar.className = 'chat-avatar admin';
-            avatar.innerHTML = '<i class="fas fa-user-md"></i>';
-            status.textContent = 'Online';
-            loadAdminMessages(name);
-        }
-    }
-
-    // Switch to chat page
-    showPage('chat');
-
-    // Clear unread indicators if they exist
-    const chatItems = document.querySelectorAll('.chat-item');
-    const unreadCounts = document.querySelectorAll('.unread-count');
-
-    chatItems.forEach(item => {
-        if (item) item.classList.remove('unread');
-    });
-
-    unreadCounts.forEach(badge => {
-        if (badge) badge.style.display = 'none';
-    });
-
-    // Save last opened chat to localStorage
-    localStorage.setItem('ngobras_last_chat', JSON.stringify({ type, name }));
-}
-
 // Go back to home
 function goBack() {
     const bottomNav = document.querySelector('.bottom-nav');
@@ -247,7 +101,8 @@ function switchToAI() {
 
 function switchToAdmin() {
     currentChatType = 'admin';
-    loadAdminMessages(currentChatName);
+    // ADMIN CHAT: render dari localStorage key baru
+    renderAdminMessagesFromLocalStorage();
     
     // Update header
     const avatar = document.getElementById('current-chat-avatar');
@@ -261,186 +116,6 @@ function switchToAdmin() {
     // Update switch buttons
     document.querySelector('.switch-btn.admin').classList.add('active');
     document.querySelector('.switch-btn.ai').classList.remove('active');
-}
-
-// --- When loading admin messages ---
-function loadAdminMessages(adminName = currentChatName) {
-    const messagesList = document.getElementById('messages-list');
-    const chatId = `admin_${adminName}`;
-    const history = getChatHistory(chatId);
-
-    if (messagesList) {
-        messagesList.innerHTML = '';
-        if (history.length > 0) {
-            history.forEach(msg => {
-                addMessage(msg.text, msg.isSent);
-            });
-        }
-    }
-    scrollToBottom();
-}
-
-// Send message (restore AI memory logic)
-async function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const message = input.value.trim();
-    const photo = window._ngobrasPhotoPreview;
-    if (!message && !photo) return;
-
-    const chatId = currentChatType === 'ai' ? `ai_${currentChatName}` : `admin_${currentChatName}`;
-
-    // Save user message to memory and UI
-    if (photo && !message) {
-        saveChatMessage(chatId, '[Photo]', true);
-        addMessage('[Photo]', true);
-    } else {
-        saveChatMessage(chatId, message, true);
-        addMessage(message, true);
-    }
-    input.value = '';
-    removePhotoPreview();
-
-    if (currentChatType === 'ai') {
-        showTypingIndicator();
-        try {
-            // Get assistant ID
-            let assistantId = window.currentAssistantId;
-            if (!assistantId) {
-                const res = await fetch('/api/ai-assistants');
-                const assistants = await res.json();
-                const found = assistants.find(a => a.name === currentChatName);
-                assistantId = found ? found.id : null;
-            }
-            if (!assistantId) throw new Error('AI Assistant not found.');
-
-            // Restore memory: all previous turns (excluding just-sent user message)
-            let memory = getChatHistory(chatId)
-                .slice(0, -1)
-                .map(msg => ({
-                    role: msg.isSent ? 'user' : 'assistant',
-                    content: msg.text
-                }));
-
-            // Prepare payload
-            const payload = {
-                message,
-                assistant_id: assistantId,
-                memory
-            };
-            if (photo && photo.dataUrl) {
-                payload.image = photo.dataUrl;
-            }
-
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) throw new Error('AI server error');
-            const data = await response.json();
-            hideTypingIndicator();
-
-            if (data.reply) {
-                saveChatMessage(chatId, data.reply, false);
-                addMessage(data.reply, false);
-            } else {
-                addAIResponse(message);
-            }
-        } catch (err) {
-            hideTypingIndicator();
-            addAIResponse(message);
-            console.error('Error sending AI message:', err);
-        }
-    } else {
-        // --- ADMIN CHAT: Kirim ke Supabase langsung dari client ---
-        showTypingIndicator();
-        try {
-            // 1. Ensure supabaseClient is initialized
-            if (!window.supabaseClient) {
-                const resp = await fetch('/api/supabase-config');
-                const config = await resp.json();
-                if (window.supabase && config.url && config.anonKey) {
-                    window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-                } else {
-                    hideTypingIndicator();
-                    showAuthModal();
-                    console.log('Supabase client not initialized');
-                    return;
-                }
-            }
-
-            // 2. Get sender_id from localStorage (already saved after login)
-            let sender_id = null;
-            let sender_username = '';
-            const userProfileStr = localStorage.getItem('ngobras_user_profile');
-            if (userProfileStr) {
-                const userProfile = JSON.parse(userProfileStr);
-                sender_id = userProfile.id;
-                sender_username = userProfile.full_name || userProfile.username || userProfile.email || sender_id;
-            } else {
-                // Fallback: try to get from Supabase session
-                const { data, error } = await window.supabaseClient.auth.getUser();
-                if (error || !data?.user?.id) {
-                    hideTypingIndicator();
-                    showAuthModal();
-                    console.log('User session not found or expired');
-                    return;
-                }
-                sender_id = data.user.id;
-                // Optionally fetch profile for username
-                const res = await fetch(`/api/profiles/${sender_id}`);
-                if (res.ok) {
-                    const userProfile = await res.json();
-                    sender_username = userProfile.full_name || userProfile.username || userProfile.email || sender_id;
-                }
-            }
-
-            // 3. Get receiver_id (admin) from localStorage (already saved when opening chat)
-            let receiver_id = localStorage.getItem('ngobras_current_admin_id');
-            let admin_username = '';
-            if (receiver_id) {
-                // Optionally fetch admin profile for username
-                const res = await fetch(`/api/profiles/${receiver_id}`);
-                if (res.ok) {
-                    const adminProfile = await res.json();
-                    admin_username = adminProfile.full_name || adminProfile.username || adminProfile.email || receiver_id;
-                }
-            }
-
-            if (!sender_id || !receiver_id) {
-                console.log(`(${sender_username}) failed to save message to (${admin_username})`);
-                hideTypingIndicator();
-                showFastPopup('Gagal mengirim pesan: ID admin tidak ditemukan.');
-                return;
-            }
-
-            // 4. Insert message directly to Supabase (client-side)
-            const { data, error } = await window.supabaseClient
-                .from('messages')
-                .insert([{
-                    sender_id,
-                    receiver_id,
-                    content: message,
-                    chat_type: 'admin'
-                }]);
-
-            if (error) {
-                console.log('Supabase error:', error);
-                showFastPopup('Gagal mengirim pesan: ' + (error.message || 'Unknown error'));
-            } else {
-                console.log(`(${sender_username}) successfully saved message to (${admin_username})`);
-            }
-
-            hideTypingIndicator();
-        } catch (err) {
-            hideTypingIndicator();
-            console.log('(unknown user) failed to save message to (unknown admin)');
-            addAdminResponse(message); // fallback jika gagal
-            error.message = error.message || 'Unknown error';
-        }
-    }
-    scrollToBottom();
 }
 
 // Helper: Format AI response with markdown-like rules
@@ -503,75 +178,6 @@ window.copySolutionCard = function(cardId) {
     });
 };
 
-// Add message to chat
-function addMessage(text, isSent = false) {
-    const messagesList = document.getElementById('messages-list');
-    const messageDiv = document.createElement('div');
-    const currentTime = new Date().toLocaleTimeString('id-ID', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    });
-
-    if (isSent) {
-        messageDiv.className = 'message sent fade-in';
-        messageDiv.innerHTML = `
-            <div>
-                <div class="message-bubble">${text}</div>
-                <div class="message-time">${currentTime}</div>
-            </div>
-        `;
-        messagesList.appendChild(messageDiv);
-    } else {
-        const avatarClass = currentChatType === 'ai' ? 'ai' : 'admin';
-        const messageClass = currentChatType === 'ai' ? 'message received ai fade-in-down' : 'message received fade-in-down';
-        const formatted = currentChatType === 'ai' ? formatAIResponse(text) : text;
-
-        let avatarHTML = '';
-        let sphereId = '';
-        if (currentChatType === 'ai') {
-            // --- DISABLE PREVIOUS MINI SPHERE ANIMATION ---
-            const prevAI = Array.from(messagesList.querySelectorAll('.message.received.ai .mini-sphere-avatar:not(.mini-sphere-monochrome)'));
-            if (prevAI.length > 0) {
-                const prevSphere = prevAI[prevAI.length - 1];
-                prevSphere.classList.add('mini-sphere-monochrome');
-                // Remove anime.js animations
-                anime.remove(prevSphere);
-                anime.remove(prevSphere.querySelector('circle'));
-                anime.remove(prevSphere.querySelector('rect'));
-            }
-
-            // --- ADD NEW MINI SPHERE (ANIMATED) ---
-            sphereId = `miniSphere_${Date.now()}_${Math.floor(Math.random()*10000)}`;
-            avatarHTML = getMiniSphereSVG(sphereId, '', false);
-            setTimeout(() => animateMiniSphere(sphereId), 10);
-        } else {
-            avatarHTML = '<i class="fas fa-user-md"></i>';
-        }
-
-        messageDiv.className = messageClass;
-        messageDiv.innerHTML = `
-            <div class="message-avatar ${avatarClass}">
-                ${avatarHTML}
-            </div>
-            <div>
-                <div class="message-bubble">${formatted}</div>
-                <div class="message-time">${currentTime}</div>
-            </div>
-        `;
-        messagesList.appendChild(messageDiv);
-
-        // Animate fade-down using Anime.js
-        anime({
-            targets: messageDiv,
-            opacity: [0, 1],
-            translateY: [-24, 0],
-            duration: 500,
-            easing: 'easeOutCubic'
-        });
-    }
-    scrollToBottom();
-}
-
 // AI responses
 function addAIResponse(userMessage) {
     const responses = [
@@ -629,163 +235,12 @@ async function loadAdminMessagesFromDB(userId, adminId) {
     // Render ke UI jika perlu
     // ...render logic...
     console.log('Messages between user and admin:', messages);
-}
-
-// Typing indicator
-function showTypingIndicator() {
-    let indicator = document.getElementById('typing-indicator');
-    if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.id = 'typing-indicator';
-        indicator.className = 'typing-indicator';
-    }
-    if (currentChatType === 'ai') {
-        const sphereId = 'typingMiniSphere';
-        indicator.innerHTML = `
-            <div class="message-avatar ai">
-                ${getMiniSphereSVG(sphereId)}
-            </div>
-            <div>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-                <span style="margin-left: 0.5rem; font-size: 0.8rem; color: #6C757D;">mengetik...</span>
-            </div>
-        `;
-        setTimeout(() => animateMiniSphere(sphereId), 10);
-    } else {
-        const avatarClass = currentChatType === 'ai' ? 'ai' : 'admin';
-        const iconClass = currentChatType === 'ai' ? 'fas fa-robot' : 'fas fa-user-md';
-
-        indicator.innerHTML = `
-            <div class="message-avatar ${avatarClass}">
-                <i class="${iconClass}"></i>
-            </div>
-            <div>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-                <span style="margin-left: 0.5rem; font-size: 0.8rem; color: #6C757D;">mengetik...</span>
-            </div>
-        `;
-    }
-    indicator.style.display = 'flex';
-
-    // Insert after the last message in chat-messages
-    const messagesContainer = document.getElementById('chat-messages');
-    // Remove existing indicator if any
-    if (indicator.parentNode) indicator.parentNode.removeChild(indicator);
-    // Find the last message element
-    const lastMessage = messagesContainer.querySelector('.message:last-child');
-    if (lastMessage) {
-        lastMessage.after(indicator);
-    } else {
-        messagesContainer.appendChild(indicator);
-    }
-    scrollToBottom();
-}
-
-function hideTypingIndicator() {
-    const indicator = document.getElementById('typing-indicator');
-    if (indicator && indicator.parentNode) {
-        indicator.style.display = 'none';
-        indicator.parentNode.removeChild(indicator);
-    }
-}
-
-// Handle enter key
-function handleKeyPress(event) {
-    if (event.key === 'Enter') {
-        sendMessage();
-    }
-}        // Utility function to safely get DOM elements
-        function getElement(id) {
-            const element = document.getElementById(id);
-            if (!element) {
-                console.debug(`Element with id '${id}' not found - this is expected on non-chat pages`);
-                return null;
-            }
-            return element;
-        }
-
-        // Scroll to bottom
-        function scrollToBottom() {
-            const messagesContainer = getElement('chat-messages');
-            if (messagesContainer) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        }
+}   
 
         // Emoji Picker Data (a subset of standard emojis, you can expand this)
 const EMOJI_LIST = [
     "😀","😁","😂","🤣","😃","😄","😅","😆","😉","😊","😋","😎","😍","😘","🥰","😗","😙","😚","🙂","🤗","🤩","🤔","🤨","😐","😑","😶","🙄","😏","😣","😥","😮","🤐","😯","😪","😫","🥱","😴","😌","😛","😜","😝","🤤","😒","😓","😔","😕","🙃","🤑","😲","☹️","🙁","😖","😞","😟","😤","😢","😭","😦","😧","😨","😩","🤯","😬","😰","😱","🥵","🥶","😳","🤪","😵","😡","😠","🤬","😷","🤒","🤕","🤢","🤮","🥴","😇","🥳","🥺","🤠","🤡","🤥","🤫","🤭","🧐","🤓","😈","👿","👹","👺","💀","👻","👽","🤖","💩","😺","😸","😹","😻","😼","😽","🙀","😿","😾"
 ];
-
-// Show/hide emoji picker
-function toggleEmoji() {
-    const picker = document.getElementById('emoji-picker');
-    if (!picker) return;
-    if (picker.style.display === 'none' || picker.style.display === '') {
-        showEmojiPicker();
-    } else {
-        hideEmojiPicker();
-    }
-}
-
-function showEmojiPicker() {
-    const picker = document.getElementById('emoji-picker');
-    if (!picker) return;
-    // Populate emoji options if not already
-    if (!picker.hasChildNodes()) {
-        EMOJI_LIST.forEach(emoji => {
-            const btn = document.createElement('span');
-            btn.className = 'emoji-option';
-            btn.textContent = emoji;
-            btn.onclick = function(e) {
-                e.stopPropagation();
-                insertEmojiToInput(emoji);
-                // Do NOT hide the picker here
-            };
-            picker.appendChild(btn);
-        });
-    }
-    picker.style.display = 'flex';
-
-    // Click outside to close
-    setTimeout(() => {
-        document.addEventListener('mousedown', handleEmojiOutsideClick);
-    }, 10);
-}
-
-function hideEmojiPicker() {
-    const picker = document.getElementById('emoji-picker');
-    if (picker) picker.style.display = 'none';
-    document.removeEventListener('mousedown', handleEmojiOutsideClick);
-}
-
-function handleEmojiOutsideClick(e) {
-    const picker = document.getElementById('emoji-picker');
-    const emojiBtn = document.querySelector('.action-btn i.fa-smile');
-    if (picker && !picker.contains(e.target) && (!emojiBtn || !emojiBtn.parentNode.contains(e.target))) {
-        hideEmojiPicker();
-    }
-}
-
-function insertEmojiToInput(emoji) {
-    const input = document.getElementById('messageInput');
-    if (!input) return;
-    // Insert at cursor position
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const text = input.value;
-    input.value = text.slice(0, start) + emoji + text.slice(end);
-    input.focus();
-    input.selectionStart = input.selectionEnd = start + emoji.length;
-}
 
 // Notifications
 function showNotifications() {
@@ -971,133 +426,9 @@ async function loadAdminList() {
     });
 }
 
-// Wait for Supabase library to be loaded before running the rest of the code
-function waitForSupabase(retries = 10, delay = 200) {
-    return new Promise((resolve, reject) => {
-        function check() {
-            if (typeof supabase !== 'undefined') {
-                resolve();
-            } else if (retries > 0) {
-                setTimeout(() => check(--retries, delay), delay);
-            } else {
-                reject(new Error('Supabase library failed to load.'));
-            }
-        }
-        check();
-    });
-}
-
 // Supabase
 if (!window.supabaseClient) {
     window.supabaseClient = null;
-}
-
-async function initializeSupabase() {
-    try {
-        await waitForSupabase();
-        if (!window.supabaseClient) {
-            const response = await fetch('/api/supabase-config');
-            const config = await response.json();
-            if (window.supabase && config.url && config.anonKey) {
-                window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-            } else {
-                throw new Error('Supabase config missing');
-            }
-        }
-        // Check if user is authenticated
-        const { data: { user }, error } = await window.supabaseClient.auth.getUser();
-        if (error) throw error;
-        if (user) {
-            await loadUserProfile(user.id);
-        } else {
-            // Redirect to login if not authenticated
-            window.location.href = '/login.html';
-        }
-    } catch (error) {
-        document.body.innerHTML = '<div class="alert alert-danger text-center"><h4>Application Error</h4><p>Failed to load required libraries. Please refresh the page.</p><button onclick="window.location.reload()" class="btn btn-primary">Refresh</button></div>';
-        console.error('Supabase initialization error:', error);
-    }
-}
-
-// Load user profile
-async function loadUserProfile(userId) {
-    try {
-        showProfileLoading(true);
-
-        // Fetch profile data
-        const { data: profile, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-
-        // If profile is missing, treat as not logged in
-        if (error && error.code === 'PGRST116') {
-            await supabaseClient.auth.signOut();
-            showAuthModal();
-            return;
-        }
-        if (error) {
-            // Show login modal for any error
-            showAuthModal();
-            return;
-        }
-        if (!profile) {
-            showAuthModal();
-            return;
-        }
-
-        // Update UI with profile data
-        updateProfileUI(profile);
-
-        // Fetch chat statistics
-        const { data: chatStats, error: statsError } = await supabaseClient
-            .from('messages')
-            .select('created_at')
-            .eq('sender_id', userId);
-
-        updateProfileStats(chatStats);
-
-    } catch (error) {
-        // Show login modal on error
-        showAuthModal();
-    } finally {
-        showProfileLoading(false);
-    }
-}
-
-// Update profile UI
-function updateProfileUI(profile) {
-    // Update basic info
-    document.getElementById('profileName').textContent = profile.full_name || 'No Name Set';
-    document.getElementById('profileEmail').textContent = profile.email || '';
-    
-    // Update avatar
-    const avatarImg = document.getElementById('profileAvatar');
-    if (profile.avatar_url) {
-        avatarImg.src = profile.avatar_url;
-    }
-    
-    // Update member since date
-    const memberSince = new Date(profile.created_at).toLocaleDateString('id-ID', {
-        year: 'numeric',
-        month: 'long'
-    });
-    document.getElementById('profileMemberSince').textContent = `Member since ${memberSince}`;
-}
-
-// Update profile statistics
-function updateProfileStats(chatStats) {
-    if (!chatStats) return;
-    
-    // Update total chats
-    document.getElementById('totalChats').textContent = chatStats.length;
-    
-    // Update last active
-    if (chatStats.length > 0) {
-        const lastActive = new Date(Math.max(...chatStats.map(chat => new Date(chat.created_at))));
-        document.getElementById('lastActive').textContent = lastActive.toLocaleDateString('id-ID');
-    }
 }
 
 // Show/hide loading state
@@ -1707,159 +1038,6 @@ function animateMiniSphere(id) {
     };
 })();
 
-function animateChatPageOpen(callback) {
-    // Find the chat room container
-    const chatPage = document.getElementById('chat-page');
-    if (!chatPage) {
-        callback();
-        return;
-    }
-    const chatRoom = chatPage.querySelector('.chat-room');
-    if (!chatRoom) {
-        callback();
-        return;
-    }
-
-    // Prepare for animation
-    chatRoom.classList.add('chat-room-animate-open');
-    chatPage.style.display = 'block';
-    chatPage.classList.add('active');
-
-    // Hide scroll on body during animation
-    document.body.style.overflow = 'hidden';
-
-    // After animation, remove the class and restore normal state
-    setTimeout(() => {
-        chatRoom.classList.remove('chat-room-animate-open');
-        chatPage.style.display = '';
-        document.body.style.overflow = '';
-        if (typeof callback === 'function') callback();
-    }, 1000);
-}
-
-// Update goToLastChat to use the animation
-function goToLastChat() {
-    const lastChat = localStorage.getItem('ngobras_last_chat');
-    if (lastChat) {
-        try {
-            const { type, name } = JSON.parse(lastChat);
-            if (type && name) {
-                animateChatPageOpen(() => openChat(type, name));
-                return;
-            }
-        } catch (e) {}
-    }
-    showFastPopup("Chat terakhir tidak ditemukan.");
-}
-
-function showFastPopup(message) {
-    // Remove existing popup if any
-    let popup = document.getElementById('fast-popup');
-    if (popup) popup.remove();
-
-    popup = document.createElement('div');
-    popup.id = 'fast-popup';
-    popup.style.position = 'fixed';
-    popup.style.top = '50%';
-    popup.style.left = '50%';
-    popup.style.transform = 'translate(-50%, -50%)';
-    popup.style.background = 'rgba(59, 105, 151, 0.47)';
-    popup.style.color = '#fff';
-    popup.style.padding = '1.2rem 2.2rem';
-    popup.style.borderRadius = '16px';
-    popup.style.fontSize = '1.1rem';
-    popup.style.fontWeight = '600';
-    popup.style.zIndex = '9999';
-    popup.style.boxShadow = '0 8px 32px rgba(44,62,80,0.18)';
-    popup.style.textAlign = 'center';
-    popup.textContent = message;
-
-    document.body.appendChild(popup);
-
-    setTimeout(() => {
-        popup.style.transition = 'opacity 0.4s';
-        popup.style.opacity = '0';
-        setTimeout(() => popup.remove(), 400);
-    }, 1400);
-}
-
-// Action Menu
-function toggleActionMenu() {
-    const menu = document.getElementById('action-menu');
-    if (!menu) return;
-    if (menu.style.display === 'none' || menu.style.display === '') {
-        menu.style.display = 'flex';
-        setTimeout(() => {
-            document.addEventListener('mousedown', handleActionMenuOutsideClick);
-        }, 10);
-    } else {
-        menu.style.display = 'none';
-        document.removeEventListener('mousedown', handleActionMenuOutsideClick);
-    }
-}
-
-function handleActionMenuOutsideClick(e) {
-    const menu = document.getElementById('action-menu');
-    const btn = document.getElementById('actionMenuBtn');
-    if (menu && !menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
-        menu.style.display = 'none';
-        document.removeEventListener('mousedown', handleActionMenuOutsideClick);
-    }
-}
-
-function triggerFileUpload() {
-    document.getElementById('fileInput').click();
-    toggleActionMenu();
-}
-
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-        if (file.size > 4 * 1024 * 1024) { // 4MB limit
-            showFastPopup('Ukuran gambar terlalu besar (maks 4MB).');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            showPhotoPreview(e.target.result, file.name);
-        };
-        reader.readAsDataURL(file);
-    } else if (file) {
-        showFastPopup(`File dipilih: ${file.name}`);
-    }
-}
-
-function showPhotoPreview(dataUrl, fileName = '') {
-    const container = document.getElementById('photo-preview-container');
-    container.innerHTML = `
-        <div style="position:relative;">
-            <img src="${dataUrl}" alt="Preview" class="photo-preview-thumb">
-            <button class="photo-preview-remove" onclick="removePhotoPreview()" title="Hapus foto">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-    container.style.display = 'flex';
-    // Optionally, store the image data for sending with the message
-    window._ngobrasPhotoPreview = { dataUrl, fileName };
-}
-
-function removePhotoPreview() {
-    const container = document.getElementById('photo-preview-container');
-    container.innerHTML = '';
-    container.style.display = 'none';
-    window._ngobrasPhotoPreview = null;
-}
-
-function triggerTakePhoto() {
-    // For mobile, this will prompt camera; for desktop, will open file dialog
-    const input = document.getElementById('fileInput');
-    input.setAttribute('accept', 'image/*');
-    input.setAttribute('capture', 'environment');
-    input.click();
-    toggleActionMenu();
-}
-
 // Logout modal
 function showLogoutModal() {
     const modal = new bootstrap.Modal(document.getElementById('logoutModal'));
@@ -1881,3 +1059,77 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 });
+
+// --- Realtime Supabase Chat Subscription ---
+let chatSubscription = null;
+
+async function subscribeToAdminMessages(userId, adminId) {
+    if (!window.supabaseClient) {
+        const resp = await fetch('/api/supabase-config');
+        const config = await resp.json();
+        if (window.supabase && config.url && config.anonKey) {
+            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+        } else {
+            throw new Error('Supabase client not initialized');
+        }
+    }
+    // Unsubscribe previous
+    if (chatSubscription) {
+        await chatSubscription.unsubscribe();
+        chatSubscription = null;
+    }
+    // Supabase v2: Use .on('postgres_changes', ...) with column filter
+    chatSubscription = window.supabaseClient
+        .channel('messages')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
+        }, payload => {
+            // Pesan baru dari admin ke user
+            loadAdminMessagesFromDB(userId, adminId).then(() => {
+                renderAdminMessagesFromLocalStorage();
+            });
+        })
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
+        }, payload => {
+            // Pesan baru dari user ke admin (jika ingin update juga)
+            loadAdminMessagesFromDB(userId, adminId).then(() => {
+                renderAdminMessagesFromLocalStorage();
+            });
+        })
+        .subscribe();
+}
+
+// Update openChat to subscribe realtime
+window._originalOpenChat = window.openChat;
+window.openChat = async function(type, name, assistantId) {
+    if (type !== 'ai') {
+        let adminId = null;
+        try {
+            const res = await fetch('/api/admins');
+            const admins = await res.json();
+            const found = admins.find(a => (a.full_name || a.username) === name);
+            if (found) {
+                adminId = found.id;
+            }
+        } catch (e) { console.error('Error fetching admins:', e); }
+        window.currentAdminId = adminId;
+        if (adminId) {
+            localStorage.setItem('ngobras_current_admin_id', adminId);
+            const userProfileStr = localStorage.getItem('ngobras_user_profile');
+            const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
+            if (userId) {
+                await loadAdminMessagesFromDB(userId, adminId);
+                renderAdminMessagesFromLocalStorage();
+                subscribeToAdminMessages(userId, adminId); // SUBSCRIBE REALTIME
+            }
+        }
+    }
+    window._originalOpenChat(type, name, assistantId);
+};
