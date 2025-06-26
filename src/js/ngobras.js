@@ -1,10 +1,10 @@
 // JavaScript for ngobras.html page
-let currentChatType = 'admin';
-let currentChatName = '';
-let chatHistory = {}; // Store chat messages for each assistant/admin
+export let currentChatType = 'admin';
+export let currentChatName = '';
+export let chatHistory = {}; // Store chat messages for each assistant/admin
 
 // --- Memory helpers ---
-function getChatHistory(chatId) {
+export function getChatHistory(chatId) {
     // Hanya untuk AI
     if (chatId.startsWith('ai_')) {
         const key = `ngobras_chat_history_${chatId}`;
@@ -14,7 +14,7 @@ function getChatHistory(chatId) {
     return [];
 }
 
-function saveChatMessage(chatId, text, isSent) {
+export function saveChatMessage(chatId, text, isSent) {
     // Hanya untuk AI
     if (chatId.startsWith('ai_')) {
         const key = `ngobras_chat_history_${chatId}`;
@@ -32,7 +32,7 @@ function saveChatMessage(chatId, text, isSent) {
 }
 
 // --- Load messages for AI chat ---
-function loadAIMessages(assistantName = currentChatName) {
+export function loadAIMessages(assistantName = currentChatName) {
     const messagesList = document.getElementById('messages-list');
     const chatId = `ai_${assistantName}`;
     const history = getChatHistory(chatId);
@@ -48,7 +48,7 @@ function loadAIMessages(assistantName = currentChatName) {
 }
 
 // Go back to home
-function goBack() {
+export function goBack() {
     const bottomNav = document.querySelector('.bottom-nav');
     const topNavbar = document.querySelector('.top-navbar');
     if (bottomNav) bottomNav.style.display = 'flex';
@@ -72,7 +72,7 @@ function goBack() {
 }
 
 // Switch chat type
-function switchToAI() {
+export function switchToAI() {
     currentChatType = 'ai';
     loadAIMessages(currentChatName);
     
@@ -91,7 +91,7 @@ function switchToAI() {
 }
 
 // Helper: Format AI response with markdown-like rules
-function formatAIResponse(text) {
+export function formatAIResponse(text) {
     if (!text) return '';
 
     // Handle line breaks first
@@ -151,7 +151,7 @@ window.copySolutionCard = function(cardId) {
 };  
 
 // Load AI Assistants
-async function loadAIAssistants() {
+export async function loadAIAssistants() {
     const aiListContainer = document.getElementById('ai-assistants-list');
     const skeleton = document.getElementById('ai-assistants-list-skeleton');
     if (skeleton) skeleton.style.display = 'block';
@@ -246,15 +246,18 @@ async function loadAIAssistants() {
 }
 
 // Show greeting when opening chat, hide on first user message
-const originalOpenChat = openChat;
-openChat = function(type, name) {
-    originalOpenChat(type, name);
+// ES6 module: gunakan wrapper, bukan override global
+import { openChat as openChatModule, sendMessage as sendMessageModule } from './ngobras.chat.js';
+import { showGreetingSphere, hideGreetingSphere } from './ngobras.ui.js';
+
+export function openChatWithGreeting(type, name, ...args) {
+    openChatModule(type, name, ...args);
     if (type === 'ai') {
         showGreetingSphere(name);
     } else {
         hideGreetingSphere();
     }
-};
+}
 
 // Hide greeting when user sends first message in AI chat
 const originalSendMessage = sendMessage;
@@ -426,7 +429,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-function showAuthModal() {
+export function showAuthModal() {
     const modal = new bootstrap.Modal(document.getElementById('authModal'), {
         backdrop: 'static',
         keyboard: false
