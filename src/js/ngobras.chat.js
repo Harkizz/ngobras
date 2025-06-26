@@ -473,3 +473,89 @@ async function loadAdminMessagesFromDB(userId, adminId) {
     if (error) throw error;
     renderAdminMessages(messages, userId);
 } 
+
+// Load Admins
+async function loadAdminList() {
+    const adminListContainer = document.getElementById('admin-list');
+    const skeleton = document.getElementById('admin-list-skeleton');
+    if (skeleton) skeleton.style.display = 'block';
+    if (adminListContainer) adminListContainer.style.display = 'none';
+
+    const start = Date.now();
+    let data = [];
+    let error = null;
+
+    try {
+        const response = await fetch('/api/admins');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        data = await response.json();
+    } catch (err) {
+        error = err;
+    }
+
+    // Wait until at least 3 seconds have passed
+    const elapsed = Date.now() - start;
+    if (elapsed < 3000) {
+        await new Promise(res => setTimeout(res, 3000 - elapsed));
+    }
+
+    if (skeleton) skeleton.style.display = 'none';
+    if (adminListContainer) adminListContainer.style.display = 'block';
+
+    adminListContainer.innerHTML = '';
+    if (error) {
+        adminListContainer.innerHTML = `
+            <div class="chat-item error">
+                <div class="chat-info">
+                    <div class="chat-name">Error Loading Admins</div>
+                    <div class="chat-preview">${error.message}</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Ensure we have an array
+    const admins = Array.isArray(data) ? data : [];
+    if (admins.length === 0) {
+        adminListContainer.innerHTML = `
+            <div class="chat-item">
+                <div class="chat-info">
+                    <div class="chat-name">No Admin Available</div>
+                    <div class="chat-preview">Please try again later</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Render admins
+    admins.forEach(admin => {
+        const adminCard = document.createElement('div');
+        adminCard.className = 'chat-item';
+        adminCard.setAttribute('data-admin-id', admin.id);
+        adminCard.onclick = () => openChat('admin', admin.full_name || admin.username);
+        
+        adminCard.innerHTML = `
+            <div class="chat-avatar admin">
+                ${admin.avatar_url ? 
+                    `<img src="${admin.avatar_url}" alt="${admin.username}">` :
+                    '<i class="fas fa-user-md"></i>'}
+                <div class="online-indicator"></div>
+            </div>
+            <div class="chat-info">
+                <div class="chat-name">
+                    ${admin.full_name || admin.username}
+                    <span class="admin-badge">ADMIN</span>
+                </div>
+                <div class="chat-preview">Online - Siap membantu</div>
+            </div>
+            <div class="chat-meta">
+                <span class="chat-status">Available</span>
+                <span class="unread-count" style="display:none;" data-admin-id="${admin.id}">0</span>
+            </div>
+        `;
+        
+        adminListContainer.appendChild(adminCard);
+    });
+}

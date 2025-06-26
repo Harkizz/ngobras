@@ -405,17 +405,6 @@ function hideGreetingSphere() {
     anime.remove('#greetingSphereSVG');
 }
 
-// Show greeting when opening chat, hide on first user message
-const originalOpenChat = openChat;
-openChat = function(type, name) {
-    originalOpenChat(type, name);
-    if (type === 'ai') {
-        showGreetingSphere(name);
-    } else {
-        hideGreetingSphere();
-    }
-};
-
 // Hide greeting when user sends first message in AI chat
 const originalSendMessage = sendMessage;
 let greetingDismissed = false;

@@ -121,3 +121,27 @@ function updateProfileStats(chatStats) {
         document.getElementById('lastActive').textContent = lastActive.toLocaleDateString('id-ID');
     }
 }
+
+// Add this function to handle profile updates
+async function updateProfile(data) {
+    try {
+        const { data: profile, error } = await supabaseClient
+            .from('profiles')
+            .update(data)
+            .eq('id', supabaseClient.auth.user().id);
+            
+        if (error) throw error;
+        
+        showAlert('Profile updated successfully', 'success');
+        loadUserProfile(supabaseClient.auth.user().id);
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showAlert('Failed to update profile', 'danger');
+    }
+}
+
+// Show/hide loading state
+function showProfileLoading(show) {
+    document.getElementById('profileLoading').style.display = show ? 'block' : 'none';
+    document.getElementById('profileContent').style.display = show ? 'none' : 'block';
+}
