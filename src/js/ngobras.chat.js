@@ -320,3 +320,90 @@ function goToLastChat() {
     }
     showFastPopup("Chat terakhir tidak ditemukan.");
 }
+
+let chatSubscription = null;
+
+async function subscribeToAdminMessages(userId, adminId) {
+    if (!window.supabaseClient) {
+        const resp = await fetch('/api/supabase-config');
+        const config = await resp.json();
+        if (window.supabase && config.url && config.anonKey) {
+            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+        } else {
+            throw new Error('Supabase client not initialized');
+        }
+    }
+    if (chatSubscription) {
+        await chatSubscription.unsubscribe();
+        chatSubscription = null;
+    }
+    console.log('[Realtime] Subscribing to messages for user:', userId, 'admin:', adminId);
+    chatSubscription = window.supabaseClient
+        .channel('messages')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
+        }, payload => {
+            console.log('[Realtime] Received message (admin > user):', payload);
+            // Simpan pesan baru ke localStorage dua arah
+            const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
+            const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
+            let messages1 = JSON.parse(localStorage.getItem(key1) || '[]');
+            let messages2 = JSON.parse(localStorage.getItem(key2) || '[]');
+            messages1.push(payload.new);
+            messages2.push(payload.new);
+            localStorage.setItem(key1, JSON.stringify(messages1));
+            localStorage.setItem(key2, JSON.stringify(messages2));
+            // Render pesan baru jika chat aktif
+            if (window.currentAdminId === adminId) {
+                const isSent = payload.new.sender_id === userId;
+                addMessage(payload.new.content, isSent);
+                scrollToBottom();
+            }
+        })
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
+        }, payload => {
+            console.log('[Realtime] Sent message (user > admin):', payload);
+            // Simpan pesan baru ke localStorage dua arah
+            const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
+            const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
+            let messages1 = JSON.parse(localStorage.getItem(key1) || '[]');
+            let messages2 = JSON.parse(localStorage.getItem(key2) || '[]');
+            messages1.push(payload.new);
+            messages2.push(payload.new);
+            localStorage.setItem(key1, JSON.stringify(messages1));
+            localStorage.setItem(key2, JSON.stringify(messages2));
+            if (window.currentAdminId === adminId) {
+                const isSent = payload.new.sender_id === userId;
+                addMessage(payload.new.content, isSent);
+                scrollToBottom();
+            }
+        })
+        .subscribe(status => {
+            if (status === 'SUBSCRIBED') {
+                console.log('[Realtime] Subscription success');
+            } else {
+                console.warn('[Realtime] Subscription status:', status);
+            }
+        });
+}
+
+// Patch openChat agar subscribe realtime hanya di sini
+const _originalOpenChat = openChat;
+openChat = async function(type, name, assistantId) {
+    await _originalOpenChat(type, name, assistantId);
+    if (type !== 'ai') {
+        const userProfileStr = localStorage.getItem('ngobras_user_profile');
+        const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
+        const adminId = localStorage.getItem('ngobras_current_admin_id');
+        if (userId && adminId) {
+            subscribeToAdminMessages(userId, adminId);
+        }
+    }
+};

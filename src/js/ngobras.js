@@ -764,7 +764,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (adminId) {
         await loadAdminMessagesFromDB(user.id, adminId);
         renderAdminMessagesFromLocalStorage();
-        subscribeToAdminMessages(user.id, adminId);
+        // subscribeToAdminMessages(user.id, adminId);
     }
 });
 
@@ -1050,64 +1050,65 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // --- Realtime Supabase Chat Subscription ---
-let chatSubscription = null;
+// (DIPINDAHKAN KE ngobras.chat.js AGAR TIDAK DOUBLE)
+// let chatSubscription = null;
 
-async function subscribeToAdminMessages(userId, adminId) {
-    // Pastikan client sudah ada
-    if (!window.supabaseClient) {
-        throw new Error('Supabase client not initialized');
-    }
-    // Unsubscribe previous
-    if (chatSubscription) {
-        await chatSubscription.unsubscribe();
-        chatSubscription = null;
-    }
-    // Logging subscription
-    console.log('[Realtime] Subscribing to messages for user:', userId, 'admin:', adminId);
-    chatSubscription = window.supabaseClient
-        .channel('messages')
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
-        }, payload => {
-            console.log('[Realtime] Received message (admin > user):', payload);
-            // Simpan pesan baru ke localStorage
-            const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
-            let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
-            messages.push(payload.new);
-            localStorage.setItem(chatKey, JSON.stringify(messages));
-            // Render pesan baru ke chat room
-            const isSent = payload.new.sender_id === userId;
-            addMessage(payload.new.content, isSent);
-            scrollToBottom();
-        })
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
-        }, payload => {
-            console.log('[Realtime] Sent message (user > admin):', payload);
-            // Simpan pesan baru ke localStorage
-            const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
-            let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
-            messages.push(payload.new);
-            localStorage.setItem(chatKey, JSON.stringify(messages));
-            // Render pesan baru ke chat room
-            const isSent = payload.new.sender_id === userId;
-            addMessage(payload.new.content, isSent);
-            scrollToBottom();
-        })
-        .subscribe(status => {
-            if (status === 'SUBSCRIBED') {
-                console.log('[Realtime] Subscription success');
-            } else {
-                console.warn('[Realtime] Subscription status:', status);
-            }
-        });
-}
+// async function subscribeToAdminMessages(userId, adminId) {
+//     // Pastikan client sudah ada
+//     if (!window.supabaseClient) {
+//         throw new Error('Supabase client not initialized');
+//     }
+//     // Unsubscribe previous
+//     if (chatSubscription) {
+//         await chatSubscription.unsubscribe();
+//         chatSubscription = null;
+//     }
+//     // Logging subscription
+//     console.log('[Realtime] Subscribing to messages for user:', userId, 'admin:', adminId);
+//     chatSubscription = window.supabaseClient
+//         .channel('messages')
+//         .on('postgres_changes', {
+//             event: 'INSERT',
+//             schema: 'public',
+//             table: 'messages',
+//             filter: `receiver_id=eq.${userId},sender_id=eq.${adminId}`
+//         }, payload => {
+//             console.log('[Realtime] Received message (admin > user):', payload);
+//             // Simpan pesan baru ke localStorage
+//             const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
+//             let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+//             messages.push(payload.new);
+//             localStorage.setItem(chatKey, JSON.stringify(messages));
+//             // Render pesan baru ke chat room
+//             const isSent = payload.new.sender_id === userId;
+//             addMessage(payload.new.content, isSent);
+//             scrollToBottom();
+//         })
+//         .on('postgres_changes', {
+//             event: 'INSERT',
+//             schema: 'public',
+//             table: 'messages',
+//             filter: `sender_id=eq.${userId},receiver_id=eq.${adminId}`
+//         }, payload => {
+//             console.log('[Realtime] Sent message (user > admin):', payload);
+//             // Simpan pesan baru ke localStorage
+//             const chatKey = `ngobras_admin_chat_${userId}_${adminId}`;
+//             let messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+//             messages.push(payload.new);
+//             localStorage.setItem(chatKey, JSON.stringify(messages));
+//             // Render pesan baru ke chat room
+//             const isSent = payload.new.sender_id === userId;
+//             addMessage(payload.new.content, isSent);
+//             scrollToBottom();
+//         })
+//         .subscribe(status => {
+//             if (status === 'SUBSCRIBED') {
+//                 console.log('[Realtime] Subscription success');
+//             } else {
+//                 console.warn('[Realtime] Subscription status:', status);
+//             }
+//         });
+// }
 
 // Update openChat to subscribe realtime
 window._originalOpenChat = window.openChat;
@@ -1130,7 +1131,7 @@ window.openChat = async function(type, name, assistantId) {
             if (userId) {
                 await loadAdminMessagesFromDB(userId, adminId);
                 renderAdminMessagesFromLocalStorage();
-                subscribeToAdminMessages(userId, adminId); // SUBSCRIBE REALTIME
+                // subscribeToAdminMessages(userId, adminId); // SUBSCRIBE REALTIME
             }
         }
     }
