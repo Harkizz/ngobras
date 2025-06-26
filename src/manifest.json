@@ -9,7 +9,7 @@
   "protocol_handlers": [
     {
       "protocol": "web+ngobras",
-      "url": "/ngobras.html"
+      "url": "/ngobras.html?data=%s"
     }
   ],
   "display": "standalone",
