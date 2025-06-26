@@ -57,6 +57,26 @@ async function openChat(type, name, assistantId) {
     localStorage.setItem('ngobras_last_chat', JSON.stringify({ type, name }));
 }
 
+function switchToAdmin() {
+    currentChatType = 'admin';
+    // Ambil userId dan adminId
+    const userProfileStr = localStorage.getItem('ngobras_user_profile');
+    const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
+    const adminId = localStorage.getItem('ngobras_current_admin_id');
+    if (userId && adminId) {
+        loadAdminMessagesFromDB(userId, adminId);
+    }
+    // Update header
+    const avatar = document.getElementById('current-chat-avatar');
+    const status = document.getElementById('current-chat-status');
+    avatar.className = 'chat-avatar admin';
+    avatar.innerHTML = '<i class="fas fa-user-md"></i>';
+    document.getElementById('current-chat-name').textContent = currentChatName || 'Dr. Sarah Wijaya';
+    status.textContent = 'Online';
+    document.querySelector('.switch-btn.admin').classList.add('active');
+    document.querySelector('.switch-btn.ai').classList.remove('active');
+}
+
 // Send message (restore AI memory logic)
 async function sendMessage() {
     const input = document.getElementById('messageInput');
@@ -433,3 +453,23 @@ openChat = async function(type, name, assistantId) {
         }
     }
 };
+
+// Load messages for admin chat from Supabase
+async function loadAdminMessagesFromDB(userId, adminId) {
+    if (!window.supabaseClient) {
+        const resp = await fetch('/api/supabase-config');
+        const config = await resp.json();
+        if (window.supabase && config.url && config.anonKey) {
+            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+        } else {
+            throw new Error('Supabase client not initialized');
+        }
+    }
+    const { data: messages, error } = await window.supabaseClient
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
+        .order('created_at', { ascending: true });
+    if (error) throw error;
+    renderAdminMessages(messages, userId);
+} 

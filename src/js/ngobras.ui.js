@@ -1,3 +1,8 @@
+       // Emoji Picker Data (a subset of standard emojis, you can expand this)
+const EMOJI_LIST = [
+    "😀","😁","😂","🤣","😃","😄","😅","😆","😉","😊","😋","😎","😍","😘","🥰","😗","😙","😚","🙂","🤗","🤩","🤔","🤨","😐","😑","😶","🙄","😏","😣","😥","😮","🤐","😯","😪","😫","🥱","😴","😌","😛","😜","😝","🤤","😒","😓","😔","😕","🙃","🤑","😲","☹️","🙁","😖","😞","😟","😤","😢","😭","😦","😧","😨","😩","🤯","😬","😰","😱","🥵","🥶","😳","🤪","😵","😡","😠","🤬","😷","🤒","🤕","🤢","🤮","🥴","😇","🥳","🥺","🤠","🤡","🤥","🤫","🤭","🧐","🤓","😈","👿","👹","👺","💀","👻","👽","🤖","💩","😺","😸","😹","😻","😼","😽","🙀","😿","😾"
+];
+
 // Typing indicator
 function showTypingIndicator() {
     let indicator = document.getElementById('typing-indicator');
@@ -269,4 +274,279 @@ function animateChatPageOpen(callback) {
         document.body.style.overflow = '';
         if (typeof callback === 'function') callback();
     }, 1000);
+}
+
+// Show greeting sphere animation
+function showGreetingSphere(assistantName) {
+    const greetingContainer = document.getElementById('greeting-sphere');
+    const greetingText = document.getElementById('greetingText');
+    const svg = document.getElementById('greetingSphereSVG');
+    const circle = document.getElementById('greetingSphereCircle');
+    const shadow = document.getElementById('greetingSphereShadow');
+    const eyeLeft = document.getElementById('eyeLeft');
+    const eyeRight = document.getElementById('eyeRight');
+     const chatId = `ai_${assistantName}`;
+    const history = getChatHistory(chatId);
+
+    // If there is chat history, do not show the greeting sphere
+    if (history && history.length > 0) {
+        if (greetingContainer) greetingContainer.style.display = 'none';
+        return;
+    }
+
+    if (!greetingContainer || !greetingText || !svg || !circle || !shadow || !eyeLeft || !eyeRight) return;
+
+    // Animate greeting text with typing effect
+    animateGreetingTyping(`Halo! Saya ${assistantName}. Apa yang bisa aku bantu?`);
+
+    // Reset SVG
+    circle.setAttribute('r', 48);
+    circle.setAttribute('fill', 'url(#sphereGradient)');
+    circle.setAttribute('opacity', 1);
+    shadow.setAttribute('rx', 32);
+    shadow.setAttribute('opacity', 0.35);
+    eyeLeft.setAttribute('x', 70 - 15 - GREETING_EYE_WIDTH / 2); // 70 is center, 15 is offset
+    eyeRight.setAttribute('x', 70 + 15 - GREETING_EYE_WIDTH / 2);
+
+    eyeLeft.setAttribute('y', 65);
+    eyeRight.setAttribute('y', 65);
+
+    greetingContainer.style.display = 'flex';
+
+    // Remove previous animations
+    anime.remove(circle);
+    anime.remove(svg);
+    anime.remove(shadow);
+    anime.remove(eyeLeft);
+    anime.remove(eyeRight);
+
+    // Animate the sphere: pulse, color shift, floating, and shadow scaling
+    anime({
+        targets: circle,
+        r: [
+            { value: 48, duration: 0 },
+            { value: 56, duration: 900, easing: 'easeInOutSine' },
+            { value: 48, duration: 900, easing: 'easeInOutSine' }
+        ],
+        opacity: [
+            { value: 1, duration: 0 },
+            { value: 0.92, duration: 900, easing: 'easeInOutSine' },
+            { value: 1, duration: 900, easing: 'easeInOutSine' }
+        ],
+        easing: 'easeInOutSine',
+        loop: true,
+        direction: 'alternate'
+    });
+
+    anime({
+        targets: svg,
+        translateY: [
+            { value: 0, duration: 0 },
+            { value: -18, duration: 1200, easing: 'easeInOutSine' },
+            { value: 0, duration: 1200, easing: 'easeInOutSine' }
+        ],
+        loop: true,
+        direction: 'alternate',
+        easing: 'easeInOutSine'
+    });
+
+    anime({
+        targets: shadow,
+        rx: [
+            { value: 32, duration: 0 },
+            { value: 40, duration: 1200, easing: 'easeInOutSine' },
+            { value: 32, duration: 1200, easing: 'easeInOutSine' }
+        ],
+        opacity: [
+            { value: 0.35, duration: 0 },
+            { value: 0.18, duration: 1200, easing: 'easeInOutSine' },
+            { value: 0.35, duration: 1200, easing: 'easeInOutSine' }
+        ],
+        loop: true,
+        direction: 'alternate',
+        easing: 'easeInOutSine'
+    });
+
+    // Eye blinking animation (both eyes blink together)
+    function blinkEyes() {
+        anime({
+            targets: [eyeLeft, eyeRight],
+            height: [
+                { value: 2, duration: 120, easing: 'easeInOutQuad' },
+                { value: 16, duration: 180, easing: 'easeInOutQuad' }
+            ],
+            y: [
+                { value: 73, duration: 120, easing: 'easeInOutQuad' },
+                { value: 65, duration: 180, easing: 'easeInOutQuad' }
+            ],
+            delay: 0,
+            complete: () => {
+                // Blink again after a random interval
+                setTimeout(blinkEyes, 1800 + Math.random() * 1200);
+            }
+        });
+    }
+    // Start blinking after a short delay
+    setTimeout(blinkEyes, 1200);
+
+    // Animate greeting text with typing effect (already called above)
+        greetingContainer.style.display = 'flex';
+
+}
+
+// Hide greeting sphere animation
+function hideGreetingSphere() {
+    const greetingContainer = document.getElementById('greeting-sphere');
+    if (greetingContainer) {
+        greetingContainer.style.display = 'none';
+    }
+    // Remove anime.js animations
+    anime.remove('#greetingSphereCircle');
+    anime.remove('#greetingSphereSVG');
+}
+
+// Show greeting when opening chat, hide on first user message
+const originalOpenChat = openChat;
+openChat = function(type, name) {
+    originalOpenChat(type, name);
+    if (type === 'ai') {
+        showGreetingSphere(name);
+    } else {
+        hideGreetingSphere();
+    }
+};
+
+// Hide greeting when user sends first message in AI chat
+const originalSendMessage = sendMessage;
+let greetingDismissed = false;
+sendMessage = function() {
+    if (currentChatType === 'ai' && !greetingDismissed) {
+        hideGreetingSphere();
+        greetingDismissed = true;
+    }
+    originalSendMessage.apply(this, arguments);
+};
+
+// Reset greetingDismissed when switching AI assistant
+const originalLoadAIMessages = loadAIMessages;
+loadAIMessages = function(assistantName) {
+    greetingDismissed = false;
+    originalLoadAIMessages.apply(this, arguments);
+};
+
+function animateGreetingTyping(text) {
+    const greetingText = document.getElementById('greetingText');
+    if (!greetingText) return;
+
+    // Clear previous content
+    greetingText.innerHTML = '';
+
+    // Split text into words
+    const words = text.split(' ');
+    let charIndex = 0;
+    words.forEach((word, wIdx) => {
+        const wordSpan = document.createElement('span');
+        wordSpan.style.display = 'inline-block';
+        wordSpan.style.whiteSpace = 'pre'; // preserve spaces if needed
+
+        // For each character in the word
+        for (let i = 0; i < word.length; i++) {
+            const charSpan = document.createElement('span');
+            charSpan.innerHTML = word[i] === ' ' ? '&nbsp;' : word[i];
+            charSpan.style.opacity = 0;
+            charSpan.style.display = 'inline-block';
+            charSpan.className = 'greeting-char';
+            charSpan.dataset.charIndex = charIndex++;
+            wordSpan.appendChild(charSpan);
+        }
+
+        // Add a space after each word except the last
+        if (wIdx < words.length - 1) {
+            const spaceSpan = document.createElement('span');
+            spaceSpan.innerHTML = '&nbsp;';
+            spaceSpan.style.opacity = 0;
+            spaceSpan.style.display = 'inline-block';
+            spaceSpan.className = 'greeting-char';
+            spaceSpan.dataset.charIndex = charIndex++;
+            wordSpan.appendChild(spaceSpan);
+        }
+
+        greetingText.appendChild(wordSpan);
+    });
+
+    // Animate each character with staggered fade-in and slight upward motion
+    anime({
+        targets: '.greeting-char',
+        opacity: [0, 1],
+        translateY: [10, 0],
+        easing: 'easeOutExpo',
+        duration: 320,
+        delay: anime.stagger(22),
+    });
+}
+
+// Eye configuration for greeting sphere
+const GREETING_EYE_WIDTH = 11;      // px
+const GREETING_EYE_HEIGHT = 19;    // px
+const GREETING_EYE_RADIUS = 4.5;   // px (corner sharpness, 0 = sharp, half width = fully round)
+
+function getMiniSphereSVG(id = '', extraClass = '', monochrome = false) {
+    // id: unique id for this instance (for targeting animation)
+    // extraClass: for additional CSS classes
+    // monochrome: if true, use grayscale gradient
+    return `
+    <svg id="${id}" class="mini-sphere-avatar ${extraClass} ${monochrome ? 'mini-sphere-monochrome' : ''}" width="32" height="32" viewBox="0 0 140 140">
+      <defs>
+        <radialGradient id="miniSphereGradient${id}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="${monochrome ? '#eee' : '#fff'}" stop-opacity="0.9"/>
+          <stop offset="60%" stop-color="${monochrome ? '#bbb' : '#6C63FF'}" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="${monochrome ? '#888' : '#4a90e2'}" stop-opacity="1"/>
+        </radialGradient>
+        <linearGradient id="miniEyeGradient${id}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${monochrome ? '#fff' : '#fff'}"/>
+          <stop offset="100%" stop-color="${monochrome ? '#ccc' : '#e0f7fa'}"/>
+        </linearGradient>
+      </defs>
+      <circle id="${id}_circle" cx="70" cy="70" r="48" fill="url(#miniSphereGradient${id})" />
+      <rect id="${id}_eyeLeft" x="54" y="68" width="7" height="12" rx="3.5" fill="url(#miniEyeGradient${id})" />
+      <rect id="${id}_eyeRight" x="79" y="68" width="7" height="12" rx="3.5" fill="url(#miniEyeGradient${id})" />
+    </svg>
+    `;
+}
+
+// Animate the mini sphere (pulse + blink)
+function animateMiniSphere(id) {
+    const circle = document.getElementById(`${id}_circle`);
+    const eyeLeft = document.getElementById(`${id}_eyeLeft`);
+    const eyeRight = document.getElementById(`${id}_eyeRight`);
+    if (!circle || !eyeLeft || !eyeRight) return;
+
+    // Pulse animation
+    anime({
+        targets: circle,
+        r: [
+            { value: 48, duration: 0 },
+            { value: 54, duration: 900, easing: 'easeInOutSine' },
+            { value: 48, duration: 900, easing: 'easeInOutSine' }
+        ],
+        easing: 'easeInOutSine',
+        loop: true,
+        direction: 'alternate'
+    });
+
+    // Eye blinking
+    function blink() {
+        anime({
+            targets: [eyeLeft, eyeRight],
+            height: [
+                { value: 2, duration: 120, easing: 'easeInOutSine' },
+                { value: 12, duration: 180, easing: 'easeInOutSine' }
+            ],
+            delay: 0,
+            complete: () => {
+                setTimeout(blink, 1800 + Math.random() * 1200);
+            }
+        });
+    }
+    setTimeout(blink, 1200 + Math.random() * 800);
 }
