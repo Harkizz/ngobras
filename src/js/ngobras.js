@@ -304,11 +304,10 @@ async function logout() {
     }
 }
 
-// Add to your existing event listeners
-document.addEventListener('DOMContentLoaded', function() {
+// Gabungkan semua event listener DOMContentLoaded menjadi satu
+document.addEventListener('DOMContentLoaded', async function() {
     // Check if we're on the chat page
     const isChatPage = document.querySelector('.chat-room') !== null;
-    
     if (isChatPage) {
         const messageInput = document.getElementById('messageInput');
         if (messageInput) {
@@ -319,7 +318,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        
         // Auto-scroll to bottom when page loads
         setTimeout(scrollToBottom, 100);
     }
@@ -328,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const isHomePage = document.getElementById('home-page')?.classList.contains('active');
     if (isHomePage) {
         loadAIAssistants();
-        loadAdminList(); // Add this line
+        loadAdminList();
     }
 
     // Load admins on admin page
@@ -342,113 +340,74 @@ document.addEventListener('DOMContentLoaded', function() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
     }
-});
 
-// Initialize app
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on the chat page
-    const isChatPage = document.querySelector('.chat-room') !== null;
-    
-    if (isChatPage) {
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
+    // === Check login status and show modal if not logged in ===
+    if (window.location.pathname.includes('ngobras')) {
+        // Ensure Supabase is loaded
+        if (typeof supabase === 'undefined') {
+            await new Promise(res => setTimeout(res, 300)); // Wait for supabase to load
         }
-        
-        // Auto-scroll to bottom when page loads
-        setTimeout(scrollToBottom, 100);
+        // Get config from backend
+        let config;
+        try {
+            const resp = await fetch('/api/supabase-config');
+            config = await resp.json();
+        } catch (e) {
+            config = null;
+        }
+        if (!config || !config.url || !config.anonKey) return;
+
+        // Check user session
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('authModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+            modal.show();
+            // Button handlers
+            document.getElementById('loginEmailBtn').onclick = function() {
+                window.location.href = '/login.html';
+            };
+            document.getElementById('loginGoogleBtn').onclick = async function() {
+                await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin + '/ngobras'
+                    }
+                });
+            };
+            console.log('User is not logged in.');
+            return;
+        }
+        // Setelah user login, simpan userId ke localStorage jika belum ada
+        let userProfileStr = localStorage.getItem('ngobras_user_profile');
+        if (!userProfileStr) {
+            localStorage.setItem('ngobras_user_profile', JSON.stringify(user));
+        }
     }
 
-    // Load AI assistants and admins on home page
-    const isHomePage = document.getElementById('home-page')?.classList.contains('active');
-    if (isHomePage) {
-        loadAIAssistants();
-        loadAdminList(); // Add this line
-    }
-
-    // Load admins on admin page
-    const isAdminPage = document.getElementById('admin-page')?.classList.contains('active');
-    if (isAdminPage) {
-        loadAdminList();
-    }
-});
-
-// Check login status and show modal if not logged in
-document.addEventListener('DOMContentLoaded', async function() {
-    // Only run on ngobras.html
-    if (!window.location.pathname.includes('ngobras')) return;
-
-    // Ensure Supabase is loaded
-    if (typeof supabase === 'undefined') {
-        await new Promise(res => setTimeout(res, 300)); // Wait for supabase to load
-    }
-    // Get config from backend
-    let config;
-    try {
-        const resp = await fetch('/api/supabase-config');
-        config = await resp.json();
-    } catch (e) {
-        config = null;
-    }
-    if (!config || !config.url || !config.anonKey) return;
-
-    // Check user session
-    const { data: { user } } = await supabaseClient.auth.getUser();
-
-    if (!user) {
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('authModal'), {
-            backdrop: 'static',
-            keyboard: false
-        });
-        modal.show();
-
-        // Button handlers
-        document.getElementById('loginEmailBtn').onclick = function() {
+    // === Logout Modal Confirm ===
+    const confirmBtn = document.getElementById('confirmLogoutBtn');
+    if (confirmBtn) {
+        confirmBtn.onclick = async function() {
+            if (typeof supabaseClient !== 'undefined' && supabaseClient?.auth) {
+                await supabaseClient.auth.signOut();
+            }
+            localStorage.clear();
             window.location.href = '/login.html';
         };
-        document.getElementById('loginGoogleBtn').onclick = async function() {
-            await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/ngobras'
-                }
-            });
-        };
-        console.log('User is not logged in.');
-        return;
     }
 
-    // Setelah user login, simpan userId ke localStorage jika belum ada
-    let userProfileStr = localStorage.getItem('ngobras_user_profile');
-    if (!userProfileStr) {
-        localStorage.setItem('ngobras_user_profile', JSON.stringify(user));
-    }
-});
-
-export function showAuthModal() {
-    const modal = new bootstrap.Modal(document.getElementById('authModal'), {
-        backdrop: 'static',
-        keyboard: false
-    });
-    modal.show();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    if (loginEmailBtn) {
+    // === Auth Modal Buttons (if present) ===
+    if (typeof loginEmailBtn !== 'undefined' && loginEmailBtn) {
         loginEmailBtn.onclick = function() {
             window.location.href = '/login.html';
         };
     }
-    if (loginGoogleBtn) {
+    if (typeof loginGoogleBtn !== 'undefined' && loginGoogleBtn) {
         loginGoogleBtn.onclick = async function() {
-            // Wait for Supabase config and client
             if (typeof supabase === 'undefined') return;
             let config;
             try {
