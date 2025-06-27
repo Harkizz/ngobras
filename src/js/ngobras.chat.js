@@ -2,6 +2,7 @@
 import { currentChatType, currentChatName, getChatHistory, saveChatMessage, loadAIMessages, formatAIResponse } from './ngobras.js';
 import { showPage } from './ngobras.navigation.js';
 import { scrollToBottom } from './ngobras.utils.js';
+import { supabaseClient } from './ngobras.supabase.js';
 
 export async function openChat(type, name, assistantId) {
     currentChatType = type;
@@ -34,7 +35,7 @@ export async function openChat(type, name, assistantId) {
                     adminId = found.id;
                 }
             } catch (e) { console.error('Error fetching admins:', e); }
-            window.currentAdminId = adminId;
+            currentAdminId = adminId;
             if (userId && adminId) {
                 localStorage.setItem('ngobras_current_admin_id', adminId);
                 await loadAdminMessagesFromDB(userId, adminId);
@@ -85,7 +86,7 @@ export function switchToAdmin() {
 export async function sendMessage() {
     const input = document.getElementById('messageInput');
     const message = input.value.trim();
-    const photo = window._ngobrasPhotoPreview;
+    const photo = _ngobrasPhotoPreview;
     if (!message && !photo) return;
 
     const chatId = currentChatType === 'ai' ? `ai_${currentChatName}` : `admin_${currentChatName}`;
@@ -105,7 +106,7 @@ export async function sendMessage() {
         showTypingIndicator();
         try {
             // Get assistant ID
-            let assistantId = window.currentAssistantId;
+            let assistantId = currentAssistantId;
             if (!assistantId) {
                 const res = await fetch('/api/ai-assistants');
                 const assistants = await res.json();
@@ -158,7 +159,7 @@ export async function sendMessage() {
         showTypingIndicator();
         try {
             // 1. Ensure supabaseClient is initialized
-            if (!window.supabaseClient) {
+            if (!supabaseClient) {
                 const resp = await fetch('/api/supabase-config');
                 const config = await resp.json();
                 if (window.supabase && config.url && config.anonKey) {
@@ -181,7 +182,7 @@ export async function sendMessage() {
                 sender_username = userProfile.full_name || userProfile.username || userProfile.email || sender_id;
             } else {
                 // Fallback: try to get from Supabase session
-                const { data, error } = await window.supabaseClient.auth.getUser();
+                const { data, error } = await supabaseClient.auth.getUser();
                 if (error || !data?.user?.id) {
                     hideTypingIndicator();
                     showAuthModal();
@@ -217,7 +218,7 @@ export async function sendMessage() {
             }
 
             // 4. Insert message directly to Supabase (client-side)
-            const { data, error } = await window.supabaseClient
+            const { data, error } = await supabaseClient
                 .from('messages')
                 .insert([{
                     sender_id,
@@ -364,7 +365,7 @@ export async function subscribeToAdminMessages(userId, adminId) {
             localStorage.setItem(key1, JSON.stringify(messages1));
             localStorage.setItem(key2, JSON.stringify(messages2));
             // Render pesan baru jika chat aktif
-            if (window.currentAdminId === adminId) {
+            if (currentAdminId === adminId) {
                 const isSent = payload.new.sender_id === userId;
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
@@ -409,7 +410,7 @@ export async function subscribeToAdminMessages(userId, adminId) {
             messages2.push(payload.new);
             localStorage.setItem(key1, JSON.stringify(messages1));
             localStorage.setItem(key2, JSON.stringify(messages2));
-            if (window.currentAdminId === adminId) {
+            if (currentAdminId === adminId) {
                 const isSent = payload.new.sender_id === userId;
                 addMessage(payload.new.content, isSent);
                 scrollToBottom();
@@ -434,29 +435,6 @@ export async function subscribeToAdminMessages(userId, adminId) {
             }
         });
 }
-
-// Patch openChat agar reset badge unread saat user buka chat admin
-const _originalOpenChat = openChat;
-openChat = async function(type, name, assistantId) {
-    await _originalOpenChat(type, name, assistantId);
-    if (type === 'admin') {
-        // Cari adminId dari name
-        let adminId = null;
-        try {
-            const res = await fetch('/api/admins');
-            const admins = await res.json();
-            const found = admins.find(a => (a.full_name || a.username) === name);
-            if (found) adminId = found.id;
-        } catch {}
-        if (adminId) {
-            const badge = document.querySelector(`.unread-count[data-admin-id='${adminId}']`);
-            if (badge) {
-                badge.textContent = 0;
-                badge.style.display = 'none';
-            }
-        }
-    }
-};
 
 // Load messages for admin chat from Supabase
 export async function loadAdminMessagesFromDB(userId, adminId) {

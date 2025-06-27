@@ -1,3 +1,4 @@
+import { currentAdminId, currentAssistantId, _ngobrasPhotoPreview } from './ngobras.chat.js';
 import { currentChatType } from './ngobras.js';
 import { scrollToBottom } from './ngobras.utils.js';
 
@@ -408,7 +409,7 @@ export function hideGreetingSphere() {
     anime.remove('#greetingSphereSVG');
 }
 
-function animateGreetingTyping(text) {
+export function animateGreetingTyping(text) {
     const greetingText = document.getElementById('greetingText');
     if (!greetingText) return;
 
@@ -464,7 +465,7 @@ const GREETING_EYE_WIDTH = 11;      // px
 const GREETING_EYE_HEIGHT = 19;    // px
 const GREETING_EYE_RADIUS = 4.5;   // px (corner sharpness, 0 = sharp, half width = fully round)
 
-function getMiniSphereSVG(id = '', extraClass = '', monochrome = false) {
+export function getMiniSphereSVG(id = '', extraClass = '', monochrome = false) {
     // id: unique id for this instance (for targeting animation)
     // extraClass: for additional CSS classes
     // monochrome: if true, use grayscale gradient
@@ -489,7 +490,7 @@ function getMiniSphereSVG(id = '', extraClass = '', monochrome = false) {
 }
 
 // Animate the mini sphere (pulse + blink)
-function animateMiniSphere(id) {
+export function animateMiniSphere(id) {
     const circle = document.getElementById(`${id}_circle`);
     const eyeLeft = document.getElementById(`${id}_eyeLeft`);
     const eyeRight = document.getElementById(`${id}_eyeRight`);

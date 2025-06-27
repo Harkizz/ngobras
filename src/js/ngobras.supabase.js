@@ -14,20 +14,22 @@ export function waitForSupabase(retries = 10, delay = 200) {
     });
 }
 
+export let supabaseClient = null;
+
 export async function initializeSupabase() {
     try {
         await waitForSupabase();
-        if (!window.supabaseClient) {
+        if (!supabaseClient) {
             const response = await fetch('/api/supabase-config');
             const config = await response.json();
             if (window.supabase && config.url && config.anonKey) {
-                window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+                supabaseClient = window.supabase.createClient(config.url, config.anonKey);
             } else {
                 throw new Error('Supabase config missing');
             }
         }
         // Check if user is authenticated
-        const { data: { user }, error } = await window.supabaseClient.auth.getUser();
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
         if (error) throw error;
         if (user) {
             await loadUserProfile(user.id);

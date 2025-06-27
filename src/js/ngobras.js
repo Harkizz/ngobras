@@ -1,4 +1,7 @@
 // JavaScript for ngobras.html page
+import { currentAdminId, currentAssistantId, _ngobrasPhotoPreview } from './ngobras.chat.js';
+import { supabaseClient } from './ngobras.supabase.js';
+
 export let currentChatType = 'admin';
 export let currentChatName = '';
 export let chatHistory = {}; // Store chat messages for each assistant/admin
@@ -103,7 +106,7 @@ export function formatAIResponse(text) {
         const cardId = 'ai-card-' + Math.random().toString(36).substr(2, 9);
         return `
             <div class="ai-special-card" id="${cardId}">
-                <button class="copy-btn" title="Salin" onclick="copySolutionCard('${cardId}')">
+                <button class="copy-btn" title="Salin">
                     <i class="fas fa-copy"></i>
                 </button>
                 ${content.trim()}
@@ -126,7 +129,8 @@ export function formatAIResponse(text) {
     return html;
 }
 
-window.copySolutionCard = function(cardId) {
+// Ganti window.copySolutionCard dengan export function
+export function copySolutionCard(cardId) {
     const card = document.getElementById(cardId);
     if (!card) return;
     // Exclude the copy button itself from the copied text
@@ -242,6 +246,12 @@ export async function loadAIAssistants() {
         `;
         
         aiListContainer.appendChild(aiCard);
+
+        // Setelah elemen card dibuat:
+        const copyBtn = aiCard.querySelector('.copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => copySolutionCard(cardId));
+        }
     });
 }
 
@@ -278,9 +288,7 @@ loadAIMessages = function(assistantName) {
 };
 
 // Supabase
-if (!window.supabaseClient) {
-    window.supabaseClient = null;
-}
+import { supabaseClient } from './ngobras.supabase.js';
 
 // Add logout functionality
 async function logout() {

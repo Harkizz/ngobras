@@ -1,3 +1,5 @@
+import { supabaseClient } from './ngobras.supabase.js';
+
 // Identity check before loading admin.html
 export function identityCheck() {
     (function() {
@@ -279,12 +281,7 @@ async function openAdminChatRoom(userId) {
         if (typeof window.supabase === 'undefined') {
             throw new Error('Supabase JS library belum dimuat. Pastikan <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> sudah ada sebelum admin.js!');
         }
-        if (typeof window.supabaseClient === 'undefined') {
-            const resp = await fetch('/api/supabase-config');
-            const config = await resp.json();
-            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-        }
-        const { data: messages, error } = await window.supabaseClient
+        const { data: messages, error } = await supabaseClient
             .from('messages')
             .select('*')
             .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
@@ -350,11 +347,11 @@ function logAdminMessageAction(success, adminName, userName, error) {
 // Helper: Send message to Supabase 'messages' table
 async function sendAdminMessageToUser({ senderId, receiverId, content }) {
     try {
-        if (!window.supabaseClient) {
+        if (!supabaseClient) {
             throw new Error('Supabase client not initialized');
         }
         // Adapt to your messages table structure
-        const { data, error, status } = await window.supabaseClient
+        const { data, error, status } = await supabaseClient
             .from('messages')
             .insert([
                 {
@@ -434,3 +431,10 @@ function adminUILog(message, type = 'info') {
         console.info(message);
     }
 }
+
+// Tambahkan export pada function yang ingin digunakan di file lain
+export {
+    loadUserList,
+    openAdminChatRoom,
+    backToUserList
+};
