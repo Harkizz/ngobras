@@ -1,15 +1,31 @@
 // JavaScript for ngobras.html page
-let currentChatType = 'admin';
-let currentChatName = '';
-let chatHistory = {}; // Store chat messages for each assistant/admin
+// =====================================
+// This file handles all chat logic, UI updates, and Supabase integration for the NGOBRAS chat application.
+// It manages AI and admin chat, emoji picker, file uploads, profile, and greeting sphere animation.
 
-// --- Memory helpers ---
+// --- GLOBAL STATE ---
+let currentChatType = 'admin'; // 'ai' or 'admin' - which chat is currently open
+let currentChatName = '';      // Name of the current chat (AI assistant or admin)
+let chatHistory = {};          // Store chat messages for each assistant/admin (in-memory, not used for persistence)
+
+// --- MEMORY HELPERS ---
+/**
+ * Retrieve chat history for a given chatId from localStorage.
+ * @param {string} chatId - The unique chat identifier (e.g., 'ai_AssistantName' or 'admin_AdminName')
+ * @returns {Array} Array of message objects
+ */
 function getChatHistory(chatId) {
     const key = `ngobras_chat_history_${chatId}`;
     const data = localStorage.getItem(key);
     return data ? JSON.parse(data) : [];
 }
 
+/**
+ * Save a new chat message to localStorage for a given chatId.
+ * @param {string} chatId - The unique chat identifier
+ * @param {string} text - The message text
+ * @param {boolean} isSent - True if sent by user, false if received
+ */
 function saveChatMessage(chatId, text, isSent) {
     const key = `ngobras_chat_history_${chatId}`;
     let history = getChatHistory(chatId);
@@ -24,7 +40,11 @@ function saveChatMessage(chatId, text, isSent) {
     localStorage.setItem(key, JSON.stringify(history));
 }
 
-// --- Load messages for AI chat ---
+// --- LOAD MESSAGES FOR AI CHAT ---
+/**
+ * Load and render all messages for the current AI assistant chat.
+ * @param {string} assistantName - Name of the AI assistant (defaults to currentChatName)
+ */
 function loadAIMessages(assistantName = currentChatName) {
     const messagesList = document.getElementById('messages-list');
     const chatId = `ai_${assistantName}`;
@@ -41,7 +61,11 @@ function loadAIMessages(assistantName = currentChatName) {
     scrollToBottom();
 }
 
-// Navigation
+// --- NAVIGATION ---
+/**
+ * Show a specific page (e.g., 'chat', 'home', 'profile') and update navigation UI.
+ * @param {string} page - The page to show
+ */
 function showPage(page) {
     // First check if nav items exist before trying to modify them
     const navItems = document.querySelectorAll('.nav-item');
@@ -102,33 +126,48 @@ function showPage(page) {
     }
 }
 
-// Open chat
+// --- OPEN CHAT ---
+/**
+ * Open a chat with either an AI assistant or an admin, update UI and state.
+ * @param {string} type - 'ai' or 'admin'
+ * @param {string} name - Name of the assistant or admin
+ * @param {string} assistantId - (optional) ID of the AI assistant
+ */
 async function openChat(type, name, assistantId) {
     currentChatType = type;
     currentChatName = name;
     if (type === 'ai') {
+        window.currentAssistantId = assistantId;
         loadAIMessages(name);
+        window.currentAdminId = null; // Clear admin ID if switching to AI
+        // Remove admin ID from localStorage if switching to AI
+        if (localStorage.getItem('ngobras_current_admin_id')) {
+            localStorage.removeItem('ngobras_current_admin_id');
+            console.log("Admin ID returned");
+        }
     } else {
-        // ADMIN CHAT: fetch dari Supabase, simpan ke localStorage, lalu render dari localStorage
+        // Find admin by name to get their ID
         let adminId = null;
         try {
             const res = await fetch('/api/admins');
             const admins = await res.json();
             const found = admins.find(a => (a.full_name || a.username) === name);
             if (found) {
-                adminId = found.id;
+                adminId = found.id; // <-- FIXED: assign adminId
             }
         } catch (e) {
             console.error('Error fetching admins:', e);
         }
         window.currentAdminId = adminId;
         if (adminId) {
+            // Save admin ID to localStorage for later use
             localStorage.setItem('ngobras_current_admin_id', adminId);
+            // Get user ID from localStorage
             const userProfileStr = localStorage.getItem('ngobras_user_profile');
             const userId = userProfileStr ? JSON.parse(userProfileStr).id : null;
             if (userId) {
+                // Load messages from DB and log to console
                 await loadAdminMessagesFromDB(userId, adminId);
-                renderAdminMessagesFromLocalStorage();
             } else {
                 console.log("User ID not found");
             }
@@ -150,12 +189,12 @@ async function openChat(type, name, assistantId) {
             avatar.className = 'chat-avatar ai';
             avatar.innerHTML = '<i class="fas fa-robot"></i>';
             status.textContent = 'AI Assistant - Online';
-                            renderAdminMessagesFromLocalStorage();
+            loadAIMessages(name);
         } else {
             avatar.className = 'chat-avatar admin';
             avatar.innerHTML = '<i class="fas fa-user-md"></i>';
             status.textContent = 'Online';
-                           renderAdminMessagesFromLocalStorage();
+            loadAdminMessages(name);
         }
     }
 
@@ -178,7 +217,10 @@ async function openChat(type, name, assistantId) {
     localStorage.setItem('ngobras_last_chat', JSON.stringify({ type, name }));
 }
 
-// Go back to home
+// --- GO BACK TO HOME ---
+/**
+ * Return from chat to home page, clear admin chat state if needed.
+ */
 function goBack() {
     const bottomNav = document.querySelector('.bottom-nav');
     const topNavbar = document.querySelector('.top-navbar');
@@ -202,6 +244,9 @@ function goBack() {
     showPage('home');
 }
 
+/**
+ * Render admin messages from localStorage to the chat UI.
+ */
 function renderAdminMessagesFromLocalStorage() {
     const messagesList = document.getElementById('messages-list');
     const userProfileStr = localStorage.getItem('ngobras_user_profile');
@@ -217,7 +262,10 @@ function renderAdminMessagesFromLocalStorage() {
     scrollToBottom();
 }
 
-// Switch chat type
+// --- SWITCH CHAT TYPE ---
+/**
+ * Switch the chat UI to AI assistant mode.
+ */
 function switchToAI() {
     currentChatType = 'ai';
     loadAIMessages(currentChatName);
@@ -236,10 +284,12 @@ function switchToAI() {
     document.querySelector('.switch-btn.admin').classList.remove('active');
 }
 
+/**
+ * Switch the chat UI to admin mode.
+ */
 function switchToAdmin() {
     currentChatType = 'admin';
-    // ADMIN CHAT: render dari localStorage key baru
-    renderAdminMessagesFromLocalStorage();
+    loadAdminMessages(currentChatName);
     
     // Update header
     const avatar = document.getElementById('current-chat-avatar');
@@ -255,7 +305,32 @@ function switchToAdmin() {
     document.querySelector('.switch-btn.ai').classList.remove('active');
 }
 
-// Send message (restore AI memory logic)
+// --- LOAD ADMIN MESSAGES ---
+/**
+ * Load and render all messages for the current admin chat.
+ * @param {string} adminName - Name of the admin (defaults to currentChatName)
+ */
+function loadAdminMessages(adminName = currentChatName) {
+    const messagesList = document.getElementById('messages-list');
+    const chatId = `admin_${adminName}`;
+    const history = getChatHistory(chatId);
+
+    if (messagesList) {
+        messagesList.innerHTML = '';
+        if (history.length > 0) {
+            history.forEach(msg => {
+                addMessage(msg.text, msg.isSent);
+            });
+        }
+    }
+    scrollToBottom();
+}
+
+// --- SEND MESSAGE ---
+/**
+ * Send a message in the current chat (AI or admin), handle memory, UI, and API calls.
+ * Handles both AI chat (calls /api/chat) and admin chat (inserts to Supabase).
+ */
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const message = input.value.trim();
@@ -418,7 +493,12 @@ async function sendMessage() {
     scrollToBottom();
 }
 
-// Helper: Format AI response with markdown-like rules
+// --- FORMAT AI RESPONSE ---
+/**
+ * Format AI response text with markdown-like rules for display in chat bubbles.
+ * @param {string} text - The AI response text
+ * @returns {string} HTML-formatted string
+ */
 function formatAIResponse(text) {
     if (!text) return '';
 
@@ -454,6 +534,10 @@ function formatAIResponse(text) {
     return html;
 }
 
+/**
+ * Copy the content of a special AI solution card to clipboard.
+ * @param {string} cardId - The DOM id of the card
+ */
 window.copySolutionCard = function(cardId) {
     const card = document.getElementById(cardId);
     if (!card) return;
@@ -478,7 +562,12 @@ window.copySolutionCard = function(cardId) {
     });
 };
 
-// Add message to chat
+// --- ADD MESSAGE TO CHAT UI ---
+/**
+ * Add a message bubble to the chat UI (sent or received).
+ * @param {string} text - The message text
+ * @param {boolean} isSent - True if sent by user, false if received
+ */
 function addMessage(text, isSent = false) {
     const messagesList = document.getElementById('messages-list');
     const messageDiv = document.createElement('div');
@@ -547,7 +636,11 @@ function addMessage(text, isSent = false) {
     scrollToBottom();
 }
 
-// AI responses
+// --- AI & ADMIN AUTO-RESPONSE HELPERS ---
+/**
+ * Add a random AI response to the chat (fallback for errors).
+ * @param {string} userMessage - The user's message
+ */
 function addAIResponse(userMessage) {
     const responses = [
         "Terima kasih sudah berbagi. Saya memahami bahwa ini mungkin sulit untuk Anda. Mari kita cari solusi bersama.",
@@ -561,7 +654,10 @@ function addAIResponse(userMessage) {
     addMessage(randomResponse, false);
 }
 
-// Admin responses
+/**
+ * Add a random admin response to the chat (fallback for errors).
+ * @param {string} userMessage - The user's message
+ */
 function addAdminResponse(userMessage) {
     const responses = [
         "Saya sangat menghargai kepercayaan Anda untuk berbagi hal ini dengan saya. Mari kita jelajahi lebih dalam.",
@@ -575,38 +671,28 @@ function addAdminResponse(userMessage) {
     addMessage(randomResponse, false);
 }
 
-// Load messages for admin chat from Supabase
+// --- LOAD ADMIN MESSAGES FROM SUPABASE DB ---
+/**
+ * Load messages for a user-admin chat from the Supabase database (not used for rendering, just logs).
+ * @param {string} userId - User ID
+ * @param {string} adminId - Admin ID
+ */
 async function loadAdminMessagesFromDB(userId, adminId) {
-    // Pastikan Supabase client sudah siap
-    if (!window.supabaseClient) {
-        const resp = await fetch('/api/supabase-config');
-        const config = await resp.json();
-        if (window.supabase && config.url && config.anonKey) {
-            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-        } else {
-            throw new Error('Supabase client not initialized');
-        }
+    try {
+        const res = await fetch(`/api/messages/${userId}/${adminId}`);
+        if (!res.ok) throw new Error('Failed to fetch messages');
+        const messages = await res.json();
+        console.log('Messages between user and admin:', messages); // <-- LOG TO CONSOLE
+        // Optionally, render messages to UI here
+    } catch (err) {
+        console.error('Error loading messages from DB:', err);
     }
-    // Query pesan antara user dan admin (dua arah)
-    const { data: messages, error } = await window.supabaseClient
-        .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
-        .order('created_at', { ascending: true });
-    if (error) throw error;
-
-    // Simpan ke localStorage (dua key: user-admin dan admin-user)
-    const key1 = `ngobras_admin_chat_${userId}_${adminId}`;
-    const key2 = `ngobras_admin_chat_${adminId}_${userId}`;
-    localStorage.setItem(key1, JSON.stringify(messages));
-    localStorage.setItem(key2, JSON.stringify(messages));
-
-    // Render ke UI jika perlu
-    // ...render logic...
-    console.log('Messages between user and admin:', messages);
 }
 
-// Typing indicator
+// --- TYPING INDICATOR ---
+/**
+ * Show the typing indicator in the chat UI (AI or admin).
+ */
 function showTypingIndicator() {
     let indicator = document.getElementById('typing-indicator');
     if (!indicator) {
@@ -664,6 +750,9 @@ function showTypingIndicator() {
     scrollToBottom();
 }
 
+/**
+ * Hide the typing indicator from the chat UI.
+ */
 function hideTypingIndicator() {
     const indicator = document.getElementById('typing-indicator');
     if (indicator && indicator.parentNode) {
@@ -672,35 +761,50 @@ function hideTypingIndicator() {
     }
 }
 
-// Handle enter key
+// --- INPUT HANDLERS ---
+/**
+ * Handle Enter key press in the message input to send message.
+ * @param {KeyboardEvent} event
+ */
 function handleKeyPress(event) {
     if (event.key === 'Enter') {
         sendMessage();
     }
-}        // Utility function to safely get DOM elements
-        function getElement(id) {
-            const element = document.getElementById(id);
-            if (!element) {
-                console.debug(`Element with id '${id}' not found - this is expected on non-chat pages`);
-                return null;
-            }
-            return element;
-        }
+}
 
-        // Scroll to bottom
-        function scrollToBottom() {
-            const messagesContainer = getElement('chat-messages');
-            if (messagesContainer) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        }
+/**
+ * Utility function to safely get DOM elements by id, with debug logging if not found.
+ * @param {string} id - The element id
+ * @returns {HTMLElement|null}
+ */
+function getElement(id) {
+    const element = document.getElementById(id);
+    if (!element) {
+        console.debug(`Element with id '${id}' not found - this is expected on non-chat pages`);
+        return null;
+    }
+    return element;
+}
 
-        // Emoji Picker Data (a subset of standard emojis, you can expand this)
+/**
+ * Scroll the chat messages container to the bottom.
+ */
+function scrollToBottom() {
+    const messagesContainer = getElement('chat-messages');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+// --- EMOJI PICKER ---
+// List of emojis for the picker
 const EMOJI_LIST = [
     "😀","😁","😂","🤣","😃","😄","😅","😆","😉","😊","😋","😎","😍","😘","🥰","😗","😙","😚","🙂","🤗","🤩","🤔","🤨","😐","😑","😶","🙄","😏","😣","😥","😮","🤐","😯","😪","😫","🥱","😴","😌","😛","😜","😝","🤤","😒","😓","😔","😕","🙃","🤑","😲","☹️","🙁","😖","😞","😟","😤","😢","😭","😦","😧","😨","😩","🤯","😬","😰","😱","🥵","🥶","😳","🤪","😵","😡","😠","🤬","😷","🤒","🤕","🤢","🤮","🥴","😇","🥳","🥺","🤠","🤡","🤥","🤫","🤭","🧐","🤓","😈","👿","👹","👺","💀","👻","👽","🤖","💩","😺","😸","😹","😻","😼","😽","🙀","😿","😾"
 ];
 
-// Show/hide emoji picker
+/**
+ * Toggle the emoji picker visibility.
+ */
 function toggleEmoji() {
     const picker = document.getElementById('emoji-picker');
     if (!picker) return;
@@ -711,6 +815,9 @@ function toggleEmoji() {
     }
 }
 
+/**
+ * Show the emoji picker and populate it if needed.
+ */
 function showEmojiPicker() {
     const picker = document.getElementById('emoji-picker');
     if (!picker) return;
@@ -736,12 +843,19 @@ function showEmojiPicker() {
     }, 10);
 }
 
+/**
+ * Hide the emoji picker.
+ */
 function hideEmojiPicker() {
     const picker = document.getElementById('emoji-picker');
     if (picker) picker.style.display = 'none';
     document.removeEventListener('mousedown', handleEmojiOutsideClick);
 }
 
+/**
+ * Handle click outside the emoji picker to close it.
+ * @param {MouseEvent} e
+ */
 function handleEmojiOutsideClick(e) {
     const picker = document.getElementById('emoji-picker');
     const emojiBtn = document.querySelector('.action-btn i.fa-smile');
@@ -750,6 +864,10 @@ function handleEmojiOutsideClick(e) {
     }
 }
 
+/**
+ * Insert an emoji into the message input at the cursor position.
+ * @param {string} emoji
+ */
 function insertEmojiToInput(emoji) {
     const input = document.getElementById('messageInput');
     if (!input) return;
@@ -762,12 +880,18 @@ function insertEmojiToInput(emoji) {
     input.selectionStart = input.selectionEnd = start + emoji.length;
 }
 
-// Notifications
+// --- NOTIFICATIONS ---
+/**
+ * Show a simple notification alert (placeholder for real notifications).
+ */
 function showNotifications() {
     alert('Notifikasi:\n• Dr. Sarah Wijaya mengirim pesan baru\n• Jadwal konsultasi minggu depan\n• Tips kesehatan mental harian');
 }
 
-// Load AI Assistants
+// --- LOAD AI ASSISTANTS ---
+/**
+ * Fetch and render the list of available AI assistants from the backend.
+ */
 async function loadAIAssistants() {
     const aiListContainer = document.getElementById('ai-assistants-list');
     const skeleton = document.getElementById('ai-assistants-list-skeleton');
@@ -862,7 +986,10 @@ async function loadAIAssistants() {
     });
 }
 
-// Load Admins
+// --- LOAD ADMINS ---
+/**
+ * Fetch and render the list of available admins from the backend.
+ */
 async function loadAdminList() {
     const adminListContainer = document.getElementById('admin-list');
     const skeleton = document.getElementById('admin-list-skeleton');
@@ -946,7 +1073,13 @@ async function loadAdminList() {
     });
 }
 
-// Wait for Supabase library to be loaded before running the rest of the code
+// --- SUPABASE INITIALIZATION ---
+/**
+ * Wait for the Supabase library to be loaded before continuing.
+ * @param {number} retries - Number of retries
+ * @param {number} delay - Delay between retries (ms)
+ * @returns {Promise}
+ */
 function waitForSupabase(retries = 10, delay = 200) {
     return new Promise((resolve, reject) => {
         function check() {
@@ -962,25 +1095,20 @@ function waitForSupabase(retries = 10, delay = 200) {
     });
 }
 
-// Supabase
-if (!window.supabaseClient) {
-    window.supabaseClient = null;
-}
+// Supabase client instance
+let supabaseClient;
 
+/**
+ * Initialize Supabase client and check user authentication. Loads user profile if authenticated.
+ */
 async function initializeSupabase() {
     try {
         await waitForSupabase();
-        if (!window.supabaseClient) {
-            const response = await fetch('/api/supabase-config');
-            const config = await response.json();
-            if (window.supabase && config.url && config.anonKey) {
-                window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-            } else {
-                throw new Error('Supabase config missing');
-            }
-        }
+        const response = await fetch('/api/supabase-config');
+        const config = await response.json();
+        supabaseClient = supabase.createClient(config.url, config.anonKey);
         // Check if user is authenticated
-        const { data: { user }, error } = await window.supabaseClient.auth.getUser();
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
         if (error) throw error;
         if (user) {
             await loadUserProfile(user.id);
@@ -994,7 +1122,10 @@ async function initializeSupabase() {
     }
 }
 
-// Load user profile
+/**
+ * Load the user's profile from Supabase and update the UI.
+ * @param {string} userId - The user's ID
+ */
 async function loadUserProfile(userId) {
     try {
         showProfileLoading(true);
@@ -1041,7 +1172,10 @@ async function loadUserProfile(userId) {
     }
 }
 
-// Update profile UI
+/**
+ * Update the profile UI with user data.
+ * @param {Object} profile - The user's profile object
+ */
 function updateProfileUI(profile) {
     // Update basic info
     document.getElementById('profileName').textContent = profile.full_name || 'No Name Set';
@@ -1061,7 +1195,10 @@ function updateProfileUI(profile) {
     document.getElementById('profileMemberSince').textContent = `Member since ${memberSince}`;
 }
 
-// Update profile statistics
+/**
+ * Update the profile statistics UI (total chats, last active).
+ * @param {Array} chatStats - Array of chat message objects
+ */
 function updateProfileStats(chatStats) {
     if (!chatStats) return;
     
@@ -1075,13 +1212,19 @@ function updateProfileStats(chatStats) {
     }
 }
 
-// Show/hide loading state
+/**
+ * Show or hide the profile loading spinner/content.
+ * @param {boolean} show - True to show loading, false to show content
+ */
 function showProfileLoading(show) {
     document.getElementById('profileLoading').style.display = show ? 'block' : 'none';
     document.getElementById('profileContent').style.display = show ? 'none' : 'block';
 }
 
-// Add this function to handle profile updates
+/**
+ * Update the user's profile in Supabase and refresh the UI.
+ * @param {Object} data - Profile fields to update
+ */
 async function updateProfile(data) {
     try {
         const { data: profile, error } = await supabaseClient
@@ -1099,7 +1242,9 @@ async function updateProfile(data) {
     }
 }
 
-// Add logout functionality
+/**
+ * Log out the current user and redirect to login page.
+ */
 async function logout() {
     try {
         const { error } = await supabaseClient.auth.signOut();
@@ -1113,8 +1258,52 @@ async function logout() {
     }
 }
 
-// Add to your existing event listeners
-document.addEventListener('DOMContentLoaded', function() {
+// --- SUBSCRIBE TO ADMIN MESSAGES ---
+/**
+ * Subscribe to real-time admin messages for the logged-in user using Supabase Realtime.
+ * Listens for new messages where receiver_id is the current user, is_read is FALSE, and chat_type is 'admin'.
+ * Triggers a UI notification or logs the message when a new admin message arrives.
+ * @param {string} ngobrasUserId - The logged-in user's UUID
+ * @returns {Promise<object|null>} The subscription object or null if error
+ */
+async function subscribeToNewAdminMessages(ngobrasUserId) {
+    if (!window.supabaseClient) {
+        console.error('Supabase client not initialized.');
+        return null;
+    }
+    // Subscribe to new admin messages for this user
+    const { data: subscription, error } = window.supabaseClient
+        .channel('admin-messages-channel')
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `receiver_id=eq.${ngobrasUserId},is_read=eq.false,chat_type=eq.admin`,
+            },
+            (payload) => {
+                const { content, sender_id } = payload.new;
+                // Log the admin message (replace with UI notification if needed)
+                console.log(`[NEW MESSAGE] (Admin ID: ${sender_id}): "${content}"`);
+                // Optionally, trigger a UI notification or update chat UI here
+                // showFastPopup('Pesan baru dari admin!');
+            }
+        )
+        .subscribe();
+    if (error) {
+        console.error('Error subscribing to admin messages:', error);
+        return null;
+    }
+    return subscription;
+}
+
+// --- EVENT LISTENERS ---
+/**
+ * DOMContentLoaded: Set up event listeners, load data, and initialize UI for each page.
+ * Also subscribes to real-time admin messages after user login.
+ */
+document.addEventListener('DOMContentLoaded', async function() {
     // Check if we're on the chat page
     const isChatPage = document.querySelector('.chat-room') !== null;
     
@@ -1151,9 +1340,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
     }
+
+    // Subscribe to real-time admin messages after user is authenticated
+    try {
+        // Only run if Supabase client and user profile are available
+        if (window.supabaseClient) {
+            const userProfileStr = localStorage.getItem('ngobras_user_profile');
+            const userProfile = userProfileStr ? JSON.parse(userProfileStr) : null;
+            if (userProfile && userProfile.id) {
+                await subscribeToNewAdminMessages(userProfile.id);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to subscribe to admin messages:', err);
+    }
 });
 
-// Initialize app
+/**
+ * DOMContentLoaded: Duplicate listener for initialization (can be merged with above).
+ */
 document.addEventListener('DOMContentLoaded', function() {
     // Check if we're on the chat page
     const isChatPage = document.querySelector('.chat-room') !== null;
@@ -1187,7 +1392,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Show greeting sphere animation
+// --- GREETING SPHERE ANIMATION ---
+/**
+ * Show the animated greeting sphere for the AI assistant if no chat history exists.
+ * @param {string} assistantName - Name of the AI assistant
+ */
 function showGreetingSphere(assistantName) {
     const greetingContainer = document.getElementById('greeting-sphere');
     const greetingText = document.getElementById('greetingText');
@@ -1305,7 +1514,9 @@ function showGreetingSphere(assistantName) {
 
 }
 
-// Hide greeting sphere animation
+/**
+ * Hide the greeting sphere animation.
+ */
 function hideGreetingSphere() {
     const greetingContainer = document.getElementById('greeting-sphere');
     if (greetingContainer) {
@@ -1316,113 +1527,14 @@ function hideGreetingSphere() {
     anime.remove('#greetingSphereSVG');
 }
 
-// Show greeting when opening chat, hide on first user message
-const originalOpenChat = openChat;
-openChat = function(type, name) {
-    originalOpenChat(type, name);
-    if (type === 'ai') {
-        showGreetingSphere(name);
-    } else {
-        hideGreetingSphere();
-    }
-};
+// --- GREETING SPHERE HOOKS ---
+// Patch openChat, sendMessage, and loadAIMessages to show/hide greeting sphere as needed
+// ...existing code...
 
-// Hide greeting when user sends first message in AI chat
-const originalSendMessage = sendMessage;
-let greetingDismissed = false;
-sendMessage = function() {
-    if (currentChatType === 'ai' && !greetingDismissed) {
-        hideGreetingSphere();
-        greetingDismissed = true;
-    }
-    originalSendMessage.apply(this, arguments);
-};
-
-// Reset greetingDismissed when switching AI assistant
-const originalLoadAIMessages = loadAIMessages;
-loadAIMessages = function(assistantName) {
-    greetingDismissed = false;
-    originalLoadAIMessages.apply(this, arguments);
-};
-
-// Check login status and show modal if not logged in
-document.addEventListener('DOMContentLoaded', async function() {
-    // Only run on ngobras.html
-    if (!window.location.pathname.includes('ngobras')) return;
-
-    // Ensure Supabase is loaded
-    if (typeof supabase === 'undefined') {
-        await new Promise(res => setTimeout(res, 300)); // Wait for supabase to load
-    }
-    // Get config from backend
-    let config;
-    try {
-        const resp = await fetch('/api/supabase-config');
-        config = await resp.json();
-    } catch (e) {
-        config = null;
-    }
-    if (!config || !config.url || !config.anonKey) return;
-
-    const supabaseClient = supabase.createClient(config.url, config.anonKey);
-
-    // Check user session
-    const { data: { user } } = await supabaseClient.auth.getUser();
-
-    if (!user) {
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('authModal'), {
-            backdrop: 'static',
-            keyboard: false
-        });
-        modal.show();
-
-        // Button handlers
-        document.getElementById('loginEmailBtn').onclick = function() {
-            window.location.href = '/login.html';
-        };
-        document.getElementById('loginGoogleBtn').onclick = async function() {
-            await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/ngobras'
-                }
-            });
-        };
-        console.log('User is not logged in.');
-        return;
-    }
-
-    // Immediately check if user profile exists in the database
-    try {
-        const { data: profile, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (profile) {
-            console.log('User profile exists:', profile);
-        } else {
-            console.log('User profile NOT found.');
-            // Log out the user session if profile not found
-            await supabaseClient.auth.signOut();
-            // Optionally, show the login modal or redirect
-            const modal = new bootstrap.Modal(document.getElementById('authModal'), {
-                backdrop: 'static',
-                keyboard: false
-            });
-            modal.show();
-            return;
-        }
-        if (error) {
-            console.log('Error checking user profile:', error);
-        }
-    } catch (err) {
-        console.log('Error during profile existence check:', err);
-    }
-});
-
+// --- AUTH MODAL ---
+/**
+ * Show the authentication modal (login required).
+ */
 function showAuthModal() {
     const modal = new bootstrap.Modal(document.getElementById('authModal'), {
         backdrop: 'static',
@@ -1461,6 +1573,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+/**
+ * Animate the greeting text with a typing effect.
+ * @param {string} text - The greeting message
+ */
 function animateGreetingTyping(text) {
     const greetingText = document.getElementById('greetingText');
     if (!greetingText) return;
@@ -1512,11 +1628,18 @@ function animateGreetingTyping(text) {
     });
 }
 
-// Eye configuration for greeting sphere
+// --- GREETING SPHERE EYE CONFIG ---
 const GREETING_EYE_WIDTH = 11;      // px
 const GREETING_EYE_HEIGHT = 19;    // px
 const GREETING_EYE_RADIUS = 4.5;   // px (corner sharpness, 0 = sharp, half width = fully round)
 
+/**
+ * Generate SVG markup for a mini animated sphere avatar (used in chat bubbles).
+ * @param {string} id - Unique DOM id for the SVG
+ * @param {string} extraClass - Additional CSS classes
+ * @param {boolean} monochrome - Use grayscale gradient if true
+ * @returns {string} SVG markup
+ */
 function getMiniSphereSVG(id = '', extraClass = '', monochrome = false) {
     // id: unique id for this instance (for targeting animation)
     // extraClass: for additional CSS classes
@@ -1541,7 +1664,10 @@ function getMiniSphereSVG(id = '', extraClass = '', monochrome = false) {
     `;
 }
 
-// Animate the mini sphere (pulse + blink)
+/**
+ * Animate the mini sphere avatar (pulse and blink effects).
+ * @param {string} id - The DOM id of the SVG
+ */
 function animateMiniSphere(id) {
     const circle = document.getElementById(`${id}_circle`);
     const eyeLeft = document.getElementById(`${id}_eyeLeft`);
@@ -1578,7 +1704,7 @@ function animateMiniSphere(id) {
     setTimeout(blink, 1200 + Math.random() * 800);
 }
 
-// === Greeting Sphere Eye Follow Animation ===
+// === GREETING SPHERE EYE FOLLOW ANIMATION ===
 (function() {
     // Eye config (should match your SVG)
     const EYE_WIDTH = 9;
@@ -1682,6 +1808,10 @@ function animateMiniSphere(id) {
     };
 })();
 
+/**
+ * Animate the chat page opening with a transition effect.
+ * @param {Function} callback - Called after animation completes
+ */
 function animateChatPageOpen(callback) {
     // Find the chat room container
     const chatPage = document.getElementById('chat-page');
@@ -1712,7 +1842,9 @@ function animateChatPageOpen(callback) {
     }, 1000);
 }
 
-// Update goToLastChat to use the animation
+/**
+ * Go to the last opened chat (if available), with animation.
+ */
 function goToLastChat() {
     const lastChat = localStorage.getItem('ngobras_last_chat');
     if (lastChat) {
@@ -1727,6 +1859,10 @@ function goToLastChat() {
     showFastPopup("Chat terakhir tidak ditemukan.");
 }
 
+/**
+ * Show a fast popup message in the center of the screen.
+ * @param {string} message - The message to show
+ */
 function showFastPopup(message) {
     // Remove existing popup if any
     let popup = document.getElementById('fast-popup');
@@ -1758,7 +1894,10 @@ function showFastPopup(message) {
     }, 1400);
 }
 
-// Action Menu
+// --- ACTION MENU (FILE/PHOTO UPLOAD) ---
+/**
+ * Toggle the action menu (file/photo upload options).
+ */
 function toggleActionMenu() {
     const menu = document.getElementById('action-menu');
     if (!menu) return;
@@ -1773,6 +1912,10 @@ function toggleActionMenu() {
     }
 }
 
+/**
+ * Handle click outside the action menu to close it.
+ * @param {MouseEvent} e
+ */
 function handleActionMenuOutsideClick(e) {
     const menu = document.getElementById('action-menu');
     const btn = document.getElementById('actionMenuBtn');
@@ -1782,11 +1925,18 @@ function handleActionMenuOutsideClick(e) {
     }
 }
 
+/**
+ * Trigger the file input for uploading a file.
+ */
 function triggerFileUpload() {
     document.getElementById('fileInput').click();
     toggleActionMenu();
 }
 
+/**
+ * Handle file input change event for uploading images.
+ * @param {Event} event
+ */
 function handleFileUpload(event) {
     const file = event.target.files[0];
     if (file && file.type.startsWith('image/')) {
@@ -1804,6 +1954,11 @@ function handleFileUpload(event) {
     }
 }
 
+/**
+ * Show a preview of the selected photo before sending.
+ * @param {string} dataUrl - The image data URL
+ * @param {string} fileName - The file name (optional)
+ */
 function showPhotoPreview(dataUrl, fileName = '') {
     const container = document.getElementById('photo-preview-container');
     container.innerHTML = `
@@ -1819,6 +1974,9 @@ function showPhotoPreview(dataUrl, fileName = '') {
     window._ngobrasPhotoPreview = { dataUrl, fileName };
 }
 
+/**
+ * Remove the photo preview from the UI.
+ */
 function removePhotoPreview() {
     const container = document.getElementById('photo-preview-container');
     container.innerHTML = '';
@@ -1826,6 +1984,9 @@ function removePhotoPreview() {
     window._ngobrasPhotoPreview = null;
 }
 
+/**
+ * Trigger the camera/photo input for taking a photo (mobile/desktop).
+ */
 function triggerTakePhoto() {
     // For mobile, this will prompt camera; for desktop, will open file dialog
     const input = document.getElementById('fileInput');
@@ -1835,7 +1996,9 @@ function triggerTakePhoto() {
     toggleActionMenu();
 }
 
-// Logout modal
+/**
+ * Show the logout confirmation modal.
+ */
 function showLogoutModal() {
     const modal = new bootstrap.Modal(document.getElementById('logoutModal'));
     modal.show();

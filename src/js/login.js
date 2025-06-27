@@ -35,15 +35,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         });
 
         if (data.user) {
-            // Ambil profil user dari Supabase
-            const { data: profile, error: profileError } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('id', data.user.id)
-                .single();
-            if (!profileError && profile) {
-                localStorage.setItem('ngobras_user_profile', JSON.stringify(profile));
-            }
             // Login successful
             showAlert('Login berhasil! Redirecting...', 'success');
             setTimeout(() => {

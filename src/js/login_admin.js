@@ -71,7 +71,7 @@ function showMessage(type, message) {
     }
 }
 
-// Submit login form
+// Form submission
 if (loginForm) {
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -83,21 +83,26 @@ if (loginForm) {
         loginButton.disabled = true;
         buttonText.textContent = 'Mengirim...';
         try {
-            // Kirim request magic link ke backend
+            // Send admin login request to backend
             const response = await fetch('/api/admin-login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }) // Hanya email, tanpa uuid
+                body: JSON.stringify({ email, uuid: uuidInput.value.trim() })
             });
             const result = await response.json();
-            if (response.ok && result.success) {
-                showMessage('success', 'Magic link berhasil dikirim. Silakan cek inbox/spam email Anda.');
+            if (response.ok && result.success && result.admin) {
+                showMessage('success', 'Login admin berhasil! Redirecting...');
+                localStorage.setItem('ngobras_admin_id', result.admin.id);
+                localStorage.setItem('ngobras_admin_email', result.admin.email);
+                setTimeout(() => {
+                    window.location.href = 'admin.html';
+                }, 1200);
             } else {
-                showMessage('error', result.error || 'Email ini bukan admin.');
+                showMessage('error', result.error || 'Gagal login admin.');
             }
             buttonText.textContent = 'Kirim Magic Link';
         } catch (err) {
-            showMessage('error', err.message || 'Gagal mengirim magic link.');
+            showMessage('error', err.message || 'Gagal login admin.');
             buttonText.textContent = 'Kirim Magic Link';
         }
         loginButton.disabled = false;
@@ -133,3 +138,11 @@ document.addEventListener('keydown', function(e) {
         loginForm.dispatchEvent(new Event('submit'));
     }
 });
+
+// Add demo credentials hint (for development)
+console.log('Demo Admin Credentials:');
+console.log('Email: admin@ngobras.id');
+console.log('UUID: 550e8400-e29b-41d4-a716-446655440000');
+console.log('---');
+console.log('Email: superadmin@ngobras.id');
+console.log('UUID: 6ba7b810-9dad-11d1-80b4-00c04fd430c8');
