@@ -397,12 +397,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     if (!config || !config.url || !config.anonKey) return;
 
-    // Inisialisasi client hanya sekali, simpan di window
-    if (!window.supabaseClient) {
-        window.supabaseClient = supabase.createClient(config.url, config.anonKey);
-    }
-    const supabaseClient = window.supabaseClient;
-
     // Check user session
     const { data: { user } } = await supabaseClient.auth.getUser();
 
@@ -464,7 +458,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 config = null;
             }
             if (!config || !config.url || !config.anonKey) return;
-            const supabaseClient = supabase.createClient(config.url, config.anonKey);
             await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
