@@ -1,95 +1,71 @@
-window.addEventListener('DOMContentLoaded', async function() {
-    // Ambil access_token dan refresh_token dari URL hash
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.replace('#', ''));
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    if (!accessToken || !refreshToken) {
-        document.getElementById('statusLoading').style.display = 'none';
-        const resultDiv = document.getElementById('statusResult');
-        resultDiv.textContent = 'Akses tidak valid. Silakan login ulang.';
-        resultDiv.classList.remove('success');
-        resultDiv.style.display = 'block';
-        setTimeout(function() {
-            window.location.replace('login_admin.html');
-        }, 2000);
+window.addEventListener('DOMContentLoaded', function() {
+    // Check for guest session ID in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    let guestSessionId = urlParams.get('guest');
+    if (!guestSessionId) {
+        // If not present, generate a random session ID and reload with it
+        guestSessionId = crypto.randomUUID();
+        window.location.replace(window.location.pathname + '?guest=' + guestSessionId);
         return;
     }
+    // Optionally, store guestSessionId in sessionStorage for later use
+    sessionStorage.setItem('ngobras_guest_session', guestSessionId);
 
-    // Ambil config Supabase dari backend
-    let config;
-    try {
-        const resp = await fetch('/api/supabase-config');
-        config = await resp.json();
-    } catch (e) {
-        document.getElementById('statusLoading').style.display = 'none';
-        const resultDiv = document.getElementById('statusResult');
-        resultDiv.textContent = 'Gagal mengambil konfigurasi Supabase.';
-        resultDiv.classList.remove('success');
-        resultDiv.style.display = 'block';
-        setTimeout(function() {
-            window.location.replace('login_admin.html');
-        }, 2000);
-        return;
-    }
-    if (!config || !config.url || !config.anonKey) {
-        document.getElementById('statusLoading').style.display = 'none';
-        const resultDiv = document.getElementById('statusResult');
-        resultDiv.textContent = 'Konfigurasi Supabase tidak valid.';
-        resultDiv.classList.remove('success');
-        resultDiv.style.display = 'block';
-        setTimeout(function() {
-            window.location.replace('login_admin.html');
-        }, 2000);
-        return;
-    }
+    // Show loading spinner and "Cek Status" for 3 seconds
+    document.getElementById('statusTitle').textContent = 'Cek Status';
+    document.getElementById('statusLoading').style.display = 'flex';
+    document.getElementById('statusResult').style.display = 'none';
 
-    // Inisialisasi Supabase client
-    const supabaseClient = supabase.createClient(config.url, config.anonKey);
-
-    // Set session Supabase di browser
-    await supabaseClient.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-    });
-
-    // Dapatkan user dari session
-    const { data: { user }, error } = await supabaseClient.auth.getUser();
-    if (error || !user) {
-        document.getElementById('statusLoading').style.display = 'none';
-        const resultDiv = document.getElementById('statusResult');
-        resultDiv.textContent = 'Akses tidak valid. Silakan login ulang.';
-        resultDiv.classList.remove('success');
-        resultDiv.style.display = 'block';
-        setTimeout(function() {
-            window.location.replace('login_admin.html');
-        }, 2000);
-        return;
-    }
-
-    // Cek role admin di profiles
-    const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .eq('role', 'admin')
-        .eq('is_active', true)
-        .single();
-
-    if (profile) {
-        // Simpan ke localStorage
-        localStorage.setItem('ngobras_admin_id', user.id);
-        localStorage.setItem('ngobras_admin_email', user.email);
-        // Redirect ke admin.html
-        window.location.replace('admin.html');
-    } else {
-        document.getElementById('statusLoading').style.display = 'none';
-        const resultDiv = document.getElementById('statusResult');
-        resultDiv.textContent = 'Email ini bukan admin.';
-        resultDiv.classList.remove('success');
-        resultDiv.style.display = 'block';
-        setTimeout(function() {
-            window.location.replace('login_admin.html');
-        }, 2000);
-    }
+    setTimeout(async function() {
+        // Check if admin info exists in localStorage
+        const adminId = localStorage.getItem('ngobras_admin_id');
+        const adminEmail = localStorage.getItem('ngobras_admin_email');
+        if (!adminId || !adminEmail) {
+            // Not logged in as admin
+            document.getElementById('statusLoading').style.display = 'none';
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.textContent = 'Anda bukan admin.';
+            resultDiv.classList.remove('success');
+            resultDiv.style.display = 'block';
+            setTimeout(function() {
+                window.location.replace('login_admin.html');
+            }, 2000);
+            return;
+        }
+        // Optionally, verify adminId/email with backend (profiles table)
+        try {
+            const res = await fetch(`/api/profiles/${adminId}`);
+            if (!res.ok) throw new Error('Gagal memeriksa status admin');
+            const data = await res.json();
+            if (data && data.role === 'admin' && data.is_active !== false) {
+                // Success: is admin
+                document.getElementById('statusLoading').style.display = 'none';
+                const resultDiv = document.getElementById('statusResult');
+                resultDiv.textContent = 'Anda terverifikasi sebagai admin. Mengalihkan ke dashboard...';
+                resultDiv.classList.add('success');
+                resultDiv.style.display = 'block';
+                setTimeout(function() {
+                    window.location.replace('admin.html');
+                }, 2000);
+            } else {
+                document.getElementById('statusLoading').style.display = 'none';
+                const resultDiv = document.getElementById('statusResult');
+                resultDiv.textContent = 'Anda bukan admin.';
+                resultDiv.classList.remove('success');
+                resultDiv.style.display = 'block';
+                setTimeout(function() {
+                    window.location.replace('login_admin.html');
+                }, 2000);
+            }
+        } catch (err) {
+            document.getElementById('statusLoading').style.display = 'none';
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.textContent = 'Gagal memeriksa status. Silakan login ulang.';
+            resultDiv.classList.remove('success');
+            resultDiv.style.display = 'block';
+            setTimeout(function() {
+                window.location.replace('login_admin.html');
+            }, 2000);
+        }
+    }, 3000);
 });
