@@ -19,20 +19,44 @@ app.use((req, res, next) => {
 
 const port = process.env.PORT || 3000;
 
-// Initialize Supabase client
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
-);
+// Initialize Supabase client with connection tracking
+console.log('[Supabase] Initializing Supabase client...');
+let supabaseInitTime = Date.now();
+let supabase = null;
 
-console.log('Checking Supabase connection...');
+try {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+        console.error('[Supabase] ERROR: Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables');
+        throw new Error('Missing Supabase credentials in environment variables');
+    }
+    
+    supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY
+    );
+    
+    console.log(`[Supabase] Client created in ${Date.now() - supabaseInitTime}ms, testing connection...`);
+} catch (err) {
+    console.error('[Supabase] Failed to create Supabase client:', err);
+}
+
+// Test connection with timeout
+const connectionTimeout = setTimeout(() => {
+    console.error('[Supabase] Connection test timed out after 5000ms');
+}, 5000);
+
 supabase.from('ai_assistant').select('count').single()
     .then(({ count, error }) => {
+        clearTimeout(connectionTimeout);
         if (error) {
-            console.error('Supabase connection error:', error);
+            console.error('[Supabase] Connection error:', error);
         } else {
-            console.log('Supabase connected successfully');
+            console.log(`[Supabase] Connected successfully in ${Date.now() - supabaseInitTime}ms`);
         }
+    })
+    .catch(err => {
+        clearTimeout(connectionTimeout);
+        console.error('[Supabase] Connection test failed:', err);
     });
 
 // Serve static files from src directory
@@ -90,21 +114,33 @@ app.get('/api/ai-assistants', async (req, res) => {
     }
 });
 
-// Save a new message (admin chat)
+// Save a new message (admin chat & user chat)
 app.post('/api/messages', async (req, res) => {
     const { sender_id, receiver_id, content, chat_type } = req.body;
-    if (!sender_id || !receiver_id || !content || !chat_type) {
+    if (!sender_id || !receiver_id || !content) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
     try {
-        const { data, error } = await supabase
+        // Ambil Authorization header jika ada
+        const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+        let sbClient = supabase;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const jwt = authHeader.replace('Bearer ', '').trim();
+            sbClient = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY,
+                { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+            );
+        }
+        // Insert message dengan JWT user (agar lolos RLS)
+        const { data, error } = await sbClient
             .from('messages')
             .insert([
                 {
                     sender_id,
                     receiver_id,
                     content,
-                    chat_type,
+                    chat_type: chat_type || null, // chat_type opsional
                     is_read: false
                 }
             ])
@@ -112,11 +148,12 @@ app.post('/api/messages', async (req, res) => {
             .single();
 
         if (error) {
-            console.error('Supabase error:', error);
+            console.error('[POST /api/messages] Supabase error:', error);
             return res.status(500).json({ error: 'Database error', details: error.message });
         }
         return res.json(data);
     } catch (err) {
+        console.error('[POST /api/messages] Server error:', err);
         return res.status(500).json({ error: 'Server error', details: err.message });
     }
 });
@@ -141,33 +178,27 @@ app.get('/api/profiles/:userId', async (req, res) => {
 });
 
 app.post('/api/admin-login', async (req, res) => {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, error: 'Email is required' });
-
-    // Cek admin
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, role')
-        .eq('email', email)
-        .eq('role', 'admin')
-        .eq('is_active', true)
-        .single();
-
-    if (error || !data) {
-        return res.status(401).json({ success: false, error: 'Email ini bukan admin' });
+    const { email, uuid } = req.body;
+    if (!email || !uuid) {
+        return res.status(400).json({ error: 'Email and UUID are required' });
     }
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, email, role')
+            .eq('email', email)
+            .eq('id', uuid)
+            .eq('role', 'admin')
+            .eq('is_active', true)
+            .single();
 
-    // Kirim magic link
-    const { error: magicLinkError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-            emailRedirectTo: 'http://ngobras.vercel.app/check_status.html' // Ganti dengan domain Anda
+        if (error || !data) {
+            return res.status(401).json({ error: 'Email atau UUID tidak valid' });
         }
-    });
-    if (magicLinkError) {
-        return res.status(500).json({ success: false, error: 'Gagal mengirim magic link' });
+        return res.json({ success: true, admin: { id: data.id, email: data.email } });
+    } catch (err) {
+        return res.status(500).json({ error: 'Server error', details: err.message });
     }
-    return res.json({ success: true });
 });
 
 app.get('/api/messages/:userId', (req, res) => {
@@ -430,12 +461,25 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// Add this route before other routes
+// Enhanced Supabase config endpoint with validation and timing info
 app.get('/api/supabase-config', (req, res) => {
-    // Only send public configuration
+    console.log('[API] /api/supabase-config requested from:', req.headers['user-agent']);
+    
+    // Validate config before sending
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+        console.error('[API] ERROR: Missing Supabase configuration');
+        return res.status(500).json({
+            error: 'Server configuration error',
+            message: 'Supabase configuration is incomplete'
+        });
+    }
+    
+    // Send config with timestamp to help debug race conditions
     res.json({
         url: process.env.SUPABASE_URL,
-        anonKey: process.env.SUPABASE_ANON_KEY
+        anonKey: process.env.SUPABASE_ANON_KEY,
+        serverTime: Date.now(),
+        serverTimeReadable: new Date().toISOString()
     });
 });
 
@@ -468,6 +512,145 @@ app.get('/check-install', (req, res) => {
                   req.headers['sec-fetch-dest'] === 'document'
     });
 });
+
+// Add/replace this endpoint
+app.get('/api/messages/:userId/:adminId', async (req, res) => {
+    const { userId, adminId } = req.params;
+    try {
+        // Ambil Authorization header jika ada
+        const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+        let sbClient = supabase;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const jwt = authHeader.replace('Bearer ', '').trim();
+            sbClient = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY,
+                { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+            );
+        }
+        // Query messages dua arah (user <-> admin)
+        const { data, error } = await sbClient
+            .from('messages')
+            .select('id, sender_id, receiver_id, content, created_at')
+            .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            console.error('[MESSAGES] Supabase error:', error);
+            return res.status(500).json({ error: 'Database error', details: error.message });
+        }
+        res.json(data);
+    } catch (err) {
+        console.error('[MESSAGES] Server error:', err);
+        res.status(500).json({ error: 'Server error', details: err.message });
+    }
+});
+
+// ===== UNREAD ADMIN MESSAGES ENDPOINT =====
+// Endpoint: GET /api/unread-admin-messages
+// Header: Authorization: Bearer <access_token>
+// Response: { adminId: count, ... }
+app.get('/api/unread-admin-messages', async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+        }
+        const jwt = authHeader.replace('Bearer ', '').trim();
+        if (!jwt) {
+            return res.status(401).json({ error: 'JWT token missing' });
+        }
+        // Create Supabase client with user JWT
+        const userSupabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_ANON_KEY,
+            { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+        );
+        // Get user id from JWT (decode)
+        let userId;
+        try {
+            const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64').toString('utf8'));
+            userId = payload.sub;
+        } catch (e) {
+            return res.status(400).json({ error: 'Invalid JWT', details: e.message });
+        }
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID not found in JWT' });
+        }
+        // Query all unread messages for this user
+        const { data, error } = await userSupabase
+            .from('messages')
+            .select('sender_id')
+            .eq('receiver_id', userId)
+            .eq('is_read', false)
+            .not('sender_id', 'is', null);
+        if (error) {
+            console.error('[UNREAD] Supabase error:', error);
+            return res.status(500).json({ error: 'Database error', details: error.message });
+        }
+        // Group by sender_id in JS
+        const result = {};
+        (data || []).forEach(row => {
+            if (row.sender_id) {
+                if (!result[row.sender_id]) result[row.sender_id] = 0;
+                result[row.sender_id]++;
+            }
+        });
+        return res.json(result);
+    } catch (err) {
+        console.error('[UNREAD] Server error:', err);
+        return res.status(500).json({ error: 'Server error', details: err.message });
+    }
+});
+// ===== END UNREAD ADMIN MESSAGES ENDPOINT =====
+
+// ===== MARK ADMIN MESSAGES AS READ ENDPOINT =====
+// Endpoint: POST /api/messages/mark-read
+// Body: { sender_id, receiver_id }
+// Header: Authorization: Bearer <user JWT>
+app.post('/api/messages/mark-read', async (req, res) => {
+    try {
+        const { sender_id, receiver_id } = req.body;
+        if (!sender_id || !receiver_id) {
+            return res.status(400).json({ error: 'Missing sender_id or receiver_id' });
+        }
+        const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+        }
+        const jwt = authHeader.replace('Bearer ', '').trim();
+        if (!jwt) {
+            return res.status(401).json({ error: 'JWT token missing' });
+        }
+        // Create Supabase client with user JWT
+        const userSupabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_ANON_KEY,
+            { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+        );
+        // Update all messages from sender_id to receiver_id where is_read = false
+        const { data, error } = await userSupabase
+            .from('messages')
+            .update({ is_read: true })
+            .eq('sender_id', sender_id)
+            .eq('receiver_id', receiver_id)
+            .eq('is_read', false)
+            .select('id'); // pastikan ambil id pesan yang berhasil diupdate
+        if (error) {
+            console.error('[MARK-READ] Supabase error:', error);
+            return res.status(500).json({ error: 'Database error', details: error.message });
+        }
+        // Debug: jika updated = 0, kemungkinan besar karena policy SELECT membatasi data yang dikembalikan
+        if (!data || data.length === 0) {
+            console.warn('[MARK-READ] Tidak ada pesan yang diupdate ATAU policy SELECT membatasi data yang dikembalikan. Cek policy SELECT Supabase.');
+        }
+        return res.json({ success: true, updated: data ? data.length : 0 });
+    } catch (err) {
+        console.error('[MARK-READ] Server error:', err);
+        return res.status(500).json({ error: 'Server error', details: err.message });
+    }
+});
+// ===== END MARK ADMIN MESSAGES AS READ ENDPOINT =====
 
 // Handle all other routes
 app.get('*', (req, res) => {

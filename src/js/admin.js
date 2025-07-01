@@ -1,17 +1,3 @@
-// Identity check before loading admin.html
-(function() {
-    // Use unique variable names to avoid redeclaration
-    const _adminId = localStorage.getItem('ngobras_admin_id');
-    const _adminEmail = localStorage.getItem('ngobras_admin_email');
-
-    if (!_adminId || !_adminEmail) {
-        // Not logged in, redirect to check_status.html first
-        window.location.replace('check_status.html');
-        throw new Error('Redirecting to check_status.html for identity check.');
-    }
-    // Optionally, you can add further validation here (e.g., check token/session)
-})();
-
 function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
@@ -24,411 +10,549 @@ function toggleSidebar() {
             }
         }
 
-        function showSection(sectionName) {
-            // Hide all sections
-            const sections = document.querySelectorAll('.content-section');
-            sections.forEach(section => {
-                section.style.display = 'none';
-            });
-
-            // Show selected section
-            const targetSection = document.getElementById(sectionName + '-section');
-    if (targetSection) {
-        targetSection.style.display = 'block';
-        // Load user list if Messages section
-        if (sectionName === 'messages') {
-            loadUserList();
-            // Hide chat room if open
-            document.getElementById('admin-chat-section').style.display = 'none';
-        }
-    }
-            
-            // Update active nav link
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-            });
-            event.target.closest('.nav-link').classList.add('active');
-            
-            // Close sidebar on mobile after selection
-            if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.remove('show');
-            }
-        }
-
-        // Auto-update time
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('id-ID');
-            const dateString = now.toLocaleDateString('id-ID', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            
-            // Update if time display exists
-            const timeDisplay = document.querySelector('.current-time');
-            if (timeDisplay) {
-                timeDisplay.textContent = `${dateString}, ${timeString}`;
-            }
-        }
-
-        // Simulate real-time data updates
-        function updateStats() {
-            const statValues = document.querySelectorAll('.stat-value');
-            statValues.forEach(stat => {
-                const currentValue = parseInt(stat.textContent.replace(/,/g, ''));
-                const change = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                const newValue = Math.max(0, currentValue + change);
-                stat.textContent = newValue.toLocaleString();
-            });
-        }
-
-        // Add notification animation
-        function animateNotification() {
-            const notificationBtn = document.querySelector('.notification-btn');
-            notificationBtn.style.animation = 'pulse 1s ease-in-out';
-            setTimeout(() => {
-                notificationBtn.style.animation = '';
-            }, 1000);
-        }
-
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            
-            if (window.innerWidth > 768) {
-                sidebar.classList.remove('show');
-                if (sidebar.classList.contains('collapsed')) {
-                    mainContent.classList.add('expanded');
-                } else {
-                    mainContent.classList.remove('expanded');
-                }
-            } else {
-                sidebar.classList.remove('collapsed');
-                mainContent.classList.remove('expanded');
-            }
-        });
-
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', function() {
-            updateTime();
-            setInterval(updateTime, 1000);
-            setInterval(updateStats, 30000); // Update stats every 30 seconds
-            setInterval(animateNotification, 60000); // Animate notification every minute
-        });
-
-        // Add smooth scrolling for tables
-        document.querySelectorAll('.table-responsive').forEach(table => {
-            table.style.scrollBehavior = 'smooth';
-        });
-
-        // Add click effects for cards
-        document.querySelectorAll('.stat-card').forEach(card => {
-            card.addEventListener('click', function() {
-                this.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    this.style.transform = '';
-                }, 150);
-            });
-        });
-
-        // Add loading states for buttons
-        document.querySelectorAll('.btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                if (!this.classList.contains('no-loading')) {
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-                    this.disabled = true;
-                    
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                    }, 1500);
-                }
-            });
-        });
-
-        // Add search functionality (placeholder)
-        function handleSearch(query) {
-            console.log('Searching for:', query);
-            // Implement search logic here
-        }
-
-        // Add export functionality (placeholder)
-        function exportData(type) {
-            console.log('Exporting:', type);
-            // Implement export logic here
-        }
-
-        // Add filter functionality (placeholder)
-        function applyFilter(criteria) {
-            console.log('Applying filter:', criteria);
-            // Implement filter logic here
-        }
-
-        // Fetch and display user list in the Messages section
-async function loadUserList() {
-    const userListDiv = document.getElementById('user-list');
-    if (!userListDiv) return;
-
-    userListDiv.innerHTML = '<div>Loading...</div>';
-
+        /**
+ * Fetch users with role 'user' from the backend API.
+ * @returns {Promise<Array>} Array of user profile objects
+ */
+async function fetchUsers() {
     try {
-        const res = await fetch('/api/users');
-        const users = await res.json();
-
-        if (!Array.isArray(users) || users.length === 0) {
-            userListDiv.innerHTML = '<div class="text-muted">Belum ada akun pengguna terdaftar.</div>';
-            return;
-        }
-
-        userListDiv.innerHTML = users.map(user => `
-            <div class="user-list-item d-flex align-items-center mb-3 p-2 rounded"
-                 style="background: #f8fafc; cursor:pointer;"
-                 data-user-id="${user.id}">
-                <img src="${user.avatar_url || '/images/default-avatar.png'}" alt="avatar" class="rounded-circle me-3" width="40" height="40">
-                <div>
-                    <div class="fw-semibold">${user.full_name || user.username || '(Tanpa Nama)'}</div>
-                    <div class="text-muted small">${user.email}</div>
-                </div>
-            </div>
-        `).join('');
-
-        // Add click event listeners to each user item
-        userListDiv.querySelectorAll('.user-list-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const userId = this.getAttribute('data-user-id');
-                openAdminChatRoom(userId);
-            });
-        });
-
+        const response = await fetch('/api/users');
+        if (!response.ok) throw new Error('Failed to fetch users');
+        const users = await response.json();
+        return Array.isArray(users) ? users : [];
     } catch (err) {
-        userListDiv.innerHTML = '<div class="text-danger">Gagal memuat daftar pengguna.</div>';
+        console.error('[fetchUsers] Error:', err);
+        return [];
     }
 }
 
-let currentChatUserId = null;
-let currentChatUserName = '';
-
-// Fetch and display messages for the selected user-admin chat
-async function loadAdminChatMessages(userId) {
-    const chatDiv = document.getElementById('admin-chat-messages');
-    chatDiv.innerHTML = '<div class="text-muted">Memuat pesan...</div>';
-
-    const adminId = localStorage.getItem('ngobras_admin_id');
-    if (!adminId) {
-        chatDiv.innerHTML = '<div class="text-danger">Admin tidak terautentikasi.</div>';
-        return;
-    }
-
+/**
+ * Decode a JWT token and return its payload as an object.
+ * @param {string} token - JWT access token
+ * @returns {object|null} Decoded payload or null if invalid
+ */
+function decodeJwtPayload(token) {
     try {
-        // Fetch langsung dari Supabase client-side (bukan endpoint backend)
-        const { data: messages, error } = await supabaseClient
-            .from('messages')
-            .select('*')
-            .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
-            .order('created_at', { ascending: true });
-
-        if (error) throw new Error(error.message);
-        if (!Array.isArray(messages) || messages.length === 0) {
-            chatDiv.innerHTML = '<div class="text-muted">Belum ada pesan.</div>';
-            return;
-        }
-
-        // Render messages
-        chatDiv.innerHTML = messages.map(msg => {
-            const isSent = msg.sender_id === adminId;
-            return `
-                <div class="mb-2 ${isSent ? 'text-end' : 'text-start'}">
-                    <span class="badge ${isSent ? 'bg-primary' : 'bg-secondary'}">
-                        ${msg.content}
-                    </span>
-                    <div style="font-size:0.8em;color:#888;">${new Date(msg.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
-                </div>
-            `;
-        }).join('');
-        chatDiv.scrollTop = chatDiv.scrollHeight;
+        const payload = token.split('.')[1];
+        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(decodeURIComponent(escape(decoded)));
     } catch (err) {
-        chatDiv.innerHTML = '<div class="text-danger">Gagal memuat pesan.</div>';
+        console.error('[decodeJwtPayload] Failed to decode JWT:', err);
+        return null;
     }
 }
 
-// When opening a chat room, call the loader
-async function openAdminChatRoom(userId) {
-    const adminId = localStorage.getItem('ngobras_admin_id');
-    if (!adminId) {
-        console.log('adminId tidak ditemukan');
-        return;
-    }
-    if (!userId) {
-        console.log('userId tidak ditemukan');
-        return;
-    }
-    // Simpan userId ke localStorage
-    localStorage.setItem('ngobras_current_user_id', userId);
-    console.log('userId didapatkan:', userId);
-
-    // Fetch messages langsung dari Supabase client
-    try {
-        // Pastikan window.supabase sudah ada (CDN: https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2)
-        if (typeof window.supabase === 'undefined') {
-            throw new Error('Supabase JS library belum dimuat. Pastikan <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> sudah ada sebelum admin.js!');
-        }
-        if (typeof window.supabaseClient === 'undefined') {
-            const resp = await fetch('/api/supabase-config');
-            const config = await resp.json();
-            window.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
-        }
-        const { data: messages, error } = await window.supabaseClient
-            .from('messages')
-            .select('*')
-            .or(`and(sender_id.eq.${userId},receiver_id.eq.${adminId}),and(sender_id.eq.${adminId},receiver_id.eq.${userId})`)
-            .order('created_at', { ascending: true });
-
-        if (error) throw new Error(error.message);
-        if (!Array.isArray(messages)) throw new Error('Format messages tidak valid');
-        localStorage.setItem('ngobras_current_messages', JSON.stringify(messages));
-        console.log('Messages berhasil di-fetch dan disimpan ke localStorage.');
-    } catch (err) {
-        console.error('Gagal fetch messages:', err.message);
-    }
-
-    document.getElementById('messages-section').style.display = 'none';
-    document.getElementById('admin-chat-section').style.display = 'block';
-
-    // Fetch user profile for display
-    const res = await fetch(`/api/profiles/${userId}`);
-    const user = await res.json();
-    currentChatUserId = userId;
-    currentChatUserName = user.full_name || user.username || '(Tanpa Nama)';
-    document.getElementById('chatUserName').textContent = currentChatUserName;
-
-    // Load chat messages from database
-    loadAdminChatMessages(userId);
-
-    // Focus input
-    setTimeout(() => {
-        document.getElementById('admin-chat-input').focus();
-    }, 200);
-}
-
-function backToUserList() {
-    // Hapus ngobras_current_user_id dari localStorage
-    if (localStorage.getItem('ngobras_current_user_id')) {
-        localStorage.removeItem('ngobras_current_user_id');
-        console.log('userId dikembalikan');
-    }
-    document.getElementById('admin-chat-section').style.display = 'none';
-    document.getElementById('messages-section').style.display = 'block';
-}
-
-// --- ADMIN CHAT MESSAGE SENDING SYSTEM ---
-
-// Helper: Validate input (not empty, not just whitespace)
-function validateAdminChatInput(input) {
-    return input && input.trim().length > 0;
-}
-
-// Helper: Log admin message actions
-function logAdminMessageAction(success, adminName, userName, error) {
-    const msg = success
-        ? `${adminName} successfully sent a message to ${userName}`
-        : `${adminName} failed to send a message to ${userName}`;
-    if (success) {
-        console.log(msg);
-    } else {
-        console.error(msg + (error ? `: ${error}` : ''));
-    }
-    adminUILog(msg + (error ? `: ${error}` : ''), success ? 'success' : 'error');
-}
-
-// Helper: Send message to Supabase 'messages' table
-async function sendAdminMessageToUser({ senderId, receiverId, content }) {
-    try {
-        if (!window.supabaseClient) {
-            throw new Error('Supabase client not initialized');
-        }
-        // Adapt to your messages table structure
-        const { data, error, status } = await window.supabaseClient
-            .from('messages')
-            .insert([
-                {
-                    sender_id: senderId,
-                    receiver_id: receiverId,
-                    content: content,
-                    // Add other required fields if needed (e.g., is_read, created_at)
-                }
-            ]);
-        if (error) throw error;
-        return { success: true, data, status };
-    } catch (err) {
-        return { success: false, error: err.message };
-    }
-}
-
-// Event: Enable send button only if input is valid
-const adminChatInput = document.getElementById('admin-chat-input');
-const sendBtn = document.getElementById('sendBtn');
-if (adminChatInput && sendBtn) {
-    adminChatInput.addEventListener('input', function() {
-        sendBtn.disabled = !validateAdminChatInput(adminChatInput.value);
-    });
-}
-
-// Event: Handle send button (form submit)
-const adminChatForm = document.getElementById('admin-chat-form');
-if (adminChatForm) {
-    adminChatForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const content = adminChatInput.value;
-        if (!validateAdminChatInput(content)) {
-            logAdminMessageAction(false, 'Admin', currentChatUserName, 'Input kosong');
-            return;
-        }
-        const senderId = localStorage.getItem('ngobras_admin_id');
-        const receiverId = localStorage.getItem('ngobras_current_user_id');
-        const adminName = localStorage.getItem('ngobras_admin_email') || 'Admin';
+/**
+ * Get admin ID from Supabase session in localStorage (v2 compatible).
+ * @returns {string|null} Admin user ID (UUID) or null if not found/invalid
+ */
+function getAdminIdFromToken() {
+    // Try Supabase v2 session (sb-...-auth-token)
+    const supaKey = Object.keys(localStorage).find(k => k.endsWith('-auth-token'));
+    if (supaKey) {
         try {
-            const result = await sendAdminMessageToUser({ senderId, receiverId, content });
-            if (result.success) {
-                logAdminMessageAction(true, adminName, currentChatUserName);
-                adminChatInput.value = '';
-                sendBtn.disabled = true;
-                // Reload chat messages
-                loadAdminChatMessages(receiverId);
+            const session = JSON.parse(localStorage.getItem(supaKey));
+            if (session && session.user && session.user.id) {
+                return session.user.id;
             } else {
-                logAdminMessageAction(false, adminName, currentChatUserName, result.error);
+                console.error('[getAdminIdFromToken] Supabase session found but user.id missing:', session);
             }
         } catch (err) {
-            logAdminMessageAction(false, adminName, currentChatUserName, err.message);
+            console.error('[getAdminIdFromToken] Failed to parse Supabase session:', err);
+        }
+    }
+    // Fallback: legacy custom token (deprecated)
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        const payload = decodeJwtPayload(token);
+        if (payload && payload.sub) {
+            return payload.sub;
+        } else {
+            console.error('[getAdminIdFromToken] Legacy token found but payload invalid:', payload);
+        }
+    }
+    // If not found, show developer diagnostics
+    console.error('[getAdminIdFromToken] No valid Supabase session or access_token found in localStorage.');
+    return null;
+}
+
+/**
+ * Supabase Realtime and Unread Message Indicator Logic
+ * - Subscribes to messages table for real-time updates
+ * - Fetches unread message count for each user
+ * - Renders unread indicator (circle) on user list item if unread exists
+ * - Robust error handling and developer diagnostics
+ */
+
+// ====== SUPABASE REALTIME INIT ======
+let supabase = null;
+let messagesSubscription = null;
+
+/**
+ * Initialize Supabase client for admin panel using the centralized client
+ * @returns {Promise<boolean>} True if initialization successful, false otherwise
+ */
+async function initSupabaseForAdmin() {
+    console.log('[AdminPanel] Initializing Supabase for admin panel...');
+    console.log('[AdminPanel] Checking if window.getSupabaseClient is available:', typeof window.getSupabaseClient);
+    console.log('[AdminPanel] window object keys:', Object.keys(window).filter(k => k.includes('supa')));
+    
+    try {
+        // Use the centralized Supabase client
+        if (typeof window.getSupabaseClient !== 'function') {
+            console.error('[AdminPanel] getSupabaseClient not found. Make sure supabaseClient.js is loaded before admin.js');
+            
+            // Log all script elements to debug loading order
+            const scripts = document.querySelectorAll('script');
+            console.debug('[AdminPanel] Loaded scripts:', Array.from(scripts).map(s => s.src || 'inline script'));
+            
+            showAdminError('Supabase initialization function not found. Check script loading order.');
+            return false;
+        }
+        
+        console.log('[AdminPanel] getSupabaseClient function is available, calling it...');
+        
+        // Get the client from the centralized module
+        supabase = await window.getSupabaseClient();
+        
+        console.log('[AdminPanel] getSupabaseClient() returned:', supabase ? 'valid client' : 'null/undefined');
+        
+        if (!supabase) {
+            console.error('[AdminPanel] Failed to get Supabase client from centralized module');
+            showAdminError('[AdminPanel] Failed to get Supabase client');
+            return false;
+        }
+        
+        // Check if supabase client has expected methods
+        console.log('[AdminPanel] Supabase client methods available:',
+            Object.keys(supabase).filter(k => typeof supabase[k] === 'function'));
+        
+        console.log('[AdminPanel] Supabase client initialized successfully');
+        return true;
+    } catch (err) {
+        console.error('[AdminPanel] Error initializing Supabase:', err);
+        showAdminError('[AdminPanel] Failed to initialize Supabase: ' + err.message);
+        return false;
+    }
+}
+
+/**
+ * Show floating error for developer diagnostics
+ */
+function showAdminError(msg) {
+    let container = document.getElementById('admin-error-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'admin-error-container';
+        container.style.position = 'fixed';
+        container.style.top = '70px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.background = '#ffb3b3';
+        container.style.color = '#2C3E50';
+        container.style.padding = '12px 24px';
+        container.style.borderRadius = '8px';
+        container.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+        container.style.zIndex = '2000';
+        container.style.display = 'none';
+        container.style.fontWeight = 'bold';
+        container.style.maxWidth = '90vw';
+        container.style.textAlign = 'center';
+        document.body.appendChild(container);
+    }
+    container.innerHTML = `${msg} <button id='close-admin-error-btn' style='margin-left:16px;background:none;border:none;font-size:1.2em;cursor:pointer;'>&times;</button>`;
+    container.style.display = 'block';
+    // Defensive: cek tombol close sebelum assign onclick
+    setTimeout(() => {
+        const closeBtn = document.getElementById('close-admin-error-btn');
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                container.style.display = 'none';
+            };
+        }
+    }, 0);
+    clearTimeout(container._timeout);
+    container._timeout = setTimeout(() => {
+        container.style.display = 'none';
+    }, 12000);
+    console.error('[AdminPanel][Error]', msg);
+}
+
+/**
+ * Fetch unread message count for a user (where receiver is admin, sender is user, is_read = false)
+ * @param {string} userId - User's UUID
+ * @param {string} adminId - Admin's UUID
+ * @returns {Promise<number>} Unread count
+ */
+async function fetchUnreadCount(userId, adminId) {
+    try {
+        if (!supabase) {
+            console.log('[fetchUnreadCount] Supabase not initialized, initializing...');
+            const initialized = await initSupabaseForAdmin();
+            if (!initialized) {
+                showAdminError('[fetchUnreadCount] Failed to initialize Supabase.');
+                return 0;
+            }
+        }
+        if (!userId || !adminId) {
+            console.warn('[fetchUnreadCount] Missing userId or adminId');
+            return 0;
+        }
+        if (!supabase || typeof supabase.from !== 'function') {
+            console.error('[fetchUnreadCount] Supabase client not ready or missing .from() method');
+            showAdminError('[fetchUnreadCount] Supabase client not ready.');
+            return 0;
+        }
+        
+        console.log(`[fetchUnreadCount] Fetching unread count for user ${userId} and admin ${adminId}`);
+        const { count, error } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('sender_id', userId)
+            .eq('receiver_id', adminId)
+            .eq('is_read', false);
+        if (error) {
+            showAdminError(`[fetchUnreadCount] Error fetching unread for user ${userId}: ${error.message}`);
+            return 0;
+        }
+        return count || 0;
+    } catch (err) {
+        showAdminError(`[fetchUnreadCount] Exception: ${err.message}`);
+        return 0;
+    }
+}
+
+/**
+ * Fetch total unread messages for the admin (sum of all users)
+ * @param {string} adminId - Admin's UUID
+ * @returns {Promise<number>} Total unread count
+ */
+async function fetchTotalUnreadCount(adminId) {
+    try {
+        if (!supabase) {
+            console.log('[fetchTotalUnreadCount] Supabase not initialized, initializing...');
+            const initialized = await initSupabaseForAdmin();
+            if (!initialized) {
+                showAdminError('[fetchTotalUnreadCount] Failed to initialize Supabase.');
+                return 0;
+            }
+        }
+        if (!adminId) {
+            console.warn('[fetchTotalUnreadCount] Missing adminId');
+            return 0;
+        }
+        if (!supabase || typeof supabase.from !== 'function') {
+            console.error('[fetchTotalUnreadCount] Supabase client not ready or missing .from() method');
+            showAdminError('[fetchTotalUnreadCount] Supabase client not ready.');
+            return 0;
+        }
+        
+        console.log(`[fetchTotalUnreadCount] Fetching total unread count for admin ${adminId}`);
+        const { count, error } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('receiver_id', adminId)
+            .eq('is_read', false);
+        if (error) {
+            showAdminError(`[fetchTotalUnreadCount] Error: ${error.message}`);
+            return 0;
+        }
+        return count || 0;
+    } catch (err) {
+        showAdminError(`[fetchTotalUnreadCount] Exception: ${err.message}`);
+        return 0;
+    }
+}
+
+// ===== Ensure unread badge is updated on page load and after user list updates =====
+document.addEventListener('DOMContentLoaded', function() {
+    // Always try to update the unread badge on page load
+    refreshConsultationsUnreadBadge().catch(err => {
+        showAdminError('[Init] Failed to refresh consultations unread badge: ' + err.message);
+    });
+});
+
+// Patches moved after function definitions (see below)
+
+// Update the unread badge in the sidebar menu for Consultations (with error log)
+function updateConsultationsUnreadBadge(totalUnread) {
+    const badge = document.getElementById('consultations-unread-badge');
+    if (!badge) {
+        showAdminError('[updateConsultationsUnreadBadge] Badge element not found in DOM.');
+        return;
+    }
+    if (typeof totalUnread !== 'number') {
+        showAdminError('[updateConsultationsUnreadBadge] totalUnread is not a number: ' + totalUnread);
+        badge.setAttribute('hidden', '');
+        return;
+    }
+    console.log('[updateConsultationsUnreadBadge] Total unread:', totalUnread);
+    if (totalUnread > 0) {
+        badge.textContent = totalUnread;
+        badge.removeAttribute('hidden');
+    } else {
+        badge.textContent = '';
+        badge.setAttribute('hidden', '');
+    }
+}
+
+// Function removed (duplicate of the one at lines 283-302)
+
+/**
+ * Refresh the consultations unread badge
+ * - Patch: Call this after rendering user list and on realtime update
+ */
+async function refreshConsultationsUnreadBadge() {
+    const adminId = getAdminIdFromToken();
+    if (!adminId) {
+        showAdminError('[refreshConsultationsUnreadBadge] Admin ID not found.');
+        return;
+    }
+    const totalUnread = await fetchTotalUnreadCount(adminId);
+    updateConsultationsUnreadBadge(totalUnread);
+}
+
+/**
+ * Render user list items in the consultation section, with unread indicator (number inside)
+ * @param {Array} users - Array of user profile objects
+ */
+async function renderUserList(users) {
+    const listContainer = document.querySelector('.user-chat-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+    const adminId = getAdminIdFromToken();
+    if (!adminId) {
+        showAdminError('[renderUserList] Admin ID not found in session.');
+        return;
+    }
+    for (const user of users) {
+        // Create user list item
+        const item = document.createElement('div');
+        item.className = 'user-list-item';
+        item.tabIndex = 0; // Make focusable for accessibility
+        // Avatar with online indicator (dummy online for now)
+        const avatar = document.createElement('div');
+        avatar.className = 'user-avatar online';
+        const img = document.createElement('img');
+        img.src = user.avatar_url || 'images/default-avatar.png';
+        img.alt = 'User Avatar';
+        avatar.appendChild(img);
+        // Chat info
+        const info = document.createElement('div');
+        info.className = 'user-chat-info';
+        // Header: name + role
+        const header = document.createElement('div');
+        header.className = 'user-chat-header';
+        const name = document.createElement('span');
+        name.className = 'user-name';
+        name.textContent = user.full_name || user.username || user.email || 'Unknown';
+        // Show user role
+        const role = document.createElement('span');
+        role.className = 'user-role-badge';
+        role.textContent = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User';
+        header.appendChild(name);
+        header.appendChild(role);
+        // Last message (placeholder)
+        const lastMsg = document.createElement('div');
+        lastMsg.className = 'user-last-message';
+        lastMsg.textContent = user.last_message || 'No recent messages.';
+        // Unread indicator (circle with number)
+        const unread = document.createElement('span');
+        unread.className = 'unread-indicator';
+        unread.setAttribute('hidden', ''); // Hide by default
+        unread.title = 'Unread messages';
+        header.appendChild(unread);
+        // Assemble
+        info.appendChild(header);
+        info.appendChild(lastMsg);
+        item.appendChild(avatar);
+        item.appendChild(info);
+        // Add click handler for opening chatroom_admin.html
+        item.addEventListener('click', function() {
+            const adminId = getAdminIdFromToken();
+            if (!adminId) {
+                showAdminError('[UserListItem] Admin ID not found in session.');
+                return;
+            }
+            if (!user.id) {
+                showAdminError('[UserListItem] User ID missing.');
+                return;
+            }
+            // Redirect to chatroom_admin.html with admin_id and user_id as query params
+            window.location.href = `chatroom_admin.html?admin_id=${encodeURIComponent(adminId)}&user_id=${encodeURIComponent(user.id)}`;
+        });
+        // Also support keyboard enter for accessibility
+        item.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                item.click();
+            }
+        });
+        listContainer.appendChild(item);
+        // Fetch and show unread count
+        fetchUnreadCount(user.id, adminId).then(count => {
+            if (count > 0) {
+                unread.textContent = count;
+                unread.removeAttribute('hidden');
+            } else {
+                unread.textContent = '';
+                unread.setAttribute('hidden', '');
+            }
+        }).catch(err => {
+            showAdminError(`[renderUserList] Failed to fetch unread count for user ${user.id}: ${err.message}`);
+        });
+    }
+}
+
+/**
+ * Subscribe to Supabase Realtime for messages table
+ * On any change, re-fetch unread counts for all users
+ * @param {Array} users - Array of user profile objects
+ */
+async function subscribeToMessagesRealtime(users) {
+    try {
+        if (!supabase) {
+            console.log('[subscribeToMessagesRealtime] Supabase not initialized, initializing...');
+            const initialized = await initSupabaseForAdmin();
+            if (!initialized) {
+                showAdminError('[subscribeToMessagesRealtime] Failed to initialize Supabase.');
+                return;
+            }
+        }
+        
+        console.log('[subscribeToMessagesRealtime] Checking supabase client:',
+            supabase ? 'exists' : 'null/undefined');
+        
+        if (supabase) {
+            console.log('[subscribeToMessagesRealtime] Supabase methods available:',
+                Object.keys(supabase).filter(k => typeof supabase[k] === 'function'));
+        }
+        
+        if (!supabase || typeof supabase.channel !== 'function') {
+            console.error('[subscribeToMessagesRealtime] Supabase client not ready or missing .channel() method');
+            showAdminError('[subscribeToMessagesRealtime] Supabase client not ready.');
+            return;
+        }
+        
+        console.log('[subscribeToMessagesRealtime] Setting up realtime subscription');
+        if (messagesSubscription) {
+            supabase.removeChannel(messagesSubscription);
+            messagesSubscription = null;
+        }
+        messagesSubscription = supabase.channel('admin-messages-realtime')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'messages',
+            }, payload => {
+                // On any change, re-render user list (unread indicators)
+                loadUserList();
+            })
+            .subscribe();
+    } catch (err) {
+        showAdminError('[subscribeToMessagesRealtime] Failed to subscribe: ' + err.message);
+    }
+}
+
+// ===== Function patches for unread badge updates =====
+// Patch: Always call refreshConsultationsUnreadBadge after user list render
+const _origRenderUserList = renderUserList;
+renderUserList = async function(users) {
+    await _origRenderUserList(users);
+    await refreshConsultationsUnreadBadge();
+};
+
+// Patch: Also call refreshConsultationsUnreadBadge in subscribeToMessagesRealtime
+const _origSubscribeToMessagesRealtime = subscribeToMessagesRealtime;
+subscribeToMessagesRealtime = async function(users) {
+    await _origSubscribeToMessagesRealtime(users);
+    await refreshConsultationsUnreadBadge();
+};
+
+/**
+ * Load and render user list in consultation section, with unread indicators and realtime
+ */
+async function loadUserList() {
+    const users = await fetchUsers();
+    await renderUserList(users);
+    await subscribeToMessagesRealtime(users);
+}
+
+// Show user list when consultation section is shown
+function showSection(sectionName, event) {
+    // Hide all sections
+    const sections = document.querySelectorAll('.content-section');
+    sections.forEach(section => {
+        section.style.display = 'none';
+    });
+
+    // Show selected section
+    const targetSection = document.getElementById(sectionName + '-section');
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        // Load user list if consultation section
+        if (sectionName === 'consultations') {
+            loadUserList();
+        }
+    }
+
+    // Update active nav link robustly
+    try {
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+        });
+        if (event && event.target && typeof event.target.closest === 'function') {
+            const navLink = event.target.closest('.nav-link');
+            if (navLink) navLink.classList.add('active');
+        } else {
+            // Fallback: activate by sectionName
+            document.querySelectorAll('.nav-link[data-section]').forEach(link => {
+                if (link.getAttribute('data-section') === sectionName) {
+                    link.classList.add('active');
+                }
+            });
+        }
+    } catch (err) {
+        showAdminError('[showSection] Failed to update nav active state: ' + err.message);
+    }
+
+    // Close sidebar on mobile after selection
+    if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('show');
+    }
+}
+
+// ===== Handle hash-based navigation for admin sections =====
+function showSectionFromHash() {
+    // Get section from hash (default to dashboard)
+    let section = (window.location.hash || '#dashboard').replace('#', '');
+    if (!section) section = 'dashboard';
+    showSection(section);
+    // Update active nav link
+    document.querySelectorAll('.nav-link').forEach(link => {
+        if (link.getAttribute('data-section') === section) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
         }
     });
 }
 
-// Utility: Log to both console and UI log panel
-function adminUILog(message, type = 'info') {
-    const logPanel = document.getElementById('admin-log-messages');
-    if (logPanel) {
-        const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const entry = document.createElement('div');
-        entry.textContent = `[${time}] ${message}`;
-        entry.style.marginBottom = '2px';
-        if (type === 'error') entry.style.color = '#ff6b6b';
-        if (type === 'success') entry.style.color = '#4caf50';
-        logPanel.appendChild(entry);
-        // Scroll to bottom
-        logPanel.parentElement.scrollTop = logPanel.parentElement.scrollHeight;
-        // Limit log entries
-        while (logPanel.children.length > 30) logPanel.removeChild(logPanel.firstChild);
-    }
-    if (type === 'error') {
-        console.error(message);
-    } else if (type === 'success') {
-        console.log(message);
-    } else {
-        console.info(message);
-    }
+// Listen for hash changes and on page load
+window.addEventListener('hashchange', showSectionFromHash);
+document.addEventListener('DOMContentLoaded', showSectionFromHash);
+
+// Update sidebar nav links to use hash navigation, prevent default and update hash
+function setupSidebarNavLinks() {
+    document.querySelectorAll('.nav-link[data-section]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const section = link.getAttribute('data-section');
+            if (section) {
+                window.location.hash = '#' + section;
+            }
+        });
+    });
 }
+document.addEventListener('DOMContentLoaded', setupSidebarNavLinks);

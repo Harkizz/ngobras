@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NGOBRAS - Offline</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+            color: #333;
+            text-align: center;
+        }
+        
+        .offline-container {
+            max-width: 90%;
+            width: 400px;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #ff9800;
+        }
+        
+        h1 {
+            margin: 0 0 1rem 0;
+            color: #007bff;
+        }
+        
+        p {
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+        
+        .retry-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .retry-button:hover {
+            background-color: #0056b3;
+        }
+        
+        .tips {
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .tips h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .tips ul {
+            text-align: left;
+            padding-left: 1.5rem;
+        }
+        
+        @media (display-mode: standalone) {
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📶</div>
+        <h1>Anda Sedang Offline</h1>
+        <p>Sepertinya Anda tidak terhubung ke internet. Periksa koneksi Anda dan coba lagi.</p>
+        <button class="retry-button" onclick="retryConnection()">Coba Lagi</button>
+        
+        <div class="tips">
+            <h3>Tips:</h3>
+            <ul>
+                <li>Periksa koneksi Wi-Fi atau data seluler Anda</li>
+                <li>Beberapa fitur NGOBRAS tetap dapat digunakan dalam mode offline</li>
+                <li>Anda akan otomatis terhubung kembali saat koneksi tersedia</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Check connection status periodically
+        function checkConnection() {
+            if (navigator.onLine) {
+                document.querySelector('.offline-icon').textContent = '✅';
+                document.querySelector('h1').textContent = 'Terhubung Kembali!';
+                document.querySelector('p').textContent = 'Anda telah terhubung kembali ke internet. Mengalihkan...';
+                
+                // Redirect after a short delay
+                setTimeout(() => {
+                    window.location.href = '/ngobras.html';
+                }, 2000);
+            }
+        }
+        
+        // Retry connection manually
+        function retryConnection() {
+            const button = document.querySelector('.retry-button');
+            button.textContent = 'Memeriksa Koneksi...';
+            button.disabled = true;
+            
+            // Check connection
+            setTimeout(() => {
+                if (navigator.onLine) {
+                    window.location.reload();
+                } else {
+                    button.textContent = 'Coba Lagi';
+                    button.disabled = false;
+                    
+                    // Show temporary message
+                    const p = document.querySelector('p');
+                    const originalText = p.textContent;
+                    p.textContent = 'Masih offline. Silakan coba lagi nanti.';
+                    
+                    setTimeout(() => {
+                        p.textContent = originalText;
+                    }, 2000);
+                }
+            }, 1500);
+        }
+        
+        // Listen for online event
+        window.addEventListener('online', checkConnection);
+        
+        // Check connection status every 5 seconds
+        setInterval(checkConnection, 5000);
+    </script>
+</body>
+</html>

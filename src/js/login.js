@@ -1,11 +1,55 @@
-// Initialize Supabase client
-let supabaseClient;
+// Use the centralized Supabase client
+// No need to declare supabaseClient here as it's provided by supabaseClient.js
+let localSupabaseClient = null; // Use a different variable name to avoid conflicts
+
+// Helper: pastikan centralized Supabase client sudah tersedia
+function ensureSupabaseClientAvailable() {
+    console.log('[Login] Checking if window.getSupabaseClient is available:', typeof window.getSupabaseClient);
+    console.log('[Login] window object keys:', Object.keys(window).filter(k => k.includes('supa')));
+    
+    if (typeof window.getSupabaseClient !== 'function') {
+        const msg = '[ERROR] getSupabaseClient function not available. Make sure supabaseClient.js is loaded before login.js';
+        console.error(msg);
+        
+        // Log all script elements to debug loading order
+        const scripts = document.querySelectorAll('script');
+        console.debug('[Login] Loaded scripts:', Array.from(scripts).map(s => s.src || 'inline script'));
+        
+        alert(msg + '\nCek urutan <script> di HTML.');
+        throw new Error(msg);
+    }
+    
+    console.log('[Login] getSupabaseClient function is available');
+}
+
+// Initialize Supabase client using centralized client
+async function initSupabase() {
+    try {
+        console.log('[Login] Initializing Supabase client...');
+        ensureSupabaseClientAvailable();
+        
+        // Get client from centralized module
+        console.log('[Login] Calling window.getSupabaseClient()...');
+        localSupabaseClient = await window.getSupabaseClient();
+        
+        console.log('[Login] getSupabaseClient() returned:', localSupabaseClient ? 'valid client' : 'null/undefined');
+        
+        if (!localSupabaseClient) {
+            console.error('[Login] Failed to get Supabase client from centralized module');
+            throw new Error('Failed to get Supabase client from centralized module');
+        }
+        
+        console.log('[Login] Supabase client initialized successfully');
+        return true;
+    } catch (err) {
+        console.error('[Login][Supabase Init Error]', err);
+        showAlert('Gagal inisialisasi Supabase: ' + err.message, 'danger');
+        return false;
+    }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Fetch Supabase config from backend
-    const resp = await fetch('/api/supabase-config');
-    const config = await resp.json();
-    supabaseClient = supabase.createClient(config.url, config.anonKey);
+    await initSupabase();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,8 +72,17 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     button.disabled = true;
 
     try {
+        // Ensure we have a Supabase client
+        if (!localSupabaseClient) {
+            console.log('[Login] Supabase client not initialized, initializing now...');
+            const initialized = await initSupabase();
+            if (!initialized || !localSupabaseClient) {
+                throw new Error('Failed to initialize Supabase client');
+            }
+        }
+        
         // Try to sign in with Supabase
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
+        const { data, error } = await localSupabaseClient.auth.signInWithPassword({
             email,
             password
         });

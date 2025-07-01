@@ -1,0 +1,279 @@
+/* ===== RESET CSS ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ===== ROOT VARIABLES - Definisi warna pastel ===== */
+        :root {
+            --primary-color: #B3D9FF;      /* Biru pastel */
+            --secondary-color: #FFB3B3;    /* Merah pastel */
+            --accent-color: #FFD4B3;       /* Orange pastel */
+            --text-primary: #2C3E50;       /* Teks utama */
+            --text-secondary: #7F8C8D;     /* Teks sekunder */
+            --background: #F8F9FA;         /* Background utama */
+            --white: #FFFFFF;
+            --border-color: #E0E0E0;
+            --shadow-light: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ===== NAVBAR (TOP) ===== */
+        .chat-navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, var(--primary-color), #A8D0F0);
+            padding: 0.75rem 1rem;
+            box-shadow: var(--shadow-light);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .nav-back,
+        .nav-menu {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+            border-radius: 50%;
+        }
+
+        .nav-back:hover,
+        .nav-menu:hover {
+            background: rgba(179, 217, 255, 0.2);
+        }
+
+        .nav-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .profile-photo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--white);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .profile-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .profile-status {
+            font-size: 0.8rem;
+            color: var(--primary-color);
+        }
+
+        /* ===== CHAT BODY ===== */
+        .chat-body {
+            flex: 1;
+            padding: 1rem 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            overflow-y: auto;
+            background: var(--background);
+        }
+
+        /* Chat bubble base style */
+        .chat-bubble {
+            max-width: 75%;
+            padding: 0.75rem 1rem;
+            border-radius: 18px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            word-break: break-word;
+            font-size: 0.97rem;
+        }
+
+        /* Received bubble (left) */
+        .chat-bubble.received {
+            align-self: flex-start;
+            background: var(--white);
+            color: var(--text-primary);
+            border-bottom-left-radius: 6px;
+            border-top-left-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Sent bubble (right) */
+        .chat-bubble.sent {
+            align-self: flex-end;
+            background: var(--primary-color);
+            color: var(--text-primary);
+            border-bottom-right-radius: 6px;
+            border-top-right-radius: 6px;
+            border: 1px solid var(--primary-color);
+        }
+
+        .bubble-text {
+            margin-bottom: 0.3rem;
+        }
+
+        .bubble-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            align-self: flex-end;
+        }
+
+        /* ===== BOTTOM INPUT BAR ===== */
+        .chat-input-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--white);
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        .input-emoji,
+        .input-send {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 50%;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-emoji:hover,
+        .input-send:hover {
+            background: rgba(179, 217, 255, 0.15);
+        }
+
+        .input-message {
+            flex: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            outline: none;
+            background: var(--background);
+            color: var(--text-primary);
+            transition: border 0.2s;
+        }
+
+        .input-message:focus {
+            border-color: var(--primary-color);
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (min-width: 600px) {
+            .chat-body {
+                padding: 1.5rem 2rem;
+            }
+            .chat-input-bar {
+                padding: 1rem 2rem;
+            }
+        }
+        
+        /* ===== PWA STYLES ===== */
+        
+        /* Offline Indicator */
+        #offline-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #ff9800;
+            color: white;
+            padding: 5px;
+            text-align: center;
+            z-index: 9999;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        /* PWA Mode Adjustments */
+        .pwa-mode {
+            /* Safe area insets for notched devices */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+        
+        .pwa-mode .chat-navbar {
+            padding-top: calc(0.75rem + env(safe-area-inset-top));
+        }
+        
+        .pwa-mode .chat-input-bar {
+            padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+        }
+        
+        /* Bubble check mark for read status */
+        .bubble-check {
+            margin-left: 4px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        /* Offline message style */
+        .chat-bubble.offline {
+            background: #f1f1f1;
+            border: 1px dashed #ccc;
+            color: #888;
+        }
+        
+        .chat-bubble.offline::after {
+            content: "⚠️ Offline";
+            font-size: 0.7rem;
+            color: #ff9800;
+            margin-top: 4px;
+            display: block;
+        }
+        
+        /* PWA standalone mode adjustments */
+        @media (display-mode: standalone) {
+            body {
+                overscroll-behavior: none; /* Prevent pull-to-refresh */
+            }
+            
+            .chat-navbar {
+                padding-top: calc(0.75rem + env(safe-area-inset-top));
+            }
+            
+            .chat-input-bar {
+                padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+            }
+        }

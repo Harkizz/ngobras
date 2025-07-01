@@ -1,0 +1,46 @@
+// Tambahkan ke server.js setelah endpoint /api/messages/:userId/:adminId
+app.get('/api/unread-admin-messages/:userId', async (req, res) => {
+    const { userId } = req.params;
+    // Ambil token dari Authorization header untuk RLS
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) {
+        return res.status(401).json({ error: 'Missing Authorization header' });
+    }
+    const token = authHeader.replace(/^Bearer /i, '').trim();
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUser = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY,
+        {
+            global: {
+                headers: { Authorization: `Bearer ${token}` }
+            }
+        }
+    );
+    try {
+        // Ambil semua pesan dari admin ke user yang belum dibaca
+        const { data, error } = await supabaseUser
+            .from('messages')
+            .select('sender_id')
+            .eq('receiver_id', userId)
+            .eq('is_read', false)
+            .is('chat_type', null); // chat_type null = chat admin-user
+
+        if (error) {
+            return res.status(500).json({ error: 'Supabase error', details: error.message });
+        }
+
+        // Hitung jumlah unread per admin
+        const unreadCounts = {};
+        (data || []).forEach(msg => {
+            if (!unreadCounts[msg.sender_id]) unreadCounts[msg.sender_id] = 0;
+            unreadCounts[msg.sender_id]++;
+        });
+
+        return res.json(unreadCounts);
+    } catch (err) {
+        return res.status(500).json({ error: 'Server error', details: err.message });
+    }
+});
+
+// Pastikan endpoint ini diletakkan sebelum catch-all route app.get('*', ...)

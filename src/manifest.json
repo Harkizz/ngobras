@@ -1,23 +1,58 @@
 {
-  "name": "NGOBRAS",
+  "name": "NGOBRAS - Konsultasi Online",
   "short_name": "NGOBRAS",
   "version": "1.0.0",
   "description": "Aplikasi konsultasi online yang membantu Anda berbicara dengan ahli",
   "start_url": "/ngobras.html?mode=pwa",
   "scope": "/",
+  "id": "/ngobras.html?mode=pwa",
   "permissions": ["notifications"],
   "protocol_handlers": [
     {
       "protocol": "web+ngobras",
-      "url": "/ngobras.html"
+      "url": "/ngobras.html?action=%s"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Buka Chat",
+      "short_name": "Chat",
+      "description": "Buka halaman chat",
+      "url": "/ngobras.html?mode=pwa",
+      "icons": [{ "src": "/images/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Chat Room",
+      "short_name": "Room",
+      "description": "Buka chat room",
+      "url": "/chatroom.html?mode=pwa",
+      "icons": [{ "src": "/images/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ],
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#007bff",
   "orientation": "portrait",
   "prefer_related_applications": false,
   "related_applications": [],
+  "categories": ["social", "health", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "/images/screenshots/ngobras-screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Halaman Utama NGOBRAS"
+    },
+    {
+      "src": "/images/screenshots/ngobras-screenshot2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Chat Room NGOBRAS"
+    }
+  ],
   "icons": [
     {
       "src": "/images/icons/icon-192x192.png",

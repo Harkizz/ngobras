@@ -4,92 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NGOBRAS Admin Panel - Dashboard</title>
+    <!-- UI Libraries: Bootstrap, FontAwesome, Google Fonts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
+    <!-- ================= BACKGROUND DECORATION SHAPES ================= -->
     <div class="floating-shapes">
         <div class="shape"></div>
         <div class="shape"></div>
         <div class="shape"></div>
     </div>
 
+    <!-- ================= SIDEBAR TOGGLE BUTTON (Visible on Mobile) ================= -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">
         <i class="fas fa-bars"></i>
     </button>
 
-    <!-- Sidebar -->
+    <!-- ================= SIDEBAR NAVIGATION ================= -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
+            <!-- Brand/Logo -->
             <a href="#" class="brand">
                 <i class="fas fa-comments"></i>
                 <span class="brand-text">NGOBRAS</span>
             </a>
         </div>
-        
+        <!-- Main navigation menu: each nav-item links to a main section -->
         <nav class="nav-menu">
             <div class="nav-item">
-                <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                <a href="/admin.html#dashboard" class="nav-link" data-section="dashboard">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Dashboard</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('consultations')">
+                <a href="/admin.html#consultations" class="nav-link" data-section="consultations">
                     <i class="fas fa-user-md"></i>
-                    <span>Konsultasi</span>
+                    <span>Consultations</span>
+                    <span id="consultations-unread-badge" class="nav-unread-badge" hidden>0</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('therapists')">
-                    <i class="fas fa-users"></i>
-                    <span>Terapis</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('patients')">
+                <a href="/admin.html#patients" class="nav-link" data-section="patients">
                     <i class="fas fa-user-friends"></i>
-                    <span>Pasien</span>
+                    <span>Patients</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('reports')">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Laporan</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('appointments')">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span>Jadwal</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('messages')">
-                    <i class="fas fa-envelope"></i>
-                    <span>Pesan</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('settings')">
+                <a href="/admin.html#settings" class="nav-link" data-section="settings">
                     <i class="fas fa-cog"></i>
-                    <span>Pengaturan</span>
+                    <span>Settings</span>
                 </a>
             </div>
         </nav>
     </div>
 
-    <!-- Main Content -->
+    <!-- ================= MAIN CONTENT AREA ================= -->
     <div class="main-content" id="mainContent">
-        <!-- Header -->
+        <!-- ========== HEADER: Welcome message and quick actions ========== -->
         <div class="header">
             <div class="welcome-text">
-                <h1>Selamat Datang, Admin!</h1>
-                <p>Kelola platform NGOBRAS dengan mudah dan efisien</p>
+                <h1>Welcome, Admin!</h1>
+                <p>Manage the NGOBRAS platform easily and efficiently</p>
             </div>
             <div class="header-actions">
+                <!-- Notification and profile quick actions -->
                 <button class="notification-btn">
                     <i class="fas fa-bell"></i>
                     <span class="notification-badge">3</span>
@@ -100,56 +82,60 @@
             </div>
         </div>
 
-        <!-- Dashboard Section -->
+        <!-- ========== DASHBOARD SECTION: Main statistics and activity ========== -->
         <div id="dashboard-section" class="content-section">
-            <!-- Stats Grid -->
+            <!-- ===== STATISTICS GRID ===== -->
             <div class="stats-grid">
+                <!-- Total Patients -->
                 <div class="stat-card coral">
                     <div class="stat-icon coral">
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-value">1,245</div>
-                    <div class="stat-label">Total Pasien</div>
+                    <div class="stat-label">Total Patients</div>
                 </div>
+                <!-- Active Therapists -->
                 <div class="stat-card mint">
                     <div class="stat-icon mint">
                         <i class="fas fa-user-md"></i>
                     </div>
                     <div class="stat-value">32</div>
-                    <div class="stat-label">Terapis Aktif</div>
+                    <div class="stat-label">Active Therapists</div>
                 </div>
+                <!-- Sessions Today -->
                 <div class="stat-card blue">
                     <div class="stat-icon blue">
                         <i class="fas fa-comments"></i>
                     </div>
                     <div class="stat-value">89</div>
-                    <div class="stat-label">Sesi Hari Ini</div>
+                    <div class="stat-label">Sessions Today</div>
                 </div>
+                <!-- Satisfaction Rating -->
                 <div class="stat-card peach">
                     <div class="stat-icon coral">
                         <i class="fas fa-heart"></i>
                     </div>
                     <div class="stat-value">4.8</div>
-                    <div class="stat-label">Rating Kepuasan</div>
+                    <div class="stat-label">Satisfaction Rating</div>
                 </div>
             </div>
-
-            <!-- Content Grid -->
+            <!-- ===== CONTENT GRID: Recent consultations and activities ===== -->
             <div class="content-grid">
+                <!-- Recent Consultations Table -->
                 <div class="card">
                     <h5 class="card-title">
                         <i class="fas fa-clock"></i>
-                        Konsultasi Terbaru
+                        Recent Consultations
                     </h5>
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Pasien</th>
-                                    <th>Terapis</th>
-                                    <th>Waktu</th>
+                                    <th>Patient</th>
+                                    <th>Therapist</th>
+                                    <th>Time</th>
                                     <th>Status</th>
-                                    <th>Aksi</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -157,47 +143,42 @@
                                     <td>Sarah Putri</td>
                                     <td>Dr. Anita Sari</td>
                                     <td>14:30</td>
-                                    <td><span class="status-badge status-active">Berlangsung</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Lihat</button>
-                                    </td>
+                                    <td><span class="status-badge status-active">Ongoing</span></td>
+                                    <td><!-- Action buttons here --></td>
                                 </tr>
                                 <tr>
                                     <td>Ahmad Rizki</td>
                                     <td>Dr. Budi Santoso</td>
-                                    <td>15:00</td>
-                                    <td><span class="status-badge status-pending">Menunggu</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Lihat</button>
-                                    </td>
+                                    <td>13:00</td>
+                                    <td><span class="status-badge status-pending">Pending</span></td>
+                                    <td></td>
                                 </tr>
                                 <tr>
-                                    <td>Maya Indira</td>
-                                    <td>Dr. Citra Dewi</td>
-                                    <td>13:45</td>
-                                    <td><span class="status-badge status-offline">Selesai</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Lihat</button>
-                                    </td>
+                                    <td>Lisa Anggraeni</td>
+                                    <td>Dr. Anita Sari</td>
+                                    <td>11:45</td>
+                                    <td><span class="status-badge status-offline">Finished</span></td>
+                                    <td></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-
+                <!-- Recent Activity Feed -->
                 <div class="card">
                     <h5 class="card-title">
                         <i class="fas fa-bell"></i>
-                        Aktivitas Terbaru
+                        Recent Activity
                     </h5>
                     <div class="recent-activity">
+                        <!-- Each activity-item is a single event -->
                         <div class="activity-item">
                             <div class="activity-icon" style="background: var(--very-light-blue); color: var(--primary-blue);">
                                 <i class="fas fa-user-plus"></i>
                             </div>
                             <div class="activity-content">
-                                <h6>Pasien baru mendaftar</h6>
-                                <small>2 menit yang lalu</small>
+                                <h6>New patient registered</h6>
+                                <small>2 minutes ago</small>
                             </div>
                         </div>
                         <div class="activity-item">
@@ -205,8 +186,8 @@
                                 <i class="fas fa-check-circle"></i>
                             </div>
                             <div class="activity-content">
-                                <h6>Konsultasi selesai</h6>
-                                <small>15 menit yang lalu</small>
+                                <h6>Consultation completed</h6>
+                                <small>15 minutes ago</small>
                             </div>
                         </div>
                         <div class="activity-item">
@@ -214,8 +195,8 @@
                                 <i class="fas fa-calendar-plus"></i>
                             </div>
                             <div class="activity-content">
-                                <h6>Jadwal baru dibuat</h6>
-                                <small>1 jam yang lalu</small>
+                                <h6>New schedule created</h6>
+                                <small>1 hour ago</small>
                             </div>
                         </div>
                         <div class="activity-item">
@@ -223,8 +204,8 @@
                                 <i class="fas fa-star"></i>
                             </div>
                             <div class="activity-content">
-                                <h6>Review baru diterima</h6>
-                                <small>2 jam yang lalu</small>
+                                <h6>New review received</h6>
+                                <small>2 hours ago</small>
                             </div>
                         </div>
                     </div>
@@ -232,157 +213,89 @@
             </div>
         </div>
 
-        <!-- Other Sections (Hidden by default) -->
+        <!-- ========== OTHER SECTIONS (hidden by default, shown via navigation) ========== -->
+        <!-- ===== CONSULTATIONS MANAGEMENT ===== -->
         <div id="consultations-section" class="content-section" style="display: none;">
             <div class="card">
                 <h5 class="card-title">
                     <i class="fas fa-user-md"></i>
-                    Manajemen Konsultasi
+                    Consultations Management
                 </h5>
                 <div class="mb-3">
                     <button class="btn btn-primary me-2">
-                        <i class="fas fa-plus"></i> Buat Konsultasi Baru
+                        <i class="fas fa-plus"></i> New Consultation
                     </button>
                     <button class="btn btn-outline-primary">
                         <i class="fas fa-filter"></i> Filter
                     </button>
                 </div>
-                <p class="text-muted">Kelola semua sesi konsultasi antara pasien dan terapis.</p>
-            </div>
-        </div>
+                <p class="text-muted">Manage all consultation sessions between patients and therapists.</p>
 
-        <div id="therapists-section" class="content-section" style="display: none;">
-            <div class="card">
-                <h5 class="card-title">
-                    <i class="fas fa-users"></i>
-                    Manajemen Terapis
-                </h5>
-                <div class="mb-3">
-                    <button class="btn btn-primary me-2">
-                        <i class="fas fa-user-plus"></i> Tambah Terapis
-                    </button>
-                    <button class="btn btn-outline-primary">
-                        <i class="fas fa-search"></i> Cari Terapis
-                    </button>
+                <!-- ================= USER CHAT LIST AREA ================= -->
+                <!-- This area will be dynamically populated with user chat items via JS -->
+                <div class="user-chat-list">
+                    <!-- Example user chat item (to be rendered dynamically): -->
+                    <div class="user-list-item">
+                        <div class="user-avatar online">
+                            <img src="images/default-avatar.png" alt="User Avatar">
+                        </div>
+                        <div class="user-chat-info">
+                            <div class="user-chat-header">
+                                <span class="user-name">Sarah Putri</span>
+                                <span class="user-online-status online">● Online</span>
+                            </div>
+                            <div class="user-last-message">Hi, I need help with my consultation.</div>
+                        </div>
+                    </div>
+                   
                 </div>
-                <p class="text-muted">Kelola profil terapis, jadwal, dan ketersediaan mereka.</p>
+                <!-- End user chat list area -->
             </div>
         </div>
-
+        <!-- ===== PATIENTS MANAGEMENT ===== -->
         <div id="patients-section" class="content-section" style="display: none;">
             <div class="card">
                 <h5 class="card-title">
                     <i class="fas fa-user-friends"></i>
-                    Manajemen Pasien
+                    Patients Management
                 </h5>
                 <div class="mb-3">
                     <button class="btn btn-outline-primary me-2">
-                        <i class="fas fa-search"></i> Cari Pasien
+                        <i class="fas fa-search"></i> Search Patient
                     </button>
                     <button class="btn btn-outline-primary">
-                        <i class="fas fa-download"></i> Ekspor Data
+                        <i class="fas fa-download"></i> Export Data
                     </button>
                 </div>
-                <p class="text-muted">Lihat dan kelola informasi pasien yang terdaftar di platform.</p>
+                <p class="text-muted">View and manage information of patients registered on the platform.</p>
             </div>
         </div>
-
-        <div id="reports-section" class="content-section" style="display: none;">
-            <div class="card">
-                <h5 class="card-title">
-                    <i class="fas fa-chart-line"></i>
-                    Laporan & Analitik
-                </h5>
-                <div class="mb-3">
-                    <button class="btn btn-primary me-2">
-                        <i class="fas fa-chart-bar"></i> Generate Laporan
-                    </button>
-                    <button class="btn btn-outline-primary">
-                        <i class="fas fa-calendar"></i> Pilih Periode
-                    </button>
-                </div>
-                <p class="text-muted">Analisis data platform, tingkat kepuasan, dan performa terapis.</p>
-            </div>
-        </div>
-
-        <div id="appointments-section" class="content-section" style="display: none;">
-            <div class="card">
-                <h5 class="card-title">
-                    <i class="fas fa-calendar-alt"></i>
-                    Manajemen Jadwal
-                </h5>
-                <div class="mb-3">
-                    <button class="btn btn-primary me-2">
-                        <i class="fas fa-calendar-plus"></i> Buat Jadwal
-                    </button>
-                    <button class="btn btn-outline-primary">
-                        <i class="fas fa-eye"></i> Lihat Kalender
-                    </button>
-                </div>
-                <p class="text-muted">Atur dan kelola jadwal konsultasi untuk semua terapis.</p>
-            </div>
-        </div>
-
-        <div id="messages-section" class="content-section" style="display: none;">
-            <div class="card">
-                <h5 class="card-title">
-                    <i class="fas fa-envelope"></i>
-                    Pusat Pesan
-                </h5>
-                <div class="mb-3">
-                    <button class="btn btn-primary me-2">
-                        <i class="fas fa-paper-plane"></i> Kirim Pesan
-                    </button>
-                    <button class="btn btn-outline-primary">
-                        <i class="fas fa-inbox"></i> Kotak Masuk
-                    </button>
-                </div>
-                <p class="text-muted">Kelola komunikasi dengan terapis dan pasien yang terdaftar.</p>
-                <hr>
-                <h6>Daftar Akun Pengguna</h6>
-                <div id="user-list" class="user-list"></div>
-            </div>
-        </div>
-
+        <!-- ===== SETTINGS ===== -->
         <div id="settings-section" class="content-section" style="display: none;">
             <div class="card">
                 <h5 class="card-title">
                     <i class="fas fa-cog"></i>
-                    Pengaturan Sistem
+                    System Settings
                 </h5>
                 <div class="mb-3">
                     <button class="btn btn-primary me-2">
-                        <i class="fas fa-save"></i> Simpan Pengaturan
+                        <i class="fas fa-save"></i> Save Settings
                     </button>
                     <button class="btn btn-outline-primary">
-                        <i class="fas fa-undo"></i> Reset ke Default
+                        <i class="fas fa-undo"></i> Reset to Default
                     </button>
                 </div>
-                <p class="text-muted">Konfigurasi pengaturan platform dan preferensi sistem.</p>
-            </div>
-        </div>
-
-        <div id="admin-chat-section" class="content-section" style="display: none;">
-            <div class="card">
-                <button class="btn btn-link mb-2" onclick="backToUserList()">
-                    <i class="fas fa-arrow-left"></i> Kembali ke daftar pengguna
-                </button>
-                <h5 class="card-title">
-                    <i class="fas fa-comments"></i>
-                    Chat dengan <span id="chatUserName">(Pengguna)</span>
-                </h5>
-                <div id="admin-chat-messages" style="min-height:300px;max-height:400px;overflow-y:auto;background:#f8fafc;border-radius:12px;padding:1rem;margin-bottom:1rem;"></div>
-                <form id="admin-chat-form" class="d-flex gap-2">
-                    <input type="text" id="admin-chat-input" class="form-control" placeholder="Tulis pesan..." autocomplete="off" required>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </form>
+                <p class="text-muted">Configure platform settings and system preferences.</p>
             </div>
         </div>
     </div>
 
+    <!-- ================= JS LIBRARIES ================= -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <!-- Supabase library must be loaded before admin.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Centralized Supabase client must be loaded before other scripts -->
+    <script src="js/supabaseClient.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>

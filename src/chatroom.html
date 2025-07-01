@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chat Room</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="NGOBRAS Chat Room - Konsultasi kesehatan mental online">
+    <meta name="theme-color" content="#007bff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NGOBRAS Chat">
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon.png">
+    <link rel="apple-touch-icon" href="images/icons/apple-touch-icon.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/chatroom.css">
+    <!-- Bootstrap Icons for UI icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <!-- ===== NAVBAR (TOP) ===== -->
+    <nav class="chat-navbar">
+        <!-- Back button -->
+        <button class="nav-back" aria-label="Kembali">
+            <i class="bi bi-arrow-left"></i>
+        </button>
+        <!-- Profile photo and name -->
+        <div class="nav-profile">
+            <img src="images/default-avatar.png" alt="Profile" class="profile-photo">
+            <div class="profile-info">
+                <span class="profile-name">Nama Pengguna</span>
+                <span class="profile-status">Online</span>
+            </div>
+        </div>
+        <!-- Menu (three dots) -->
+        <button class="nav-menu" aria-label="Menu">
+            <i class="bi bi-three-dots-vertical"></i>
+        </button>
+    </nav>
+
+    <!-- ===== CHAT BODY ===== -->
+    <main class="chat-body">
+        <!-- Example chat bubble: received -->
+        <div class="chat-bubble received">
+            <span class="bubble-text">Halo, ada yang bisa saya bantu?</span>
+            <span class="bubble-time">09:00</span>
+        </div>
+        <!-- Example chat bubble: sent -->
+        <div class="chat-bubble sent">
+            <span class="bubble-text">Saya ingin konsultasi tentang kesehatan.</span>
+            <span class="bubble-time">09:01</span>
+        </div>
+        <!-- More chat bubbles can be dynamically added here -->
+    </main>
+
+    <!-- ===== BOTTOM INPUT BAR ===== -->
+    <form class="chat-input-bar" autocomplete="off">
+        <!-- Emoji button -->
+        <button type="button" class="input-emoji" aria-label="Emoji">
+            <i class="bi bi-emoji-smile"></i>
+        </button>
+        <!-- Chat input field -->
+        <input type="text" class="input-message" placeholder="Ketik pesan..." required>
+        <!-- Send button -->
+        <button type="submit" class="input-send" aria-label="Kirim">
+            <i class="bi bi-send"></i>
+        </button>
+    </form>
+
+    <!-- Scripts -->
+    <!-- Tambahkan CDN Supabase sebelum script custom untuk mencegah race condition -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Centralized Supabase client must be loaded before other scripts -->
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/chatroom.js"></script>
+    
+    <!-- PWA Status Check -->
+    <script>
+        // Check if launched from homescreen
+        window.addEventListener('load', () => {
+            // Check if running in standalone mode
+            if (window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone) {
+                document.body.classList.add('pwa-mode');
+                localStorage.setItem('pwa-installed', 'true');
+            }
+            
+            // Handle offline status
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+            
+            function updateOnlineStatus() {
+                const isOnline = navigator.onLine;
+                if (!isOnline) {
+                    showOfflineIndicator();
+                } else {
+                    hideOfflineIndicator();
+                }
+            }
+            
+            function showOfflineIndicator() {
+                let indicator = document.getElementById('offline-indicator');
+                if (!indicator) {
+                    indicator = document.createElement('div');
+                    indicator.id = 'offline-indicator';
+                    indicator.innerHTML = 'Anda sedang offline';
+                    indicator.style.position = 'fixed';
+                    indicator.style.top = '0';
+                    indicator.style.left = '0';
+                    indicator.style.right = '0';
+                    indicator.style.background = '#ff9800';
+                    indicator.style.color = 'white';
+                    indicator.style.padding = '5px';
+                    indicator.style.textAlign = 'center';
+                    indicator.style.zIndex = '9999';
+                    document.body.appendChild(indicator);
+                }
+                indicator.style.display = 'block';
+            }
+            
+            function hideOfflineIndicator() {
+                const indicator = document.getElementById('offline-indicator');
+                if (indicator) {
+                    indicator.style.display = 'none';
+                }
+            }
+            
+            // Check initial status
+            updateOnlineStatus();
+        });
+    </script>
+</body>
+</html>

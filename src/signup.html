@@ -7,8 +7,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/signup.css">
-    <!-- Use only one reliable Supabase CDN -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Use consistent Supabase CDN URL -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="decorative-shapes">
@@ -109,7 +109,8 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
-    <!-- Remove duplicate Supabase CDN -->
+    <!-- Centralized Supabase client must be loaded before other scripts -->
+    <script src="js/supabaseClient.js"></script>
     <script src="js/signup.js"></script>
 </body>
 </html>

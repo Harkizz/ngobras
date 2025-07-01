@@ -1,0 +1,348 @@
+:root {
+    --primary-blue: #4A90E2;         /* Main brand blue */
+    --secondary-blue: #7BB3F0;       /* Lighter blue for gradients */
+    --light-blue: #B8D4F0;           /* Very light blue background */
+    --very-light-blue: #E8F4FD;      /* Background and table header */
+    --coral: #FF8A80;                /* Accent coral color */
+    --peach: #FFB380;                /* Accent peach color */
+    --mint: #80E5D1;                 /* Mint accent */
+    --white: #FFFFFF;                /* White */
+    --light-gray: #F8F9FA;           /* Light gray backgrounds */
+    --medium-gray: #6C757D;          /* Muted text */
+    --dark-blue: #2C3E50;            /* Headings, main text */
+}
+
+/* =====================
+   Admin Chatroom Styles
+   ===================== */
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #f8f9fa;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== TOP BAR ===== */
+.chat-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    padding: 0.75rem 1.25rem;
+    box-shadow: 0 2px 8px rgba(44,62,80,0.07);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.nav-back, .nav-menu {
+    background: none;
+    border: none;
+    color: #4A90E2;
+    font-size: 1.4rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+.nav-back:hover, .nav-menu:hover {
+    background: #e8f4fd;
+}
+.nav-back:focus, .nav-back:active {
+    outline: 2px solid var(--primary-blue);
+    background: #e8f4fd;
+    box-shadow: 0 0 0 2px #4A90E255;
+}
+.nav-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.profile-photo {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e8f4fd;
+}
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.profile-name {
+    font-weight: 600;
+    color: #2C3E50;
+    font-size: 1.08rem;
+}
+.profile-role-badge {
+    background: #80E5D1;
+    color: #2C3E50;
+    font-size: 0.85rem;
+    width: auto;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 2px 10px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    display: inline-block;
+    box-shadow: 0 1px 4px rgba(128,229,209,0.08);
+}
+.profile-status {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: #4ADE80;
+    margin-top: 1px;
+}
+.profile-status.offline {
+    color: #D1D5DB;
+}
+
+/* ===== CHAT BODY ===== */
+.chat-body {
+    flex: 1;
+    padding: 1.2rem 1.1rem 1.2rem 1.1rem;
+    background: #f8f9fa;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    min-height: 0;
+}
+
+/* ===== MESSAGE BUBBLES ===== */
+.chat-bubble {
+    max-width: 70%;
+    padding: 0.85rem 1.1rem;
+    border-radius: 18px;
+    font-size: 1.01rem;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(44,62,80,0.06);
+    position: relative;
+    word-break: break-word;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 2px;
+    transition: background 0.2s, color 0.2s;
+    overflow: visible !important; /* Agar context menu bisa keluar dari bubble */
+    z-index: 1;
+}
+/* Bubble dikirim oleh admin (kanan) */
+.chat-bubble.sent {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #4A90E2 80%, #7BB3F0 100%);
+    color: #fff;
+    border-bottom-right-radius: 6px;
+    border-top-right-radius: 18px;
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+    box-shadow: 0 2px 12px rgba(74,144,226,0.10);
+}
+.chat-bubble.sent.active-menu {
+    z-index: 10;
+}
+/* Bubble diterima (user, kiri) */
+.chat-bubble.received {
+    align-self: flex-start;
+    background: #fff;
+    color: #2C3E50;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 18px;
+    border-top-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    box-shadow: 0 2px 12px rgba(44,62,80,0.08);
+    border: 1.5px solid #e8f4fd;
+}
+.bubble-text {
+    margin-bottom: 0.2rem;
+    word-break: break-word;
+}
+.bubble-time {
+    font-size: 0.85rem;
+    color: #B8D4F0;
+    align-self: flex-end;
+    margin-top: 2px;
+    font-weight: 500;
+}
+.chat-bubble.received .bubble-time {
+    color: #7F8C8D;
+}
+/* Optional: Nama pengirim (untuk debugging/developer) */
+.bubble-sender {
+    font-size: 0.82rem;
+    color: #7BB3F0;
+    font-weight: 600;
+    margin-bottom: 2px;
+    letter-spacing: 0.01em;
+}
+.chat-bubble.received .bubble-sender {
+    color: #2C3E50;
+}
+
+/* ===== BOTTOM INPUT BAR ===== */
+.chat-input-bar {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    padding: 0.7rem 1rem;
+    box-shadow: 0 -2px 8px rgba(44,62,80,0.07);
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    gap: 0.7rem;
+}
+.input-emoji {
+    background: none;
+    border: none;
+    color: #4A90E2;
+    font-size: 1.4rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+.input-emoji:hover {
+    background: #e8f4fd;
+}
+.input-message {
+    flex: 1;
+    border: 1.5px solid #e8f4fd;
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    font-size: 1rem;
+    outline: none;
+    background: #f8f9fa;
+    color: #2C3E50;
+    transition: border 0.2s;
+}
+.input-message:focus {
+    border-color: #4A90E2;
+}
+.input-send {
+    background: #4A90E2;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1.1rem;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.input-send:hover {
+    background: #357ABD;
+}
+
+/* ===== Floating Error Container for Developer Debug ===== */
+#chat-error-container {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffb3b3;
+    color: #2C3E50;
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    z-index: 2000;
+    display: none;
+    font-weight: bold;
+    max-width: 90vw;
+    text-align: center;
+    font-size: 1rem;
+    animation: fadeIn 0.3s;
+}
+#chat-error-container button {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: #2C3E50;
+    margin-left: 16px;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ===== CONTEXT MENU FOR BUBBLE (ADMIN ONLY) ===== */
+.bubble-context-menu {
+    position: fixed !important; /* Selalu di viewport, bukan relatif parent */
+    min-width: 140px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px 2px rgba(44,62,80,0.18), 0 0 0 2px #4A90E222;
+    border: 2px solid #e8f4fd;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    animation: fadeInMenu 0.18s;
+    opacity: 1;
+    visibility: visible;
+}
+.bubble-context-menu.debug {
+    border: 2px solid #ff3333 !important; /* DEBUG: border merah jika menu muncul, hapus di produksi */
+}
+/* DEBUG: Force visible and highlight if menu is not visible for troubleshooting */
+.bubble-context-menu.debug-visible {
+    border: 3px solid #ff0000 !important;
+    background: rgba(255,0,0,0.08) !important;
+    box-shadow: 0 0 0 4px #ff000055 !important;
+    animation: blinkMenu 0.7s linear infinite;
+}
+@keyframes blinkMenu {
+    0%, 100% { box-shadow: 0 0 0 4px #ff000055; }
+    50% { box-shadow: 0 0 0 8px #ff000099; }
+}
+
+/*
+ * NOTE: Context menu is now always visible on all screen sizes.
+ * If you want to disable on mobile, use JS or add a data attribute, not CSS media query.
+ */
+
+/* ===== FAST POPUP FOR COPY CHAT ===== */
+#chat-copied-popup {
+    position: fixed;
+    left: 50%;
+    top: 90px;
+    transform: translateX(-50%);
+    background: #4A90E2;
+    color: #fff;
+    padding: 10px 28px;
+    border-radius: 10px;
+    font-size: 1.08rem;
+    font-weight: 600;
+    box-shadow: 0 2px 12px rgba(44,62,80,0.13);
+    z-index: 3000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    animation: none;
+}
+#chat-copied-popup.visible {
+    opacity: 1;
+    animation: fadeOutPopup 2s forwards;
+}
+@keyframes fadeOutPopup {
+    0% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@media (max-width: 600px) {
+    .chat-navbar, .chat-input-bar {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    .chat-body {
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
+    }
+    .profile-photo {
+        width: 36px;
+        height: 36px;
+    }
+}

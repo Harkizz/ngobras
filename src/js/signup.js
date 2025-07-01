@@ -1,20 +1,55 @@
-// Initialize Supabase client
-let supabaseClient;
+// Use the centralized Supabase client
+// No need to declare supabaseClient here as it's provided by supabaseClient.js
+let localSupabaseClient = null; // Use a different variable name to avoid conflicts
+
+// Helper: pastikan centralized Supabase client sudah tersedia
+function ensureSupabaseClientAvailable() {
+    console.log('[Signup] Checking if window.getSupabaseClient is available:', typeof window.getSupabaseClient);
+    console.log('[Signup] window object keys:', Object.keys(window).filter(k => k.includes('supa')));
+    
+    if (typeof window.getSupabaseClient !== 'function') {
+        const msg = '[ERROR] getSupabaseClient function not available. Make sure supabaseClient.js is loaded before signup.js';
+        console.error(msg);
+        
+        // Log all script elements to debug loading order
+        const scripts = document.querySelectorAll('script');
+        console.debug('[Signup] Loaded scripts:', Array.from(scripts).map(s => s.src || 'inline script'));
+        
+        alert(msg + '\nCek urutan <script> di HTML.');
+        throw new Error(msg);
+    }
+    
+    console.log('[Signup] getSupabaseClient function is available');
+}
+
+// Initialize Supabase client using centralized client
+async function initSupabase() {
+    try {
+        console.log('[Signup] Initializing Supabase client...');
+        ensureSupabaseClientAvailable();
+        
+        // Get client from centralized module
+        console.log('[Signup] Calling window.getSupabaseClient()...');
+        localSupabaseClient = await window.getSupabaseClient();
+        
+        console.log('[Signup] getSupabaseClient() returned:', localSupabaseClient ? 'valid client' : 'null/undefined');
+        
+        if (!localSupabaseClient) {
+            console.error('[Signup] Failed to get Supabase client from centralized module');
+            throw new Error('Failed to get Supabase client from centralized module');
+        }
+        
+        console.log('[Signup] Supabase client initialized successfully');
+        return true;
+    } catch (error) {
+        console.error('[Signup][Supabase Init Error]', error);
+        showAlert('Error initializing application: ' + error.message, 'danger');
+        return false;
+    }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // Fetch Supabase configuration from server
-        const response = await fetch('/api/supabase-config');
-        const config = await response.json();
-        
-        // Initialize Supabase client
-        supabaseClient = supabase.createClient(config.url, config.anonKey);
-        
-        console.log('Supabase initialized successfully');
-    } catch (error) {
-        console.error('Failed to initialize Supabase:', error);
-        showAlert('Error initializing application', 'danger');
-    }
+    await initSupabase();
 });
 
 // Password strength checker
@@ -36,7 +71,7 @@ document.getElementById('password').addEventListener('input', function() {
     switch(strength) {
         case 0:
         case 1:
-            text = 'Password sangat lemah';z
+            text = 'Password sangat lemah';
             color = '#ef4444';
             break;
         case 2:
@@ -122,8 +157,17 @@ document.getElementById('signupForm').addEventListener('submit', async function(
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing up...';
             button.disabled = true;
             
+            // Ensure we have a Supabase client
+            if (!localSupabaseClient) {
+                console.log('[Signup] Supabase client not initialized, initializing now...');
+                const initialized = await initSupabase();
+                if (!initialized || !localSupabaseClient) {
+                    throw new Error('Failed to initialize Supabase client');
+                }
+            }
+            
             // Step 1: Create auth user
-            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+            const { data: authData, error: authError } = await localSupabaseClient.auth.signUp({
                 email: email,
                 password: password,
                 options: {

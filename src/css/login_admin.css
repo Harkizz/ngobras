@@ -238,18 +238,20 @@
 
         .password-toggle {
             position: absolute;
-            right: 1rem;
+            right: 12px;
             top: 50%;
             transform: translateY(-50%);
-            background: none;
-            border: none;
             color: var(--medium-gray);
             cursor: pointer;
             font-size: 1.1rem;
-            transition: all 0.3s ease;
+            z-index: 2;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: background 0.2s;
         }
 
         .password-toggle:hover {
+            background: var(--very-light-blue);
             color: var(--primary-blue);
         }
 
@@ -417,6 +419,32 @@
         .form-validation.success {
             color: var(--success-green);
             display: block;
+        }
+
+        /* ===== LOGIN TABS ===== */
+        .login-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .login-tab {
+            background: var(--very-light-blue);
+            color: var(--primary-blue);
+            border: none;
+            padding: 0.7rem 1.7rem;
+            border-radius: 16px 16px 0 0;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            outline: none;
+            box-shadow: 0 2px 8px rgba(74,144,226,0.06);
+        }
+        .login-tab.active {
+            background: var(--primary-blue);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(74,144,226,0.12);
         }
 
         /* Responsive Design */

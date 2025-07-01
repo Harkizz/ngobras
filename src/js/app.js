@@ -360,6 +360,21 @@ window.addEventListener('load', () => {
     clearCacheOnDev();
 });
 
+// Function to clear cache in development mode
+async function clearCacheOnDev() {
+    if (!isDev) return;
+    
+    try {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+            cacheNames.map(cacheName => caches.delete(cacheName))
+        );
+        console.log('Development mode: Cache cleared');
+    } catch (error) {
+        console.error('Failed to clear cache:', error);
+    }
+}
+
 // Listen for the appinstalled event
 window.addEventListener('appinstalled', (event) => {
     isInstalling = false;
@@ -373,3 +388,53 @@ window.addEventListener('appinstalled', (event) => {
         });
     }
 });
+
+// Handle offline status
+function updateOnlineStatus() {
+    const isOnline = navigator.onLine;
+    const body = document.body;
+    
+    if (!isOnline) {
+        body.classList.add('offline-mode');
+        showOfflineIndicator();
+    } else {
+        body.classList.remove('offline-mode');
+        hideOfflineIndicator();
+    }
+}
+
+// Show offline indicator
+function showOfflineIndicator() {
+    let indicator = document.getElementById('offline-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'offline-indicator';
+        indicator.innerHTML = 'Anda sedang offline';
+        indicator.style.position = 'fixed';
+        indicator.style.top = '0';
+        indicator.style.left = '0';
+        indicator.style.right = '0';
+        indicator.style.background = '#ff9800';
+        indicator.style.color = 'white';
+        indicator.style.padding = '5px';
+        indicator.style.textAlign = 'center';
+        indicator.style.zIndex = '9999';
+        document.body.appendChild(indicator);
+    }
+    indicator.style.display = 'block';
+}
+
+// Hide offline indicator
+function hideOfflineIndicator() {
+    const indicator = document.getElementById('offline-indicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+}
+
+// Listen for online/offline events
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// Check initial online status
+document.addEventListener('DOMContentLoaded', updateOnlineStatus);

@@ -42,9 +42,16 @@
                 <span id="successText"></span>
             </div>
 
-            <form class="form-section" id="loginForm" novalidate>
+            <!-- ===== LOGIN MENU TABS ===== -->
+            <div class="login-tabs">
+                <button type="button" class="login-tab active" id="tab-magic-link">Login with Magic Link</button>
+                <button type="button" class="login-tab" id="tab-password">Login with Password</button>
+            </div>
+
+            <!-- ===== LOGIN WITH MAGIC LINK FORM ===== -->
+            <form class="form-section" id="magicLinkForm" novalidate>
                 <div class="form-group">
-                    <label for="adminEmail" class="form-label">
+                    <label for="magicEmail" class="form-label">
                         <i class="fas fa-envelope"></i>
                         Email Admin
                     </label>
@@ -53,20 +60,70 @@
                         <input 
                             type="email" 
                             class="form-control" 
-                            id="adminEmail" 
-                            name="adminEmail"
+                            id="magicEmail" 
+                            name="magicEmail"
                             placeholder="masukkan email admin..."
                             required
                             autocomplete="username"
                         >
                     </div>
-                    <div class="form-validation" id="emailValidation"></div>
+                    <div class="form-validation" id="magicEmailValidation"></div>
                 </div>
-                <button type="submit" class="login-button" id="loginButton">
+                <button type="submit" class="login-button" id="magicLinkButton">
                     <div class="button-content">
-                        <div class="loading-spinner" id="loadingSpinner"></div>
-                        <i class="fas fa-sign-in-alt" id="loginIcon"></i>
-                        <span id="buttonText">Kirim Magic Link</span>
+                        <div class="loading-spinner" id="magicLoadingSpinner"></div>
+                        <i class="fas fa-sign-in-alt" id="magicLoginIcon"></i>
+                        <span id="magicButtonText">Kirim Magic Link</span>
+                    </div>
+                </button>
+            </form>
+
+            <!-- ===== LOGIN WITH PASSWORD FORM ===== -->
+            <form class="form-section" id="passwordForm" style="display:none;" novalidate>
+                <div class="form-group">
+                    <label for="passwordEmail" class="form-label">
+                        <i class="fas fa-envelope"></i>
+                        Email Admin
+                    </label>
+                    <div style="position: relative;">
+                        <i class="input-icon fas fa-envelope"></i>
+                        <input 
+                            id="passwordEmail"
+                            name="email"
+                            type="email"
+                            class="form-control"
+                            placeholder="admin@email.com"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+                    <div class="form-validation" id="passwordEmailValidation"></div>
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword" class="form-label">
+                        <i class="fas fa-lock"></i>
+                        Password
+                    </label>
+                    <div style="position: relative;">
+                        <i class="input-icon fas fa-lock"></i>
+                        <input 
+                            id="adminPassword"
+                            name="password"
+                            type="password"
+                            class="form-control"
+                            placeholder="Password"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <span class="password-toggle" id="togglePassword"></span>
+                    </div>
+                    <div class="form-validation" id="passwordValidation"></div>
+                </div>
+                <button type="submit" class="login-button" id="passwordLoginButton">
+                    <div class="button-content">
+                        <div class="loading-spinner" id="passwordLoadingSpinner" style="display:none;"></div>
+                        <i class="fas fa-sign-in-alt" id="passwordLoginIcon"></i>
+                        <span id="passwordButtonText">Login</span>
                     </div>
                 </button>
             </form>
@@ -95,8 +152,10 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="js/login_admin.js"></script>
+    <!-- Only one Supabase CDN script is needed; dynamic import in JS will handle fallback if not present -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Centralized Supabase client must be loaded before other scripts -->
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/login_admin.js"></script>
 </body>
 </html>
