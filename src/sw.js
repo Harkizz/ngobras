@@ -95,8 +95,10 @@ self.addEventListener('install', event => {
           cdnResources.map(async url => {
             try {
               const response = await fetch(url, { mode: 'no-cors' }); // Use no-cors for cross-origin resources
-              if (response) {
-                await cache.put(url, response);
+              // Only cache GET requests (Cache API does not support HEAD/POST/PUT)
+              if (response && response.type !== 'opaqueredirect') {
+                const req = new Request(url, { method: 'GET' });
+                await cache.put(req, response);
                 loaded++;
               }
             } catch (error) {
@@ -280,12 +282,24 @@ self.addEventListener('fetch', event => {
         try {
           const networkResponse = await fetch(event.request);
           if (networkResponse && networkResponse.ok) {
-            // Only cache successful responses
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(event.request, networkResponse.clone());
+            // Only cache successful GET requests
+            if (event.request.method === 'GET') {
+              const cache = await caches.open(CACHE_NAME);
+              try {
+                await cache.put(event.request, networkResponse.clone());
+              } catch (cacheError) {
+                // Log and skip if method is not GET or other cache error
+                console.error('[ServiceWorker] Cache put error:', cacheError, {
+                  url: event.request.url,
+                  method: event.request.method
+                });
+              }
+            } else {
+              // Log attempt to cache non-GET request
+              console.warn('[ServiceWorker] Skipping cache.put for non-GET request:', event.request.url, event.request.method);
+            }
             return networkResponse;
           }
-          
           throw new Error('Network response was not ok');
         } catch (error) {
           return handleOfflineFallback(event.request);

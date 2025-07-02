@@ -105,25 +105,25 @@ async function getSupabaseClient() {
             try {
                 // Add detailed fetch diagnostics
                 console.log('[SupabaseClient] Starting fetch request to /api/supabase-config...');
-                
+
                 // Use more detailed fetch with timeout
                 const fetchPromise = fetch('/api/supabase-config');
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Fetch timeout after 5000ms')), 5000)
                 );
-                
+
                 response = await Promise.race([fetchPromise, timeoutPromise]);
                 console.log(`[SupabaseClient] Fetch response received in ${Date.now() - configStartTime}ms:`, {
                     status: response.status,
                     statusText: response.statusText,
                     headers: Object.fromEntries([...response.headers.entries()])
                 });
-                
+
                 if (!response.ok) {
                     console.error(`[SupabaseClient] Failed to fetch config: ${response.status} ${response.statusText}`);
                     throw new Error(`Failed to fetch Supabase configuration: ${response.status} ${response.statusText}`);
                 }
-                
+
                 // Try to parse the response as JSON with error handling
                 try {
                     const text = await response.text();
@@ -147,7 +147,43 @@ async function getSupabaseClient() {
                 console.log('[SupabaseClient] Config anonKey:',
                     config.anonKey ? `${config.anonKey.substring(0, 10)}...${config.anonKey.substring(config.anonKey.length - 5)}` : 'undefined');
             } catch (fetchError) {
-                console.error('[SupabaseClient] Error fetching configuration:', fetchError);
+                // Enhanced error diagnostics for fetch failures
+                const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+                let swState = 'unknown';
+                if ('serviceWorker' in navigator) {
+                    try {
+                        swState = navigator.serviceWorker.controller ? 'active' : 'none';
+                    } catch (e) {
+                        swState = 'error';
+                    }
+                }
+                console.error('[SupabaseClient] Error fetching configuration:', fetchError, {
+                    isOffline,
+                    swState,
+                    location: window.location.href,
+                    userAgent: navigator.userAgent
+                });
+
+                // Show user-friendly error if in main app context
+                if (typeof window !== 'undefined' && document && document.body) {
+                    let errorDiv = document.getElementById('supabase-config-error');
+                    if (!errorDiv) {
+                        errorDiv = document.createElement('div');
+                        errorDiv.id = 'supabase-config-error';
+                        errorDiv.style.position = 'fixed';
+                        errorDiv.style.top = '0';
+                        errorDiv.style.left = '0';
+                        errorDiv.style.right = '0';
+                        errorDiv.style.background = '#ffb3b3';
+                        errorDiv.style.color = '#2C3E50';
+                        errorDiv.style.padding = '12px 24px';
+                        errorDiv.style.zIndex = '3000';
+                        errorDiv.style.fontWeight = 'bold';
+                        errorDiv.style.textAlign = 'center';
+                        errorDiv.innerHTML = 'Gagal mengambil konfigurasi Supabase. Silakan cek koneksi internet Anda atau hubungi admin.';
+                        document.body.appendChild(errorDiv);
+                    }
+                }
 
                 // Fallback to hardcoded values for development/testing
                 console.log('[SupabaseClient] Attempting to use fallback configuration...');

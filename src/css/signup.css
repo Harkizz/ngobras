@@ -293,3 +293,35 @@
                 font-size: 1.6rem;
             }
         }
+
+        /* Network status indicator */
+        .network-status-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            text-align: center;
+            font-weight: 500;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .network-status-indicator.offline {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border-bottom: 1px solid #fee2e2;
+        }
+
+        .network-status-indicator.online {
+            background-color: #ecfdf5;
+            color: #065f46;
+            border-bottom: 1px solid #d1fae5;
+        }
+
+        /* Alert styles for network status */
+        .alert-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: #92400e;
+        }

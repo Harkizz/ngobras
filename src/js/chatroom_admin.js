@@ -37,36 +37,45 @@ document.addEventListener('DOMContentLoaded', function() {
         if (userNameEl) userNameEl.textContent = 'User Not Found';
         if (userRoleEl) userRoleEl.textContent = '';
         if (userAvatarEl) userAvatarEl.src = 'images/default-avatar.png';
-        // Show error in floating container for developer
+        
+        // Show error in floating container with improved styling
         let container = document.getElementById('chat-error-container');
         if (!container) {
             container = document.createElement('div');
             container.id = 'chat-error-container';
-            container.style.position = 'fixed';
-            container.style.top = '70px';
-            container.style.left = '50%';
-            container.style.transform = 'translateX(-50%)';
-            container.style.background = '#ffb3b3';
-            container.style.color = '#2C3E50';
-            container.style.padding = '12px 24px';
-            container.style.borderRadius = '8px';
-            container.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
-            container.style.zIndex = '2000';
-            container.style.display = 'none';
-            container.style.fontWeight = 'bold';
-            container.style.maxWidth = '90vw';
-            container.style.textAlign = 'center';
+            container.className = 'error-toast';
             document.body.appendChild(container);
         }
-        container.innerHTML = `${msg}<br><span style='font-size:0.95em;color:#b00;'>Troubleshooting: Pastikan server backend berjalan di <b>http://localhost:3000</b> dan akses aplikasi melalui <b>http://localhost:3000/src/chatroom_admin.html</b></span> <button id='close-error-btn' style='margin-left:16px;background:none;border:none;font-size:1.2em;cursor:pointer;'>&times;</button>`;
-        container.style.display = 'block';
+        
+        container.innerHTML = `
+            <div class="error-toast-content">
+                <div class="error-toast-icon">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div class="error-toast-message">
+                    ${msg}
+                    <div class="error-toast-details">
+                        Troubleshooting: Pastikan server backend berjalan di <b>http://localhost:3000</b>
+                        dan akses aplikasi melalui <b>http://localhost:3000/src/chatroom_admin.html</b>
+                    </div>
+                </div>
+                <button id="close-error-btn" class="error-toast-close" aria-label="Close error message">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+        
+        container.classList.add('visible');
+        
         document.getElementById('close-error-btn').onclick = () => {
-            container.style.display = 'none';
+            container.classList.remove('visible');
         };
+        
         clearTimeout(container._timeout);
         container._timeout = setTimeout(() => {
-            container.style.display = 'none';
+            container.classList.remove('visible');
         }, 12000);
+        
         console.error('[ChatroomAdmin] ' + msg);
     }
 
@@ -116,52 +125,104 @@ document.addEventListener('DOMContentLoaded', function() {
     let adminId = getQueryParam('admin_id');
     let userId = getQueryParam('user_id');
 
-    // Render messages in chat UI
+    // Render messages in chat UI with animations and improved styling
     function renderMessages(messages) {
         if (!chatBody) return;
-        chatBody.innerHTML = '';
+        
+        // Show loading state
+        if (chatBody.querySelector('.chat-loading-indicator') === null) {
+            chatBody.innerHTML = `
+                <div class="chat-loading-indicator">
+                    <div class="loading-spinner"></div>
+                    <p>Loading messages...</p>
+                </div>
+            `;
+        }
+        
+        // Handle empty state
         if (!Array.isArray(messages) || messages.length === 0) {
-            // Tampilkan pesan kosong
-            const empty = document.createElement('div');
-            empty.className = 'chat-bubble received';
-            empty.textContent = 'No messages yet.';
-            chatBody.appendChild(empty);
+            chatBody.innerHTML = `
+                <div class="chat-empty-state">
+                    <div class="empty-icon">
+                        <i class="bi bi-chat-square-text"></i>
+                    </div>
+                    <p>No messages yet</p>
+                    <span>Messages will appear here when the conversation starts</span>
+                </div>
+            `;
             return;
         }
-        // Ambil adminId dari URL (atau session)
+        
+        // Clear loading indicator
+        chatBody.innerHTML = '';
+        
+        // Get adminId from URL (or session)
         const urlParams = new URLSearchParams(window.location.search);
         const adminId = urlParams.get('admin_id');
+        
+        // Group messages by date
+        let currentDate = null;
+        
         messages.forEach((msg, idx) => {
-            // Defensive: cek struktur pesan
+            // Defensive: check message structure
             if (!msg || !msg.sender_id || !msg.content || !msg.created_at) {
-                // Bubble error untuk developer
+                // Error bubble for developer
                 const errBubble = document.createElement('div');
-                errBubble.className = 'chat-bubble received';
-                errBubble.style.background = '#ffe0e0';
-                errBubble.style.color = '#b00';
+                errBubble.className = 'chat-bubble received error-bubble';
                 errBubble.innerHTML = '<b>Invalid message object</b><br>' + JSON.stringify(msg);
                 chatBody.appendChild(errBubble);
                 return;
             }
-            // Tentukan apakah pesan dikirim oleh admin (kanan) atau user (kiri)
+            
+            // Add date separator if needed
+            const msgDate = new Date(msg.created_at);
+            const formattedDate = msgDate.toLocaleDateString(undefined, {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            if (formattedDate !== currentDate) {
+                currentDate = formattedDate;
+                const dateSeparator = document.createElement('div');
+                dateSeparator.className = 'date-separator';
+                dateSeparator.textContent = formattedDate;
+                chatBody.appendChild(dateSeparator);
+            }
+            
+            // Determine if message was sent by admin (right) or user (left)
             const isSent = (msg.sender_id === adminId);
+            
+            // Create message container
             const bubble = document.createElement('div');
             bubble.className = 'chat-bubble ' + (isSent ? 'sent' : 'received');
-            bubble.style.position = 'relative'; // Untuk context menu
-            // (Optional) Nama pengirim untuk debugging
-            // const sender = document.createElement('span');
-            // sender.className = 'bubble-sender';
-            // sender.textContent = isSent ? 'Admin' : 'User';
-            // bubble.appendChild(sender);
-            // Isi pesan
+            bubble.setAttribute('role', 'listitem');
+            bubble.setAttribute('aria-label', `${isSent ? 'You' : 'User'}: ${msg.content}`);
+            
+            // Add read status indicator for sent messages
+            if (isSent) {
+                const readStatus = document.createElement('span');
+                readStatus.className = 'read-status';
+                readStatus.innerHTML = msg.is_read
+                    ? '<i class="bi bi-check2-all" aria-label="Read"></i>'
+                    : '<i class="bi bi-check2" aria-label="Sent"></i>';
+                bubble.appendChild(readStatus);
+            }
+            
+            // Message content
             const text = document.createElement('span');
             text.className = 'bubble-text';
             text.textContent = msg.content;
             bubble.appendChild(text);
-            // Waktu
+            
+            // Timestamp
             const time = document.createElement('span');
             time.className = 'bubble-time';
-            time.textContent = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            time.setAttribute('aria-label', `Sent at ${new Date(msg.created_at).toLocaleTimeString()}`);
+            time.textContent = new Date(msg.created_at).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
             bubble.appendChild(time);
             // ===== CONTEXT MENU (ADMIN BUBBLE ONLY, DESKTOP) =====
             if (isSent) {
@@ -319,42 +380,84 @@ document.addEventListener('DOMContentLoaded', function() {
         chatBody.scrollTop = chatBody.scrollHeight;
     }
 
-    // Show error in chat UI (with floating error container for developer)
+    // Show error in chat UI with improved styling and accessibility
     function showChatError(msg) {
-        // Floating error container for developer
+        // Floating error container with improved styling
         let container = document.getElementById('chat-error-container');
         if (!container) {
             container = document.createElement('div');
             container.id = 'chat-error-container';
-            container.style.position = 'fixed';
-            container.style.top = '70px';
-            container.style.left = '50%';
-            container.style.transform = 'translateX(-50%)';
-            container.style.background = '#ffb3b3';
-            container.style.color = '#2C3E50';
-            container.style.padding = '12px 24px';
-            container.style.borderRadius = '8px';
-            container.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
-            container.style.zIndex = '2000';
-            container.style.display = 'none';
-            container.style.fontWeight = 'bold';
-            container.style.maxWidth = '90vw';
-            container.style.textAlign = 'center';
+            container.className = 'error-toast';
+            container.setAttribute('role', 'alert');
+            container.setAttribute('aria-live', 'assertive');
             document.body.appendChild(container);
         }
-        container.innerHTML = `${msg}<br><span style='font-size:0.95em;color:#b00;'>Troubleshooting: Pastikan server backend berjalan di <b>http://localhost:3000</b> dan akses aplikasi melalui <b>http://localhost:3000/src/chatroom_admin.html</b></span> <button id='close-error-btn' style='margin-left:16px;background:none;border:none;font-size:1.2em;cursor:pointer;'>&times;</button>`;
-        container.style.display = 'block';
+        
+        container.innerHTML = `
+            <div class="error-toast-content">
+                <div class="error-toast-icon">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div class="error-toast-message">
+                    ${msg}
+                    <div class="error-toast-details">
+                        Troubleshooting: Pastikan server backend berjalan di <b>http://localhost:3000</b>
+                        dan akses aplikasi melalui <b>http://localhost:3000/src/chatroom_admin.html</b>
+                    </div>
+                </div>
+                <button id="close-error-btn" class="error-toast-close" aria-label="Close error message">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+        
+        container.classList.add('visible');
+        
         document.getElementById('close-error-btn').onclick = () => {
-            container.style.display = 'none';
+            container.classList.remove('visible');
         };
+        
         clearTimeout(container._timeout);
         container._timeout = setTimeout(() => {
-            container.style.display = 'none';
+            container.classList.remove('visible');
         }, 12000);
-        // Also show in chat body for user
+        
+        // Also show in chat body for user with improved styling
         if (chatBody) {
-            chatBody.innerHTML = `<div class="chat-error">${msg}</div>`;
+            chatBody.innerHTML = `
+                <div class="chat-error-state">
+                    <div class="error-icon">
+                        <i class="bi bi-exclamation-circle"></i>
+                    </div>
+                    <h3>Connection Error</h3>
+                    <p>${msg}</p>
+                    <button id="retry-connection" class="retry-button">
+                        <i class="bi bi-arrow-clockwise"></i> Retry Connection
+                    </button>
+                </div>
+            `;
+            
+            // Add retry functionality
+            const retryBtn = document.getElementById('retry-connection');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', () => {
+                    // Show loading state
+                    chatBody.innerHTML = `
+                        <div class="chat-loading-indicator">
+                            <div class="loading-spinner"></div>
+                            <p>Reconnecting...</p>
+                        </div>
+                    `;
+                    
+                    // Attempt to reconnect
+                    setTimeout(() => {
+                        fetchMessages();
+                        subscribeToMessages();
+                    }, 1000);
+                });
+            }
         }
+        
         console.error('[ChatroomAdmin][Realtime] ' + msg);
     }
 
@@ -442,6 +545,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Update unread messages to read status
+    async function updateUnreadMessages() {
+        if (!supabase || !adminId || !userId) {
+            console.error('[ChatroomAdmin] Cannot update message status: missing supabase client, adminId, or userId');
+            return { success: false, error: 'Missing required data' };
+        }
+
+        try {
+            console.log('[ChatroomAdmin] Updating unread messages to read status...');
+            
+            // Find messages where admin is the receiver and messages are unread
+            // This means messages sent by the user to the admin
+            const { data, error, count } = await supabase
+                .from('messages')
+                .update({ is_read: true })
+                .match({
+                    sender_id: userId,
+                    receiver_id: adminId,
+                    is_read: false
+                });
+            
+            if (error) {
+                console.error('[ChatroomAdmin] Error updating message read status:', error);
+                return { success: false, error };
+            }
+            
+            console.log(`[ChatroomAdmin] Successfully updated message read status. Affected rows:`, count);
+            return { success: true, count };
+        } catch (err) {
+            console.error('[ChatroomAdmin] Exception updating message read status:', err);
+            return { success: false, error: err };
+        }
+    }
+
     // Subscribe to messages table for realtime updates (Supabase v2 compatible)
     async function subscribeToMessages() {
         if (!supabase) {
@@ -494,6 +631,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (relevant) {
                     console.log('[ChatroomAdmin][Realtime] Relevant event, re-fetching messages.');
                     fetchMessages();
+                    
+                    // If it's a new message from user to admin, mark it as read immediately
+                    if (payload.eventType === 'INSERT' &&
+                        msg.sender_id === userId &&
+                        msg.receiver_id === adminId &&
+                        msg.is_read === false) {
+                        console.log('[ChatroomAdmin][Realtime] New unread message detected, updating read status...');
+                        updateUnreadMessages();
+                    }
                 } else {
                     console.log('[ChatroomAdmin][Realtime] Irrelevant event, ignored.');
                 }
@@ -527,10 +673,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         await initSupabase();
         await fetchMessages();
+        
+        // Auto-update unread messages to read status when admin opens the chatroom
+        const updateResult = await updateUnreadMessages();
+        if (!updateResult.success) {
+            console.warn('[ChatroomAdmin] Failed to auto-update message read status:', updateResult.error);
+            // Continue with chat functionality even if update fails
+        } else {
+            console.log('[ChatroomAdmin] Auto-updated message read status successfully');
+        }
+        
         await subscribeToMessages();
     }
 
     startRealtimeChat();
+
+    // Update read status when window gains focus (for when user returns to tab)
+    window.addEventListener('focus', async () => {
+        if (supabase && adminId && userId) {
+            console.log('[ChatroomAdmin] Window gained focus, updating message read status...');
+            await updateUnreadMessages();
+        }
+    });
 
     // Cleanup on unload
     window.addEventListener('beforeunload', async () => {
@@ -565,31 +729,37 @@ function showChatError(msg) {
     if (!container) {
         container = document.createElement('div');
         container.id = 'chat-error-container';
-        container.style.position = 'fixed';
-        container.style.top = '70px';
-        container.style.left = '50%';
-        container.style.transform = 'translateX(-50%)';
-        container.style.background = '#ffb3b3';
-        container.style.color = '#2C3E50';
-        container.style.padding = '12px 24px';
-        container.style.borderRadius = '8px';
-        container.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
-        container.style.zIndex = '2000';
-        container.style.display = 'none';
-        container.style.fontWeight = 'bold';
-        container.style.maxWidth = '90vw';
-        container.style.textAlign = 'center';
+        container.className = 'error-toast';
+        container.setAttribute('role', 'alert');
+        container.setAttribute('aria-live', 'assertive');
         document.body.appendChild(container);
     }
-    container.innerHTML = `${msg} <button id='close-error-btn' style='margin-left:16px;background:none;border:none;font-size:1.2em;cursor:pointer;'>&times;</button>`;
-    container.style.display = 'block';
+    
+    container.innerHTML = `
+        <div class="error-toast-content">
+            <div class="error-toast-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div class="error-toast-message">
+                ${msg}
+            </div>
+            <button id="close-error-btn" class="error-toast-close" aria-label="Close error message">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    `;
+    
+    container.classList.add('visible');
+    
     document.getElementById('close-error-btn').onclick = () => {
-        container.style.display = 'none';
+        container.classList.remove('visible');
     };
+    
     clearTimeout(container._timeout);
     container._timeout = setTimeout(() => {
-        container.style.display = 'none';
+        container.classList.remove('visible');
     }, 12000);
+    
     console.error('[ChatroomAdmin][Error]', msg);
 }
 
@@ -597,6 +767,9 @@ function showChatError(msg) {
 document.addEventListener('DOMContentLoaded', function() {
     const chatForm = document.getElementById('chat-input-bar');
     const chatInput = document.getElementById('input-message');
+    const sendButton = document.querySelector('.input-send');
+    const chatBody = document.getElementById('chat-body');
+    
     // Helper: Get Supabase access token and adminId from session
     function getSupabaseSession() {
         const supaKey = Object.keys(localStorage).find(k => k.endsWith('-auth-token'));
@@ -612,30 +785,76 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return { token: null, adminId: null };
     }
+    
     if (!chatForm || !chatInput) return;
+    
+    // Add typing indicator functionality
+    let typingTimeout;
+    chatInput.addEventListener('input', function() {
+        if (sendButton) {
+            if (chatInput.value.trim()) {
+                sendButton.classList.add('active');
+            } else {
+                sendButton.classList.remove('active');
+            }
+        }
+        
+        // Clear previous timeout
+        clearTimeout(typingTimeout);
+        
+        // Set new timeout for typing indicator (could be implemented with WebSockets)
+        typingTimeout = setTimeout(() => {
+            // Code to stop typing indicator would go here
+        }, 2000);
+    });
+    
+    // Handle form submission with optimistic UI updates
     chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         const content = chatInput.value.trim();
         if (!content) return;
+        
         // Get userId from URL, adminId from Supabase session
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user_id');
         const { token, adminId } = getSupabaseSession();
+        
         if (!adminId || !userId || !token) {
             showChatError('Session error: Admin or user not found. Please re-login.');
             console.error('[ChatroomAdmin] Missing adminId, userId, or token:', { adminId, userId, token });
             return;
         }
-        // Prepare payload
+        
+        // Prepare message data
+        const messageData = {
+            sender_id: adminId,
+            receiver_id: userId,
+            content,
+            chat_type: 'admin',
+            created_at: new Date().toISOString(),
+            is_read: false,
+            id: 'temp-' + Date.now() // Temporary ID for optimistic UI
+        };
+        
+        // Clear input immediately for better UX
+        chatInput.value = '';
+        if (sendButton) sendButton.classList.remove('active');
+        
+        // Add optimistic message to UI
+        addOptimisticMessage(messageData);
+        
+        // Prepare payload for API
         const payload = {
             sender_id: adminId,
             receiver_id: userId,
             content,
             chat_type: 'admin'
         };
+        
         // Disable input/button while sending
         chatInput.disabled = true;
-        chatForm.querySelector('.input-send').disabled = true;
+        if (sendButton) sendButton.disabled = true;
+        
         try {
             const res = await fetch('/api/messages', {
                 method: 'POST',
@@ -645,30 +864,169 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify(payload)
             });
+            
             if (!res.ok) {
+                // Handle error
                 let errMsg = 'Failed to send message: ' + res.status;
                 let backendErr = null;
-                try { 
-                    backendErr = await res.json(); 
-                    errMsg += ' - ' + (backendErr.error || backendErr.details || JSON.stringify(backendErr)); 
+                try {
+                    backendErr = await res.json();
+                    errMsg += ' - ' + (backendErr.error || backendErr.details || JSON.stringify(backendErr));
                 } catch {}
-                showChatError(errMsg + '<br><b>Developer: Cek RLS Supabase, Authorization header, dan payload sender_id/receiver_id.</b>' +
-                    (backendErr ? `<br><pre style='font-size:0.95em;background:#fff0f0;color:#b00;padding:6px 10px;border-radius:6px;max-width:90vw;overflow-x:auto;'>${JSON.stringify(backendErr, null, 2)}</pre>` : '') +
-                    `<br><b>Payload:</b> <pre style='font-size:0.95em;background:#f0f0ff;color:#2C3E50;padding:6px 10px;border-radius:6px;max-width:90vw;overflow-x:auto;'>${JSON.stringify(payload, null, 2)}</pre>`
-                );
+                
+                // Mark optimistic message as failed
+                markMessageAsFailed(messageData.id);
+                
+                showChatError(errMsg);
                 console.error('[ChatroomAdmin] Send message error:', errMsg, {payload, backendErr});
-                return;
+            } else {
+                // Message sent successfully
+                markMessageAsDelivered(messageData.id);
             }
-            // Clear input on success
-            chatInput.value = '';
         } catch (err) {
-            showChatError('Network/server error: ' + err.message);
+            // Network error
+            markMessageAsFailed(messageData.id);
+            showChatError('Network error: ' + err.message);
             console.error('[ChatroomAdmin] Send message exception:', err);
         } finally {
             chatInput.disabled = false;
-            chatForm.querySelector('.input-send').disabled = false;
+            if (sendButton) sendButton.disabled = false;
+            chatInput.focus();
         }
     });
+    
+    // Helper: Add optimistic message to UI
+    function addOptimisticMessage(messageData) {
+        if (!chatBody) return;
+        
+        // Create message bubble with pending status
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble sent optimistic';
+        bubble.id = `msg-${messageData.id}`;
+        bubble.setAttribute('role', 'listitem');
+        bubble.setAttribute('aria-label', `You: ${messageData.content}`);
+        
+        // Add sending indicator
+        const status = document.createElement('span');
+        status.className = 'read-status pending';
+        status.innerHTML = '<i class="bi bi-clock" aria-label="Sending"></i>';
+        bubble.appendChild(status);
+        
+        // Message content
+        const text = document.createElement('span');
+        text.className = 'bubble-text';
+        text.textContent = messageData.content;
+        bubble.appendChild(text);
+        
+        // Timestamp
+        const time = document.createElement('span');
+        time.className = 'bubble-time';
+        time.textContent = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        bubble.appendChild(time);
+        
+        // Add to chat body with animation
+        chatBody.appendChild(bubble);
+        
+        // Scroll to bottom
+        setTimeout(() => {
+            chatBody.scrollTop = chatBody.scrollHeight;
+            // Add visible class for animation
+            bubble.classList.add('visible');
+        }, 10);
+    }
+    
+    // Helper: Mark optimistic message as delivered
+    function markMessageAsDelivered(tempId) {
+        const bubble = document.getElementById(`msg-${tempId}`);
+        if (!bubble) return;
+        
+        const status = bubble.querySelector('.read-status');
+        if (status) {
+            status.classList.remove('pending');
+            status.classList.add('sent');
+            status.innerHTML = '<i class="bi bi-check2" aria-label="Sent"></i>';
+        }
+    }
+    
+    // Helper: Mark optimistic message as failed
+    function markMessageAsFailed(tempId) {
+        const bubble = document.getElementById(`msg-${tempId}`);
+        if (!bubble) return;
+        
+        bubble.classList.add('failed');
+        
+        const status = bubble.querySelector('.read-status');
+        if (status) {
+            status.classList.remove('pending');
+            status.classList.add('failed');
+            status.innerHTML = '<i class="bi bi-exclamation-circle" aria-label="Failed to send"></i>';
+        }
+        
+        // Add retry button
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'retry-message';
+        retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry';
+        retryBtn.setAttribute('aria-label', 'Retry sending message');
+        bubble.appendChild(retryBtn);
+        
+        // Add retry functionality
+        retryBtn.addEventListener('click', () => {
+            // Remove failed status and retry button
+            bubble.classList.remove('failed');
+            retryBtn.remove();
+            
+            // Update status back to pending
+            if (status) {
+                status.classList.remove('failed');
+                status.classList.add('pending');
+                status.innerHTML = '<i class="bi bi-clock" aria-label="Sending"></i>';
+            }
+            
+            // Get message content and retry sending
+            const content = bubble.querySelector('.bubble-text').textContent;
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id');
+            const { token, adminId } = getSupabaseSession();
+            
+            if (!adminId || !userId || !token) {
+                showChatError('Session error: Admin or user not found. Please re-login.');
+                markMessageAsFailed(tempId);
+                return;
+            }
+            
+            // Prepare payload
+            const payload = {
+                sender_id: adminId,
+                receiver_id: userId,
+                content,
+                chat_type: 'admin'
+            };
+            
+            // Send message
+            fetch('/api/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`Failed to send: ${res.status}`);
+                }
+                markMessageAsDelivered(tempId);
+            })
+            .catch(err => {
+                console.error('[ChatroomAdmin] Retry send failed:', err);
+                markMessageAsFailed(tempId);
+                showChatError('Failed to resend message: ' + err.message);
+            });
+        });
+    }
 });
 
 // ===== FAST POPUP FOR COPY CHAT =====

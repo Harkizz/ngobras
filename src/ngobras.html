@@ -26,7 +26,18 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
-    <!-- ===== LOGIN MODAL (injected by JS if needed) ===== -->
+    <!-- ===== ADMIN LOGIN MODAL (for admin access only) ===== -->
+    <div id="ngobras-admin-auth-modal" class="ngobras-auth-modal" role="dialog" aria-modal="true" aria-labelledby="ngobras-admin-auth-modal-title" style="display:none;">
+        <div class="ngobras-auth-modal__backdrop"></div>
+        <div class="ngobras-auth-modal__content" tabindex="0">
+            <h2 id="ngobras-admin-auth-modal-title">Admin Login Required</h2>
+            <p>Masukkan email admin untuk melanjutkan ke dashboard admin.</p>
+            <input id="ngobras-admin-auth-email" type="email" class="ngobras-auth-modal__input" placeholder="Email admin" autocomplete="email" required style="margin-bottom:1rem;width:100%;padding:0.7rem 0.8rem;font-size:1rem;border-radius:8px;border:1px solid #e0e0e0;">
+            <button id="ngobras-admin-auth-login-btn" class="ngobras-auth-modal__login-btn" aria-label="Login Admin">Login Admin</button>
+            <div class="ngobras-auth-modal__error" id="ngobras-admin-auth-modal-error" style="display:none;"></div>
+        </div>
+    </div>
+    <!-- ===== USER LOGIN MODAL (for user session expired) ===== -->
     <div id="ngobras-auth-modal" class="ngobras-auth-modal" role="dialog" aria-modal="true" aria-labelledby="ngobras-auth-modal-title" style="display:none;">
         <div class="ngobras-auth-modal__backdrop"></div>
         <div class="ngobras-auth-modal__content" tabindex="0">
@@ -53,121 +64,21 @@
 
     <!-- ===== MAIN CONTENT ===== -->
     <main class="main-content">
-        <!-- Chat categories container -->
-        <div class="chat-categories">
-            <!-- ===== AI CONSULTATION SECTION ===== -->
-            <section class="category-section fade-in">
-                <!-- Header kategori AI -->
-                <div class="category-header">
-                    <div class="category-icon ai-icon"><i class="bi bi-robot"></i></div>
-                    <div>
-                        <div class="category-title">Konsultasi AI</div>
-                        <div class="category-subtitle">Respons cepat 24/7</div>
-                    </div>
-                </div>
-
-                <!-- Daftar chat AI yang tersedia -->
-                <div class="chat-items">
-                    <!-- AI Chat 1 - Konsultasi Umum -->
-                    <div class="chat-item" onclick="openChat('ai-general')">
-                        <div class="chat-avatar ai-avatar"><i class="bi bi-heart-pulse"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-title">Konsultasi Umum</div>
-                            <div class="chat-preview">Tanyakan keluhan kesehatan umum Anda</div>
-                        </div>
-                        <div class="chat-time">Online</div>
-                    </div>
-
-                    <!-- AI Chat 2 - Cek Gejala -->
-                    <div class="chat-item" onclick="openChat('ai-symptoms')">
-                        <div class="chat-avatar ai-avatar"><i class="bi bi-search-heart"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-title">Cek Gejala</div>
-                            <div class="chat-preview">Analisis gejala yang Anda rasakan</div>
-                        </div>
-                        <div class="chat-time">Online</div>
-                    </div>
-
-                    <!-- AI Chat 3 - Tips Kesehatan -->
-                    <div class="chat-item" onclick="openChat('ai-tips')">
-                        <div class="chat-avatar ai-avatar"><i class="bi bi-lightbulb"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-title">Tips Kesehatan</div>
-                            <div class="chat-preview">Dapatkan tips hidup sehat harian</div>
-                        </div>
-                        <div class="chat-time">Online</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ===== ADMIN/DOCTOR CONSULTATION SECTION ===== -->
-            <section class="category-section fade-in">
-                <!-- Header kategori Admin/Dokter -->
-                <div class="category-header">
-                    <div class="category-icon admin-icon"><i class="bi bi-person-vcard"></i></div>
-                    <div>
-                        <div class="category-title">Konsultasi Dokter</div>
-                        <div class="category-subtitle">Tenaga medis profesional</div>
-                    </div>
-                </div>
-
-                <!-- Daftar dokter/admin yang tersedia -->
-                <div class="chat-items">
-                    <!-- Doctor 1 - Dokter Umum -->
-                    <div class="chat-item" onclick="openChat('doctor-general')" data-admin-uuid="UUID_ADMIN_1">
-                        <div class="chat-avatar admin-avatar"><i class="bi bi-person-hearts"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-title">Dr. Sarah</div>
-                            <div class="chat-preview">Dokter Umum - Spesialis Penyakit Dalam</div>
-                        </div>
-                        <div class="chat-time">Online</div>
-                    </div>
-
-                    <!-- Doctor 2 - Dokter Anak -->
-                    <div class="chat-item" onclick="openChat('doctor-pediatric')" data-admin-uuid="UUID_ADMIN_2">
-                        <div class="chat-avatar admin-avatar"><i class="bi bi-person-bounding-box"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-title">Dr. Ahmad</div>
-                            <div class="chat-preview">Dokter Anak - Konsultasi anak dan bayi</div>
-                        </div>
-                        <div class="chat-time">Online</div>
-                    </div>
-
-                    <!-- Support Admin -->
-                    <div class="chat-item" onclick="openChat('admin-support')" data-admin-uuid="UUID_ADMIN_3">
-                        <div class="chat-avatar admin-avatar"><i class="bi bi-tools"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-title">Customer Support</div>
-                            <div class="chat-preview">Bantuan teknis dan informasi layanan</div>
-                        </div>
-                        <div class="chat-time">Online</div>
-                    </div>
-                </div>
-            </section>
-        </div>
+        <!-- Konten akan dirender dinamis oleh JS -->
     </main>
 
     <!-- ===== BOTTOM NAVIGATION ===== -->
     <nav class="bottom-nav">
         <div class="nav-items">
-            <!-- Home navigation - currently active -->
-            <a href="#" class="nav-item active" onclick="setActiveNav(this, 'home')">
+            <!-- Home navigation -->
+            <a href="ngobras.html#home" class="nav-item" id="nav-home">
                 <svg class="nav-item-icon" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
                 <span class="nav-item-label">Home</span>
             </a>
-
-            <!-- Articles navigation -->
-            <a href="#" class="nav-item" onclick="setActiveNav(this, 'articles')">
-                <svg class="nav-item-icon" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                </svg>
-                <span class="nav-item-label">Articles</span>
-            </a>
-
             <!-- Profile navigation -->
-            <a href="#" class="nav-item" onclick="setActiveNav(this, 'profile')">
+            <a href="ngobras.html#profile" class="nav-item" id="nav-profile">
                 <svg class="nav-item-icon" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                 </svg>
@@ -180,6 +91,8 @@
     <!-- Centralized Supabase client must be loaded before other scripts -->
     <script src="js/supabaseClient.js"></script>
     <script src="js/app.js"></script>
+    <!-- Profile script - traditional script (not module) -->
+    <script src="js/profile.js"></script>
     <script src="js/ngobras.js"></script>
     
     <!-- PWA Status Check -->

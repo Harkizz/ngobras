@@ -90,20 +90,8 @@ function ensureErrorContainer() {
     if (!container) {
         container = document.createElement('div');
         container.id = 'chat-error-container';
-        container.style.position = 'fixed';
-        container.style.top = '70px';
-        container.style.left = '50%';
-        container.style.transform = 'translateX(-50%)';
-        container.style.background = '#ffb3b3';
-        container.style.color = '#2C3E50';
-        container.style.padding = '12px 24px';
-        container.style.borderRadius = '8px';
-        container.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
-        container.style.zIndex = '2000';
-        container.style.display = 'none';
-        container.style.fontWeight = 'bold';
-        container.style.maxWidth = '90vw';
-        container.style.textAlign = 'center';
+        container.setAttribute('role', 'alert');
+        container.setAttribute('aria-live', 'assertive');
         document.body.appendChild(container);
     }
     return container;
@@ -112,17 +100,25 @@ function ensureErrorContainer() {
 // Tampilkan error di UI dengan auto-hide dan tombol close
 function showError(msg) {
     const container = ensureErrorContainer();
-    container.innerHTML = `${msg} <button id='close-error-btn' style='margin-left:16px;background:none;border:none;font-size:1.2em;cursor:pointer;'>&times;</button>`;
-    container.style.display = 'block';
+    container.innerHTML = `
+        <div class="error-content">
+            <span>${msg}</span>
+            <button id='close-error-btn' aria-label="Tutup pesan error">&times;</button>
+        </div>
+    `;
+    container.style.display = 'flex';
+    
     // Close handler
     document.getElementById('close-error-btn').onclick = () => {
         container.style.display = 'none';
     };
+    
     // Auto-hide setelah 7 detik
     clearTimeout(container._timeout);
     container._timeout = setTimeout(() => {
         container.style.display = 'none';
     }, 7000);
+    
     console.error(msg);
 }
 
@@ -130,30 +126,78 @@ function showError(msg) {
 function renderMessages(messages) {
     const chatBody = document.querySelector('.chat-body');
     if (!chatBody) return;
-    chatBody.innerHTML = '';
+    
+    // Hide loading state if it exists
+    const loadingElement = document.querySelector('.chat-loading');
+    if (loadingElement) {
+        loadingElement.style.display = 'none';
+    }
+    
+    // Clear existing messages except loading element
+    Array.from(chatBody.children).forEach(child => {
+        if (!child.classList.contains('chat-loading')) {
+            child.remove();
+        }
+    });
+    
+    if (messages.length === 0) {
+        const emptyState = document.createElement('div');
+        emptyState.className = 'chat-empty-state';
+        emptyState.innerHTML = `
+            <div class="empty-icon">
+                <i class="bi bi-chat-dots" aria-hidden="true"></i>
+            </div>
+            <p>Belum ada pesan. Mulai percakapan sekarang!</p>
+        `;
+        chatBody.appendChild(emptyState);
+        return;
+    }
+    
     messages.forEach(msg => {
+        const isSent = msg.sender_id === userId;
         const bubble = document.createElement('div');
-        bubble.className = 'chat-bubble ' + (msg.sender_id === userId ? 'sent' : 'received');
+        bubble.className = 'chat-bubble ' + (isSent ? 'sent' : 'received');
+        bubble.setAttribute('aria-label', isSent ? 'Pesan terkirim' : 'Pesan diterima');
+        
         const text = document.createElement('span');
         text.className = 'bubble-text';
         text.textContent = msg.content;
+        
         const time = document.createElement('span');
         time.className = 'bubble-time';
-        time.textContent = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const formattedTime = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        time.textContent = formattedTime;
+        time.setAttribute('aria-label', `Dikirim pukul ${formattedTime}`);
+        
         // Tambahkan ikon centang untuk pesan yang dikirim (sent)
-        if (msg.sender_id === userId) {
+        if (isSent) {
             const checkIcon = document.createElement('i');
             checkIcon.className = 'bi bi-check2 bubble-check';
+            checkIcon.setAttribute('aria-hidden', 'true');
             checkIcon.title = 'Terkirim';
             time.appendChild(document.createTextNode(' '));
             time.appendChild(checkIcon);
         }
+        
         bubble.appendChild(text);
         bubble.appendChild(time);
+        
+        // Add animation class
+        bubble.classList.add('animate-in');
+        
         chatBody.appendChild(bubble);
+        
+        // Remove animation class after animation completes
+        setTimeout(() => {
+            bubble.classList.remove('animate-in');
+        }, 500);
     });
-    // Scroll ke bawah otomatis
-    chatBody.scrollTop = chatBody.scrollHeight;
+    
+    // Scroll ke bawah otomatis dengan smooth scrolling
+    chatBody.scrollTo({
+        top: chatBody.scrollHeight,
+        behavior: 'smooth'
+    });
 }
 
 // Global untuk userId dan adminId
@@ -192,15 +236,8 @@ function showOfflineIndicator() {
         indicator = document.createElement('div');
         indicator.id = 'offline-indicator';
         indicator.innerHTML = 'Anda sedang offline';
-        indicator.style.position = 'fixed';
-        indicator.style.top = '0';
-        indicator.style.left = '0';
-        indicator.style.right = '0';
-        indicator.style.background = '#ff9800';
-        indicator.style.color = 'white';
-        indicator.style.padding = '5px';
-        indicator.style.textAlign = 'center';
-        indicator.style.zIndex = '9999';
+        indicator.setAttribute('role', 'alert');
+        indicator.setAttribute('aria-live', 'assertive');
         document.body.appendChild(indicator);
     }
     indicator.style.display = 'block';
@@ -462,21 +499,58 @@ document.addEventListener('DOMContentLoaded', updateAdminName);
 document.addEventListener('DOMContentLoaded', function() {
     const chatForm = document.querySelector('.chat-input-bar');
     const chatInput = document.querySelector('.input-message');
-    if (!chatForm || !chatInput) return;
+    const sendButton = document.querySelector('.input-send');
+    
+    if (!chatForm || !chatInput || !sendButton) return;
+
+    // Function to show sending state
+    function showSendingState(isLoading) {
+        if (isLoading) {
+            sendButton.disabled = true;
+            chatInput.disabled = true;
+            sendButton.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+        } else {
+            sendButton.disabled = false;
+            chatInput.disabled = false;
+            sendButton.innerHTML = '<i class="bi bi-send" aria-hidden="true"></i>';
+        }
+    }
 
     chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         const content = chatInput.value.trim();
         if (!content) return;
+        
         if (!userId || !adminId) {
             showError('User ID atau Admin ID tidak ditemukan. Tidak bisa mengirim pesan.');
             return;
         }
+        
         const token = getSupabaseAccessToken();
         if (!token) {
             showError('Anda belum login. Silakan login untuk mengirim pesan.');
             return;
         }
+        
+        // Show loading state
+        showSendingState(true);
+        
+        // Optimistically add message to UI
+        const optimisticMsg = {
+            id: 'temp-' + Date.now(),
+            sender_id: userId,
+            receiver_id: adminId,
+            content: content,
+            created_at: new Date().toISOString(),
+            is_read: false
+        };
+        
+        messages.push(optimisticMsg);
+        renderMessages(messages);
+        
+        // Clear input immediately for better UX
+        chatInput.value = '';
+        
         // Siapkan payload sesuai struktur tabel messages
         const payload = {
             sender_id: userId,
@@ -484,6 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
             content: content,
             chat_type: 'admin' // atau 'ai' jika chat dengan AI
         };
+        
         try {
             const res = await fetch('/api/messages', {
                 method: 'POST',
@@ -493,19 +568,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify(payload)
             });
+            
             if (!res.ok) {
                 let errData = {};
                 try { errData = await res.json(); } catch (e) {}
+                
+                // Remove optimistic message on error
+                messages = messages.filter(m => m.id !== optimisticMsg.id);
+                renderMessages(messages);
+                
                 showError('Gagal mengirim pesan: ' + (errData.error || res.statusText));
                 console.error('POST /api/messages error:', errData);
-                return;
             }
-            // Pesan berhasil dikirim, kosongkan input
-            chatInput.value = '';
-            // Tidak perlu fetch ulang, pesan akan masuk lewat realtime
+            
+            // The actual message will come through the realtime subscription
         } catch (err) {
+            // Remove optimistic message on error
+            messages = messages.filter(m => m.id !== optimisticMsg.id);
+            renderMessages(messages);
+            
             showError('Gagal mengirim pesan: ' + err.message);
             console.error('POST /api/messages exception:', err);
+        } finally {
+            // Reset sending state
+            showSendingState(false);
+        }
+    });
+    
+    // Add input focus and keyboard accessibility
+    chatInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            chatForm.dispatchEvent(new Event('submit'));
         }
     });
 });

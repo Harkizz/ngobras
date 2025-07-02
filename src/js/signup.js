@@ -153,6 +153,13 @@ document.getElementById('signupForm').addEventListener('submit', async function(
     
     if (isValid) {
         try {
+            // Check network status first
+            if (!navigator.onLine) {
+                console.warn('[Signup] Network offline detected');
+                showAlert('You appear to be offline. Please check your internet connection and try again.', 'warning');
+                return;
+            }
+            
             // Update UI to show loading state
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing up...';
             button.disabled = true;
@@ -166,7 +173,22 @@ document.getElementById('signupForm').addEventListener('submit', async function(
                 }
             }
             
+            // Test connection to Supabase before attempting signup
+            try {
+                console.log('[Signup] Testing connection to Supabase...');
+                const connectionTest = await localSupabaseClient.from('profiles').select('count', { count: 'exact', head: true });
+                console.log('[Signup] Connection test result:', connectionTest);
+                
+                if (connectionTest.error && (connectionTest.error.message?.includes('network') || connectionTest.error.message?.includes('fetch'))) {
+                    throw new Error('Network error connecting to database');
+                }
+            } catch (connErr) {
+                console.error('[Signup] Connection test failed:', connErr);
+                throw new Error('Failed to connect to the server. Please check your internet connection.');
+            }
+            
             // Step 1: Create auth user
+            console.log('[Signup] Attempting to create user account...');
             const { data: authData, error: authError } = await localSupabaseClient.auth.signUp({
                 email: email,
                 password: password,
@@ -182,7 +204,12 @@ document.getElementById('signupForm').addEventListener('submit', async function(
                 }
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                console.error('[Signup] Auth error:', authError);
+                throw authError;
+            }
+            
+            console.log('[Signup] User created successfully:', authData?.user?.id);
 
             // Update step indicator
             updateStepIndicator(1);
@@ -196,14 +223,39 @@ document.getElementById('signupForm').addEventListener('submit', async function(
             }, 3000);
 
         } catch (error) {
-            console.error('Signup error:', error);
-            if (error && error.message && error.message.toLowerCase().includes('already registered')) {
-                showAlert('Email sudah terdaftar. Silakan login atau gunakan email lain.', 'danger');
-                // Optionally, redirect to login page with email pre-filled:
-                // window.location.href = `/login.html?email=${encodeURIComponent(email)}`;
-            } else {
-                showAlert(error.message || 'Failed to create account', 'danger');
+            console.error('[Signup] Error during signup process:', error);
+            
+            // Check for network-related errors
+            if (!navigator.onLine || error.message?.includes('network') || error.message?.includes('fetch') ||
+                error.message?.includes('connect') || error.message?.includes('internet')) {
+                showAlert('Network error. Please check your internet connection and try again.', 'warning');
             }
+            // Check for already registered email
+            else if (error.message?.toLowerCase().includes('already registered') ||
+                     error.message?.toLowerCase().includes('already exists') ||
+                     error.message?.toLowerCase().includes('already taken')) {
+                showAlert('Email sudah terdaftar. Silakan login atau gunakan email lain.', 'danger');
+                
+                // Offer to redirect to login page
+                const loginRedirect = document.createElement('div');
+                loginRedirect.className = 'mt-2';
+                loginRedirect.innerHTML = `
+                    <button class="btn btn-sm btn-primary" onclick="window.location.href='/login.html?email=${encodeURIComponent(email)}'">
+                        Go to Login Page
+                    </button>
+                `;
+                
+                // Find the alert we just created and append the button
+                const alerts = document.querySelectorAll('.alert-danger');
+                if (alerts.length > 0) {
+                    alerts[0].appendChild(loginRedirect);
+                }
+            }
+            // Other errors
+            else {
+                showAlert(error.message || 'Failed to create account. Please try again.', 'danger');
+            }
+            
             // Reset button state so it can be clicked again
             button.innerHTML = originalText;
             button.disabled = false;
@@ -221,6 +273,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Helper function to show alerts
 function showAlert(message, type = 'info') {
+    // Remove existing alerts of the same type
+    const existingAlerts = document.querySelectorAll(`.alert-${type}`);
+    existingAlerts.forEach(alert => alert.remove());
+    
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
     alertDiv.role = 'alert';
@@ -232,10 +288,14 @@ function showAlert(message, type = 'info') {
     const form = document.getElementById('signupForm');
     form.insertBefore(alertDiv, form.firstChild);
     
-    // Auto dismiss after 5 seconds
-    setTimeout(() => {
-        alertDiv.remove();
-    }, 5000);
+    // Auto dismiss after 5 seconds for non-error alerts
+    if (type !== 'danger' && type !== 'warning') {
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+    
+    return alertDiv; // Return the alert div for potential further manipulation
 }
 
 // Helper function to update step indicator
@@ -273,4 +333,49 @@ window.addEventListener('load', function() {
         card.style.opacity = '1';
         card.style.transform = 'translateY(0)';
     }, 100);
+});
+
+// Add network status monitoring
+window.addEventListener('online', function() {
+    console.log('[Signup] Network connection restored');
+    const networkStatus = document.getElementById('networkStatus');
+    if (networkStatus) {
+        networkStatus.style.display = 'none';
+    } else {
+        const onlineAlert = showAlert('Your internet connection has been restored.', 'success');
+        setTimeout(() => onlineAlert.remove(), 3000);
+    }
+});
+
+window.addEventListener('offline', function() {
+    console.log('[Signup] Network connection lost');
+    
+    // Create or show network status indicator
+    let networkStatus = document.getElementById('networkStatus');
+    if (!networkStatus) {
+        networkStatus = document.createElement('div');
+        networkStatus.id = 'networkStatus';
+        networkStatus.className = 'network-status-indicator offline';
+        networkStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.';
+        document.body.appendChild(networkStatus);
+    } else {
+        networkStatus.style.display = 'block';
+    }
+    
+    showAlert('You are currently offline. Please check your internet connection.', 'warning');
+});
+
+// Check network status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (!navigator.onLine) {
+        console.log('[Signup] Page loaded in offline state');
+        showAlert('You are currently offline. Please check your internet connection.', 'warning');
+        
+        // Create network status indicator
+        const networkStatus = document.createElement('div');
+        networkStatus.id = 'networkStatus';
+        networkStatus.className = 'network-status-indicator offline';
+        networkStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.';
+        document.body.appendChild(networkStatus);
+    }
 });

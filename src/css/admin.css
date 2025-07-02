@@ -1,3 +1,82 @@
+/* ===== AUTH MODAL FOR ADMIN LOGIN (REUSE NGOBRAS STYLE) ===== */
+.ngobras-auth-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(44, 62, 80, 0.18);
+    pointer-events: all;
+    transition: background 0.2s;
+}
+.ngobras-auth-modal[aria-hidden="true"],
+.ngobras-auth-modal[style*="display:none"] {
+    display: none !important;
+}
+.ngobras-auth-modal__backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(44, 62, 80, 0.38);
+    z-index: 0;
+}
+.ngobras-auth-modal__content {
+    position: relative;
+    z-index: 1;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+    padding: 2.2rem 1.5rem 1.5rem 1.5rem;
+    max-width: 95vw;
+    width: 100%;
+    max-width: 370px;
+    text-align: center;
+    outline: none;
+    animation: fadeIn 0.4s;
+}
+.ngobras-auth-modal__content h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin-bottom: 0.7rem;
+}
+.ngobras-auth-modal__content p {
+    color: var(--medium-gray);
+    margin-bottom: 1.2rem;
+    font-size: 1rem;
+}
+
+.ngobras-auth-modal__login-btn {
+    background: var(--primary-blue);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 0.85rem 2.2rem;
+    font-size: 1.08rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+    transition: background 0.18s, color 0.18s;
+    margin-top: 1.2rem;
+    margin-bottom: 0.2rem;
+    width: 100%;
+    max-width: 260px;
+}
+.ngobras-auth-modal__login-btn:hover,
+.ngobras-auth-modal__login-btn:focus {
+    background: var(--secondary-blue);
+    color: var(--primary-blue);
+}
+.ngobras-auth-modal__error {
+    color: var(--coral);
+    background: #fff0f0;
+    border-radius: 6px;
+    margin-top: 1rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.98rem;
+    display: block;
+    word-break: break-word;
+}
 /*
 ========================================
   NGOBRAS Admin Panel Stylesheet

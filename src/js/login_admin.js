@@ -149,12 +149,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (error) {
                     showError(error.message || 'Login failed. Please try again.');
                     console.error('[Supabase Auth Error]', error);
-                } else if (data && data.session) {
+                } else if (data && data.session && data.user) {
                     // Session is automatically stored by supabase-js in localStorage
-                    showSuccess('Login successful! Redirecting...');
-                    setTimeout(() => {
-                        window.location.href = 'admin.html';
-                    }, 1200);
+                    // Now check role in profiles table
+                    const userId = data.user.id;
+                    let role = null;
+                    try {
+                        const { data: profile, error: profileError } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', userId)
+                            .single();
+                        if (profileError) {
+                            console.error('[LoginAdmin][Role Query Error]', profileError);
+                            // Logout for safety
+                            await supabase.auth.signOut();
+                            showError('Access denied. This area requires administrator privileges.');
+                            return;
+                        }
+                        role = profile && profile.role;
+                        if (role !== 'admin') {
+                            // Not admin: logout, clear session, show error
+                            await supabase.auth.signOut();
+                            showError('Access denied. This area requires administrator privileges.');
+                            setTimeout(() => {
+                                window.location.href = 'login_admin.html';
+                            }, 1800);
+                            // Log unauthorized access attempt
+                            console.warn('[LoginAdmin][Unauthorized Access] User', userId, 'with role', role, 'attempted admin login.');
+                            return;
+                        }
+                        // Admin: proceed
+                        showSuccess('Login successful! Redirecting...');
+                        setTimeout(() => {
+                            window.location.href = 'admin.html';
+                        }, 1200);
+                    } catch (roleErr) {
+                        // Query or network error
+                        console.error('[LoginAdmin][Role Check Exception]', roleErr);
+                        await supabase.auth.signOut();
+                        showError('A server error occurred during role validation. Please try again.');
+                    }
                 } else {
                     showError('Unexpected error: No session returned.');
                     console.error('[Supabase Auth Unexpected]', data);

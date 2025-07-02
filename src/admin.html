@@ -11,6 +11,16 @@
     <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
+    <!-- ===== ADMIN LOGIN MODAL (for admin access only) ===== -->
+    <div id="admin-auth-modal" class="ngobras-auth-modal" role="dialog" aria-modal="true" aria-labelledby="admin-auth-modal-title" style="display:none;">
+        <div class="ngobras-auth-modal__backdrop"></div>
+        <div class="ngobras-auth-modal__content" tabindex="0">
+            <h2 id="admin-auth-modal-title">Admin Login Required</h2>
+            <p>Untuk mengakses dashboard admin, silakan login terlebih dahulu menggunakan akun admin Anda.<br>Tekan tombol di bawah untuk menuju halaman login admin.</p>
+            <button id="admin-auth-login-btn" class="ngobras-auth-modal__login-btn" aria-label="Login Admin">Login ke Admin</button>
+            <div class="ngobras-auth-modal__error" id="admin-auth-modal-error" style="display:none;"></div>
+        </div>
+    </div>
     <!-- ================= BACKGROUND DECORATION SHAPES ================= -->
     <div class="floating-shapes">
         <div class="shape"></div>

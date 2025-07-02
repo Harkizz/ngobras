@@ -5,49 +5,194 @@
          * @param {Element} element - Element nav yang diklik
          * @param {string} page - Nama halaman yang akan diaktifkan
          */
-        function setActiveNav(element, page) {
-            // Hapus class active dari semua nav items
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Tambahkan class active ke nav item yang diklik
-            element.classList.add('active');
-            
-            // Log untuk debugging (bisa dihapus di production)
-            console.log('Navigating to:', page);
-            
-            // Di sini bisa ditambahkan logika untuk mengganti konten
-            // berdasarkan halaman yang dipilih
-            handlePageNavigation(page);
+
+        /**
+         * Async: Pastikan Supabase sudah siap sebelum render UI
+         * @returns {Promise<boolean>} true jika sukses, false jika gagal
+         */
+        async function ensureSupabaseReady() {
+            // Cek apakah sudah ada window.getSupabaseClient
+            if (typeof window.getSupabaseClient !== 'function') {
+                console.error('[NGOBRAS] getSupabaseClient() tidak ditemukan di window. Pastikan supabaseClient.js sudah dimuat.');
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.innerHTML = `<div class='error-container'><h3>Supabase Client Error</h3><div class='error-details'>getSupabaseClient() tidak ditemukan. Pastikan supabaseClient.js sudah dimuat sebelum ngobras.js.</div></div>`;
+                }
+                return false;
+            }
+            // Cek apakah sudah pernah diinisialisasi
+            if (window.__ngobrasSupabaseClient) return true;
+            try {
+                // Inisialisasi Supabase client
+                const client = await window.getSupabaseClient();
+                if (!client) throw new Error('getSupabaseClient() mengembalikan null/undefined');
+                window.__ngobrasSupabaseClient = client;
+                return true;
+            } catch (err) {
+                console.error('[NGOBRAS] Gagal inisialisasi Supabase:', err);
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.innerHTML = `<div class='error-container'><h3>Supabase Init Error</h3><div class='error-details'>${err.message}</div></div>`;
+                }
+                return false;
+            }
+        }
+
+        /**
+         * Fungsi utama untuk handle navigasi dan render konten utama
+         * @param {string} page - 'home' | 'profile'
+         * @param {boolean} [fromHash] - true jika dipanggil dari hashchange
+         */
+        async function handleNavigation(page, fromHash = false) {
+            const mainContent = document.querySelector('.main-content');
+            try {
+                // Debug log
+                console.log('[NAVIGATION] handleNavigation:', page, 'fromHash:', fromHash);
+
+                // Pastikan Supabase sudah siap sebelum render UI
+                const supabaseReady = await ensureSupabaseReady();
+                if (!supabaseReady) {
+                    // Error sudah ditampilkan di UI oleh ensureSupabaseReady
+                    return;
+                }
+
+                // Update nav active state
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                let navId = page === 'profile' ? 'nav-profile' : 'nav-home';
+                const navEl = document.getElementById(navId);
+                if (navEl) navEl.classList.add('active');
+
+                // Clear main content
+                if (mainContent) mainContent.innerHTML = '';
+
+                // Render sesuai page
+                if (page === 'home') {
+                    if (!fromHash) window.location.hash = 'home';
+                    renderHomeContent();
+                } else if (page === 'profile') {
+                    if (!fromHash) window.location.hash = 'profile';
+                    if (typeof window.handleProfilePage === 'function') {
+                        try {
+                            window.handleProfilePage();
+                            console.log('[NAVIGATION] Profile page rendered');
+                        } catch (profileError) {
+                            console.error('[NAVIGATION] Error in handleProfilePage:', profileError);
+                            if (mainContent) {
+                                mainContent.innerHTML = `<div class='error-container'><h3>Profile Error</h3><div class='error-details'>${profileError.message}</div></div>`;
+                            }
+                        }
+                    } else {
+                        console.error('[NAVIGATION] Profile handler not found');
+                        if (mainContent) {
+                            mainContent.innerHTML = `<div class='error-container'><h3>Profile Handler Not Found</h3><div class='error-details'>Fungsi handler profile tidak ditemukan. Pastikan file profile.js dimuat dengan benar.</div></div>`;
+                        }
+                    }
+                } else {
+                    // Unknown page
+                    console.error('[NAVIGATION] Unknown page:', page);
+                    if (mainContent) {
+                        mainContent.innerHTML = `<div class='error-container'><h3>Unknown Page</h3><div class='error-details'>Halaman tidak ditemukan: ${page}</div></div>`;
+                    }
+                }
+            } catch (err) {
+                // Error handling detail
+                console.error('[NAVIGATION][handleNavigation] Error:', err);
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="error-container">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: var(--secondary-color);"></i>
+                            <h3>Navigation Error</h3>
+                            <p>Terjadi error pada navigasi. Silakan refresh halaman atau hubungi support.</p>
+                            <p class="error-details">${err.message}</p>
+                            <div class="error-debug" style="margin-top: 1rem; font-size: 0.8rem; color: #666; text-align: left; background: #f5f5f5; padding: 0.5rem; border-radius: 4px; max-height: 100px; overflow-y: auto;">
+                                <p>Debug info:</p>
+                                <p>Page: ${page}</p>
+                                <p>Hash: ${window.location.hash}</p>
+                                <p>Stack: ${err.stack}</p>
+                            </div>
+                            <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--primary-color); border: none; border-radius: 4px; cursor: pointer;">
+                                Refresh Page
+                            </button>
+                        </div>
+                    `;
+                }
+            }
         }
 
         /**
          * Function untuk menangani navigasi antar halaman
          * @param {string} page - Nama halaman yang akan ditampilkan
          */
-        function handlePageNavigation(page) {
-            const mainContent = document.querySelector('.main-content');
-            
-            switch(page) {
-                case 'home':
-                    // Tampilkan konten home (default yang sudah ada)
-                    console.log('Showing home page');
-                    break;
-                case 'articles':
-                    // Logic untuk menampilkan halaman articles
-                    console.log('Showing articles page');
-                    // Bisa ditambahkan AJAX call untuk load articles
-                    break;
-                case 'profile':
-                    // Logic untuk menampilkan halaman profile
-                    console.log('Showing profile page');
-                    // Bisa ditambahkan AJAX call untuk load profile data
-                    break;
-                default:
-                    console.log('Unknown page:', page);
+        /**
+         * Function untuk menangani navigasi antar halaman
+         * @param {string} page - Nama halaman yang akan ditampilkan
+         */
+
+        // ===== CENTRALIZED NAVIGATION EVENT LISTENERS =====
+        // Remove legacy/duplicate nav event listeners if any
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Debug: DOMContentLoaded triggered
+                console.log('[NGOBRAS] DOMContentLoaded');
+                updateOnlineStatus();
+
+                // --- NAVIGATION HANDLING ---
+                // Remove all nav-item click listeners first (defensive)
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    const newItem = item.cloneNode(true);
+                    item.parentNode.replaceChild(newItem, item);
+                });
+
+                // Add single click handler for nav-home
+                const navHome = document.getElementById('nav-home');
+                if (navHome) {
+                    navHome.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (window.location.hash === '#home') {
+                            handleNavigation('home');
+                        } else {
+                            window.location.hash = 'home';
+                        }
+                    });
+                }
+                // Add single click handler for nav-profile
+                const navProfile = document.getElementById('nav-profile');
+                if (navProfile) {
+                    navProfile.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (window.location.hash === '#profile') {
+                            handleNavigation('profile');
+                        } else {
+                            window.location.hash = 'profile';
+                        }
+                    });
+                }
+
+                // Centralized hashchange handler
+                window.addEventListener('hashchange', function() {
+                    const hash = window.location.hash.replace('#', '') || 'home';
+                    handleNavigation(hash, true);
+                });
+
+                // Initial render sesuai hash, TUNGGU Supabase siap
+                const initialHash = window.location.hash.replace('#', '') || 'home';
+                await handleNavigation(initialHash, true);
+
+                // Initialize fade-in animation untuk elemen
+                const fadeElements = document.querySelectorAll('.fade-in');
+                fadeElements.forEach((element, index) => {
+                    element.style.animationDelay = `${index * 0.1}s`;
+                });
+            } catch (err) {
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.innerHTML = `<div class='error-container'><h3>Critical Error</h3><div class='error-details'>${err.message}</div></div>`;
+                }
+                console.error('[NGOBRAS] Critical error on DOMContentLoaded:', err);
             }
-        }
+        });
 
         // ===== CHAT FUNCTIONS =====
         
@@ -121,6 +266,9 @@
             // Dalam implementasi nyata, bisa menggunakan library toast
             // atau membuat custom toast component
         }
+        
+        // Make showToast available globally for other modules
+        window.showToast = showToast;
 
         /**
          * Function untuk handle online/offline status
@@ -145,29 +293,86 @@
 
         // Event listener untuk DOM content loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize aplikasi
-            console.log('NGOBRAS App initialized');
-            
-            // Update status online saat halaman dimuat
-            updateOnlineStatus();
-            
-            // Tambahkan event listener untuk smooth scrolling
-            const chatItems = document.querySelectorAll('.chat-item');
-            chatItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    // Tambahkan ripple effect atau feedback visual lainnya
-                    this.style.transform = 'scale(0.98)';
-                    setTimeout(() => {
-                        this.style.transform = '';
-                    }, 150);
+            try {
+                // Debug: DOMContentLoaded triggered
+                console.log('[NGOBRAS] DOMContentLoaded');
+                updateOnlineStatus();
+
+                // Animasi klik chat item
+                const chatItems = document.querySelectorAll('.chat-item');
+                chatItems.forEach(item => {
+                    item.addEventListener('click', function() {
+                        this.style.transform = 'scale(0.98)';
+                        setTimeout(() => {
+                            this.style.transform = '';
+                        }, 150);
+                    });
                 });
-            });
-            
-            // Initialize fade-in animation untuk elemen
-            const fadeElements = document.querySelectorAll('.fade-in');
-            fadeElements.forEach((element, index) => {
-                element.style.animationDelay = `${index * 0.1}s`;
-            });
+
+                // --- NAVIGATION HANDLING ---
+                function updateNavFromHash() {
+                    const hash = window.location.hash.replace('#', '') || 'home';
+                    let navId = hash === 'profile' ? 'nav-profile' : 'nav-home';
+                    const navEl = document.getElementById(navId);
+                    setActiveNav(navEl, hash);
+                }
+
+                // Inisialisasi nav aktif saat load
+                updateNavFromHash();
+
+                // Render home secara eksplisit jika hash kosong atau #home
+                if (!window.location.hash || window.location.hash === '#home') {
+                    try {
+                        renderHomeContent();
+                        console.log('[NGOBRAS] Home rendered on initial load');
+                    } catch (err) {
+                        const mainContent = document.querySelector('.main-content');
+                        if (mainContent) {
+                            mainContent.innerHTML = `<div class='error-container'><h3>Gagal menampilkan halaman utama</h3><div class='error-details'>${err.message}</div></div>`;
+                        }
+                        console.error('[NGOBRAS] Error rendering home on load:', err);
+                    }
+                }
+
+                // Update nav aktif saat hash berubah
+                window.addEventListener('hashchange', function() {
+                    updateNavFromHash();
+                });
+
+                // Klik nav: update hash dan render ulang meski hash sama
+                document.getElementById('nav-home').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (window.location.hash === '#home') {
+                        setActiveNav(this, 'home');
+                        renderHomeContent();
+                    } else {
+                        window.location.hash = 'home';
+                    }
+                });
+                document.getElementById('nav-profile').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (window.location.hash === '#profile') {
+                        setActiveNav(this, 'profile');
+                        if (typeof window.handleProfilePage === 'function') {
+                            window.handleProfilePage();
+                        }
+                    } else {
+                        window.location.hash = 'profile';
+                    }
+                });
+
+                // Initialize fade-in animation untuk elemen
+                const fadeElements = document.querySelectorAll('.fade-in');
+                fadeElements.forEach((element, index) => {
+                    element.style.animationDelay = `${index * 0.1}s`;
+                });
+            } catch (err) {
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.innerHTML = `<div class='error-container'><h3>Critical Error</h3><div class='error-details'>${err.message}</div></div>`;
+                }
+                console.error('[NGOBRAS] Critical error on DOMContentLoaded:', err);
+            }
         });
 
         // ===== PWA SUPPORT =====
@@ -504,7 +709,7 @@
 
         // ===== INIT CHAT ITEMS ON DOMContentLoaded =====
         document.addEventListener('DOMContentLoaded', function() {
-            // ...existing code...
+            // Load dan render AI assistants dan admins
             loadChatItems();
         });
 
@@ -525,6 +730,9 @@
                 return null;
             }
         }
+        
+        // Make getUserSessionFromLocalStorage available globally for other modules
+        window.getUserSessionFromLocalStorage = getUserSessionFromLocalStorage;
 
         /**
          * Helper untuk cek apakah user sudah login
@@ -908,14 +1116,142 @@
             }
         }
 
-        // Run authentication check on DOMContentLoaded
-        // Place this at the end of the file to ensure all DOM is ready
+        /**
+         * Validates Supabase authentication token for admin.
+         * Shows admin login modal if not authenticated.
+         * Redirects to login_admin.html with email on login.
+         * Strong error handling and diagnostics included.
+         */
+        async function checkAdminAuth() {
+            const DEBUG_MODE = localStorage.getItem('ngobras_debug') === 'true';
+            let errorType = null;
+            let errorMessage = '';
+            let stackTrace = '';
+            let session = null;
+            let supabase = null;
+            try {
+                if (typeof window.getSupabaseClient !== 'function') {
+                    errorType = 'NO_SUPABASE_CLIENT';
+                    errorMessage = 'window.getSupabaseClient is not available. Check script order.';
+                    throw new Error(errorMessage);
+                }
+                supabase = await window.getSupabaseClient();
+                if (!supabase || !supabase.auth) {
+                    errorType = 'NO_SUPABASE_AUTH';
+                    errorMessage = 'Supabase client or auth module not available.';
+                    throw new Error(errorMessage);
+                }
+                // Try to get session from Supabase
+                session = supabase.auth.getSession ? (await supabase.auth.getSession()).data.session : null;
+                if (!session) {
+                    // Fallback: try to get from localStorage
+                    const key = Object.keys(localStorage).find(k => k.endsWith('-auth-token'));
+                    if (key) {
+                        try {
+                            session = JSON.parse(localStorage.getItem(key));
+                        } catch (e) {
+                            errorType = 'MALFORMED_TOKEN';
+                            errorMessage = 'Malformed token in localStorage.';
+                            stackTrace = e.stack;
+                            throw e;
+                        }
+                    }
+                }
+                if (!session || !session.access_token || !session.user) {
+                    errorType = 'NO_SESSION';
+                    errorMessage = 'No valid session or access token found.';
+                    throw new Error(errorMessage);
+                }
+                // Validate expiry
+                const now = Math.floor(Date.now() / 1000);
+                const exp = session.expires_at || (session.user && session.user.exp);
+                if (exp && now > exp) {
+                    errorType = 'TOKEN_EXPIRED';
+                    errorMessage = 'Session token expired.';
+                    throw new Error(errorMessage);
+                }
+                if (DEBUG_MODE) {
+                    console.log('[NGOBRAS_DEBUG] Admin auth valid:', session);
+                }
+                return true;
+            } catch (error) {
+                if (!errorType) errorType = 'UNKNOWN';
+                if (!errorMessage) errorMessage = error.message;
+                stackTrace = error.stack;
+                // Log error in required format
+                console.error('[NGOBRAS_ADMIN_AUTH]', {
+                    error: errorType,
+                    message: errorMessage,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    stackTrace
+                });
+                if (DEBUG_MODE) {
+                    console.log('[NGOBRAS_DEBUG] Admin auth check failed:', errorType, errorMessage, stackTrace);
+                }
+                showAdminAuthModal(errorType, errorMessage);
+                return false;
+            }
+        }
 
+        /**
+         * Show the admin login modal and block interaction
+         * @param {string} errorType
+         * @param {string} errorMessage
+         */
+        function showAdminAuthModal(errorType, errorMessage) {
+            const modal = document.getElementById('ngobras-admin-auth-modal');
+            const errorDiv = document.getElementById('ngobras-admin-auth-modal-error');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            if (errorDiv) {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = errorType ? `[${errorType}] ${errorMessage}` : errorMessage;
+            }
+            // Focus modal for accessibility
+            setTimeout(() => {
+                const content = modal.querySelector('.ngobras-auth-modal__content');
+                if (content) content.focus();
+            }, 100);
+            // Prevent closing modal by keyboard or click
+            modal.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') e.preventDefault();
+            });
+            // Login button handler
+            const loginBtn = document.getElementById('ngobras-admin-auth-login-btn');
+            if (loginBtn) {
+                loginBtn.onclick = function() {
+                    const emailInput = document.getElementById('ngobras-admin-auth-email');
+                    const email = emailInput ? emailInput.value.trim() : '';
+                    if (!email) {
+                        if (errorDiv) {
+                            errorDiv.style.display = 'block';
+                            errorDiv.textContent = 'Email admin wajib diisi.';
+                        }
+                        if (emailInput) emailInput.focus();
+                        return;
+                    }
+                    // Redirect to login_admin.html with email as query param
+                    window.location.href = `login_admin.html?email=${encodeURIComponent(email)}`;
+                };
+            }
+        }
+
+        // Run both user and admin authentication checks on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', async function() {
             try {
+                // First, check user auth (for regular user flows)
                 const isAuth = await checkAuth();
                 if (!isAuth) {
-                    // Modal will be shown by checkAuth
+                    // User modal will be shown by checkAuth
+                    return;
+                }
+                // Then, check admin auth (for admin flows)
+                const isAdminAuth = await checkAdminAuth();
+                if (!isAdminAuth) {
+                    // Admin modal will be shown by checkAdminAuth
                     return;
                 }
                 // ...existing code...
@@ -924,3 +1260,96 @@
                 showAuthModal('FATAL', e.message || 'Unknown error');
             }
         });
+
+        /**
+         * Render home page content (chat categories)
+         * Akan dipanggil saat navigasi ke home
+         */
+        function renderHomeContent() {
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent) {
+                console.error('[NGOBRAS_HOME] Main content container not found');
+                return;
+            }
+            try {
+                mainContent.innerHTML = `
+                <div class="chat-categories">
+                    <!-- ===== AI CONSULTATION SECTION ===== -->
+                    <section class="category-section fade-in">
+                        <div class="category-header">
+                            <div class="category-icon ai-icon"><i class="bi bi-robot"></i></div>
+                            <div>
+                                <div class="category-title">Konsultasi AI</div>
+                                <div class="category-subtitle">Respons cepat 24/7</div>
+                            </div>
+                        </div>
+                        <div class="chat-items">
+                            <div class="chat-item" onclick="openChat('ai-general')">
+                                <div class="chat-avatar ai-avatar"><i class="bi bi-heart-pulse"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-title">Konsultasi Umum</div>
+                                    <div class="chat-preview">Tanyakan keluhan kesehatan umum Anda</div>
+                                </div>
+                                <div class="chat-time">Online</div>
+                            </div>
+                            <div class="chat-item" onclick="openChat('ai-symptoms')">
+                                <div class="chat-avatar ai-avatar"><i class="bi bi-search-heart"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-title">Cek Gejala</div>
+                                    <div class="chat-preview">Analisis gejala yang Anda rasakan</div>
+                                </div>
+                                <div class="chat-time">Online</div>
+                            </div>
+                            <div class="chat-item" onclick="openChat('ai-tips')">
+                                <div class="chat-avatar ai-avatar"><i class="bi bi-lightbulb"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-title">Tips Kesehatan</div>
+                                    <div class="chat-preview">Dapatkan tips hidup sehat harian</div>
+                                </div>
+                                <div class="chat-time">Online</div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- ===== ADMIN/DOCTOR CONSULTATION SECTION ===== -->
+                    <section class="category-section fade-in">
+                        <div class="category-header">
+                            <div class="category-icon admin-icon"><i class="bi bi-person-vcard"></i></div>
+                            <div>
+                                <div class="category-title">Konsultasi Dokter</div>
+                                <div class="category-subtitle">Tenaga medis profesional</div>
+                            </div>
+                        </div>
+                        <div class="chat-items">
+                            <div class="chat-item" onclick="openChat('doctor-general')" data-admin-uuid="UUID_ADMIN_1">
+                                <div class="chat-avatar admin-avatar"><i class="bi bi-person-hearts"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-title">Dr. Sarah</div>
+                                    <div class="chat-preview">Dokter Umum - Spesialis Penyakit Dalam</div>
+                                </div>
+                                <div class="chat-time">Online</div>
+                            </div>
+                            <div class="chat-item" onclick="openChat('doctor-pediatric')" data-admin-uuid="UUID_ADMIN_2">
+                                <div class="chat-avatar admin-avatar"><i class="bi bi-person-bounding-box"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-title">Dr. Ahmad</div>
+                                    <div class="chat-preview">Dokter Anak - Konsultasi anak dan bayi</div>
+                                </div>
+                                <div class="chat-time">Online</div>
+                            </div>
+                            <div class="chat-item" onclick="openChat('admin-support')" data-admin-uuid="UUID_ADMIN_3">
+                                <div class="chat-avatar admin-avatar"><i class="bi bi-tools"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-title">Customer Support</div>
+                                    <div class="chat-preview">Bantuan teknis dan informasi layanan</div>
+                                </div>
+                                <div class="chat-time">Online</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                `;
+            } catch (err) {
+                mainContent.innerHTML = `<div class='error-container'><h3>Gagal menampilkan halaman utama</h3><div class='error-details'>${err.message}</div></div>`;
+                console.error('[NGOBRAS_HOME] Error rendering home:', err);
+            }
+        }

@@ -264,9 +264,143 @@ async function fetchTotalUnreadCount(adminId) {
     }
 }
 
-// ===== Ensure unread badge is updated on page load and after user list updates =====
-document.addEventListener('DOMContentLoaded', function() {
-    // Always try to update the unread badge on page load
+// ===== ADMIN AUTH CHECK & MODAL BLOCKER =====
+/**
+ * Robustly check for valid Supabase admin session on page load.
+ * If not found/invalid/expired/malformed, show modal and block UI.
+ * Redirects to login_admin.html with email if needed.
+ * Strong error handling and developer diagnostics.
+ */
+async function checkAdminAuth() {
+    let errorType = null;
+    let errorMessage = '';
+    let stackTrace = '';
+    let session = null;
+    let supabase = null;
+    try {
+        // Check if Supabase client loader is available
+        if (typeof window.getSupabaseClient !== 'function') {
+            errorType = 'NO_SUPABASE_CLIENT';
+            errorMessage = 'window.getSupabaseClient is not available. Check script order.';
+            throw new Error(errorMessage);
+        }
+        // Get Supabase client
+        supabase = await window.getSupabaseClient();
+        if (!supabase || !supabase.auth) {
+            errorType = 'NO_SUPABASE_AUTH';
+            errorMessage = 'Supabase client or auth module not available.';
+            throw new Error(errorMessage);
+        }
+        // Try to get session from Supabase
+        session = supabase.auth.getSession ? (await supabase.auth.getSession()).data.session : null;
+        if (!session) {
+            // Fallback: try to get from localStorage
+            const key = Object.keys(localStorage).find(k => k.endsWith('-auth-token'));
+            if (key) {
+                try {
+                    session = JSON.parse(localStorage.getItem(key));
+                } catch (e) {
+                    errorType = 'MALFORMED_TOKEN';
+                    errorMessage = 'Malformed token in localStorage.';
+                    stackTrace = e.stack;
+                    throw e;
+                }
+            }
+        }
+        // Validate session structure
+        if (!session || !session.access_token || !session.user) {
+            errorType = 'NO_SESSION';
+            errorMessage = 'No valid session or access token found.';
+            throw new Error(errorMessage);
+        }
+        // Validate expiry
+        const now = Math.floor(Date.now() / 1000);
+        const exp = session.expires_at || (session.user && session.user.exp);
+        if (exp && now > exp) {
+            errorType = 'TOKEN_EXPIRED';
+            errorMessage = 'Session token expired.';
+            throw new Error(errorMessage);
+        }
+        // Optionally: check if user is admin (by role/email)
+        // If you want to restrict to admin only, check here
+        // Example: if (!session.user.email.endsWith('@admin-domain.com')) { ... }
+        // If all checks pass, return true
+        return true;
+    } catch (error) {
+        if (!errorType) errorType = 'UNKNOWN';
+        if (!errorMessage) errorMessage = error.message;
+        stackTrace = error.stack;
+        // Log error in required format
+        console.error('[ADMIN_AUTH]', {
+            error: errorType,
+            message: errorMessage,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            stackTrace
+        });
+        showAdminAuthModal(errorType, errorMessage);
+        return false;
+    }
+}
+
+/**
+ * Show the admin login modal and block interaction
+ * @param {string} errorType
+ * @param {string} errorMessage
+ */
+function showAdminAuthModal(errorType, errorMessage) {
+    const modal = document.getElementById('admin-auth-modal');
+    const errorDiv = document.getElementById('admin-auth-modal-error');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    if (errorDiv) {
+        if (errorType || errorMessage) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = errorType ? `[${errorType}] ${errorMessage}` : errorMessage;
+        } else {
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        }
+    }
+    // Focus modal for accessibility
+    setTimeout(() => {
+        const content = modal.querySelector('.ngobras-auth-modal__content');
+        if (content) content.focus();
+    }, 100);
+    // Prevent closing modal by keyboard or click
+    modal.addEventListener('keydown', function(e) {
+        e.stopPropagation();
+        if (e.key === 'Escape' || e.key === 'Enter') {
+            e.preventDefault();
+        }
+    });
+    // Login button handler
+    const loginBtn = document.getElementById('admin-auth-login-btn');
+    if (loginBtn) {
+        loginBtn.onclick = function() {
+            try {
+                window.location.href = 'login_admin.html';
+            } catch (err) {
+                if (errorDiv) {
+                    errorDiv.style.display = 'block';
+                    errorDiv.textContent = 'Redirect gagal. Silakan refresh halaman.';
+                }
+                console.error('[AdminAuthModal] Redirect error:', err);
+            }
+        };
+    }
+}
+
+// Block all admin logic until authenticated
+// This must be the first DOMContentLoaded handler
+// All other admin logic must be after this check
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const isAdminAuth = await checkAdminAuth();
+    if (!isAdminAuth) return;
+    // Only run the rest if authenticated
     refreshConsultationsUnreadBadge().catch(err => {
         showAdminError('[Init] Failed to refresh consultations unread badge: ' + err.message);
     });
