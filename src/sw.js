@@ -210,21 +210,15 @@ self.addEventListener('activate', event => {
 // CONSOLIDATED FETCH EVENT HANDLER
 // Update fetch event handler - improved error handling and CDN support
 self.addEventListener('fetch', event => {
-  // Skip logging for performance in production
-  // console.log(`[ServiceWorker] Fetch: ${event.request.url}`);
-  
-  if (isDev) {
-    // In development mode, always go to network
-    return;
-  }
-
+  // --- Service Worker fetch event handler with HEAD/GET support and detailed logging ---
   // Skip chrome-extension requests
   if (event.request.url.startsWith('chrome-extension://')) {
     return;
   }
 
-  event.respondWith(
-    (async () => {
+  // Only handle GET and HEAD requests for cache logic
+  if (event.request.method === 'GET' || event.request.method === 'HEAD') {
+    event.respondWith((async () => {
       try {
         // Try to get preloaded response
         const preloadResponse = await event.preloadResponse;
@@ -235,13 +229,20 @@ self.addEventListener('fetch', event => {
         // Check if request is for CDN resource (including Supabase)
         if (event.request.url.includes('cdnjs.cloudflare.com') || 
             event.request.url.includes('cdn.jsdelivr.net')) {
-          
           try {
             // Try network first for CDN
             const networkResponse = await fetch(event.request);
             if (networkResponse && networkResponse.ok) {
               const cache = await caches.open(CACHE_NAME);
               await cache.put(event.request, networkResponse.clone());
+              // For HEAD, return only headers
+              if (event.request.method === 'HEAD') {
+                return new Response(null, {
+                  status: networkResponse.status,
+                  statusText: networkResponse.statusText,
+                  headers: networkResponse.headers
+                });
+              }
               return networkResponse;
             }
             throw new Error('CDN response not ok');
@@ -249,6 +250,13 @@ self.addEventListener('fetch', event => {
             // If network fails, try cache
             const cachedResponse = await caches.match(event.request);
             if (cachedResponse) {
+              if (event.request.method === 'HEAD') {
+                return new Response(null, {
+                  status: cachedResponse.status,
+                  statusText: cachedResponse.statusText,
+                  headers: cachedResponse.headers
+                });
+              }
               return cachedResponse;
             }
             // If no cache, try local fallback
@@ -273,8 +281,16 @@ self.addEventListener('fetch', event => {
         }
 
         // Try cache first for other requests
-        const cachedResponse = await caches.match(event.request);
+        const cache = await caches.open(CACHE_NAME);
+        const cachedResponse = await cache.match(event.request);
         if (cachedResponse) {
+          if (event.request.method === 'HEAD') {
+            return new Response(null, {
+              status: cachedResponse.status,
+              statusText: cachedResponse.statusText,
+              headers: cachedResponse.headers
+            });
+          }
           return cachedResponse;
         }
 
@@ -284,7 +300,6 @@ self.addEventListener('fetch', event => {
           if (networkResponse && networkResponse.ok) {
             // Only cache successful GET requests
             if (event.request.method === 'GET') {
-              const cache = await caches.open(CACHE_NAME);
               try {
                 await cache.put(event.request, networkResponse.clone());
               } catch (cacheError) {
@@ -294,9 +309,13 @@ self.addEventListener('fetch', event => {
                   method: event.request.method
                 });
               }
-            } else {
-              // Log attempt to cache non-GET request
-              console.warn('[ServiceWorker] Skipping cache.put for non-GET request:', event.request.url, event.request.method);
+            }
+            if (event.request.method === 'HEAD') {
+              return new Response(null, {
+                status: networkResponse.status,
+                statusText: networkResponse.statusText,
+                headers: networkResponse.headers
+              });
             }
             return networkResponse;
           }
@@ -308,8 +327,11 @@ self.addEventListener('fetch', event => {
         console.error(`[ServiceWorker] Fetch handler error: ${error.message}`);
         return handleOfflineFallback(event.request);
       }
-    })()
-  );
+    })());
+    return;
+  }
+  // For other methods (POST, PUT, etc), do not intercept
+  // Optionally, could add custom logic here
 });
 
 // IMPROVED CDN FALLBACK HANDLER

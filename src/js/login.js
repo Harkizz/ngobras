@@ -240,47 +240,53 @@ window.addEventListener('load', function() {
     }, 100);
 });
 
-// Add network status monitoring
+// Add network status monitoring with detailed error handling and UI feedback
+function updateNetworkStatusIndicator() {
+    let networkStatus = document.getElementById('networkStatus');
+    if (!navigator.onLine) {
+        if (!networkStatus) {
+            networkStatus = document.createElement('div');
+            networkStatus.id = 'networkStatus';
+            networkStatus.className = 'network-status-indicator offline';
+            networkStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.';
+            document.body.appendChild(networkStatus);
+        } else {
+            networkStatus.className = 'network-status-indicator offline';
+            networkStatus.style.display = 'block';
+        }
+        showAlert('You are currently offline. Please check your internet connection.', 'warning');
+    } else {
+        if (!networkStatus) {
+            networkStatus = document.createElement('div');
+            networkStatus.id = 'networkStatus';
+            networkStatus.className = 'network-status-indicator online';
+            networkStatus.innerHTML = '<i class="fas fa-wifi"></i> You are online.';
+            document.body.appendChild(networkStatus);
+        } else {
+            networkStatus.className = 'network-status-indicator online';
+            networkStatus.innerHTML = '<i class="fas fa-wifi"></i> You are online.';
+            networkStatus.style.display = 'block';
+        }
+        // Hide after a short time
+        setTimeout(() => {
+            if (networkStatus) networkStatus.style.display = 'none';
+        }, 2500);
+        const onlineAlert = showAlert('Your internet connection has been restored.', 'success');
+        setTimeout(() => onlineAlert.remove(), 2000);
+    }
+}
+
 window.addEventListener('online', function() {
     console.log('[Login] Network connection restored');
-    const networkStatus = document.getElementById('networkStatus');
-    if (networkStatus) {
-        networkStatus.style.display = 'none';
-    } else {
-        const onlineAlert = showAlert('Your internet connection has been restored.', 'success');
-        setTimeout(() => onlineAlert.remove(), 3000);
-    }
+    updateNetworkStatusIndicator();
 });
 
 window.addEventListener('offline', function() {
     console.log('[Login] Network connection lost');
-    
-    // Create or show network status indicator
-    let networkStatus = document.getElementById('networkStatus');
-    if (!networkStatus) {
-        networkStatus = document.createElement('div');
-        networkStatus.id = 'networkStatus';
-        networkStatus.className = 'network-status-indicator offline';
-        networkStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.';
-        document.body.appendChild(networkStatus);
-    } else {
-        networkStatus.style.display = 'block';
-    }
-    
-    showAlert('You are currently offline. Please check your internet connection.', 'warning');
+    updateNetworkStatusIndicator();
 });
 
 // Check network status on page load
 document.addEventListener('DOMContentLoaded', function() {
-    if (!navigator.onLine) {
-        console.log('[Login] Page loaded in offline state');
-        showAlert('You are currently offline. Please check your internet connection.', 'warning');
-        
-        // Create network status indicator
-        const networkStatus = document.createElement('div');
-        networkStatus.id = 'networkStatus';
-        networkStatus.className = 'network-status-indicator offline';
-        networkStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.';
-        document.body.appendChild(networkStatus);
-    }
+    updateNetworkStatusIndicator();
 });

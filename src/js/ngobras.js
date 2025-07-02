@@ -1,10 +1,36 @@
 // ===== NAVIGATION FUNCTIONS =====
         
-        /**
-         * Function untuk mengatur navigasi aktif di bottom navigation
-         * @param {Element} element - Element nav yang diklik
-         * @param {string} page - Nama halaman yang akan diaktifkan
-         */
+
+/**
+ * setActiveNav
+ * Fungsi untuk mengatur state aktif pada bottom navigation.
+ * Akan menghapus class 'active' dari semua .nav-item, lalu menambahkannya ke elemen yang diberikan.
+ * @param {Element|null} element - Element nav yang diklik/dituju (bisa null)
+ * @param {string} page - Nama halaman yang akan diaktifkan ('home' | 'profile')
+ */
+function setActiveNav(element, page) {
+    try {
+        // Hapus class 'active' dari semua nav-item
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        // Tambahkan class 'active' ke elemen yang diberikan
+        if (element && element.classList) {
+            element.classList.add('active');
+        } else {
+            // Fallback: cari berdasarkan id
+            let navId = page === 'profile' ? 'nav-profile' : 'nav-home';
+            const fallbackEl = document.getElementById(navId);
+            if (fallbackEl) {
+                fallbackEl.classList.add('active');
+            } else {
+                console.warn('[setActiveNav] Tidak dapat menemukan elemen nav untuk page:', page);
+            }
+        }
+    } catch (err) {
+        console.error('[setActiveNav] Error saat mengatur nav aktif:', err);
+    }
+}
 
         /**
          * Async: Pastikan Supabase sudah siap sebelum render UI
@@ -42,35 +68,39 @@
          * Fungsi utama untuk handle navigasi dan render konten utama
          * @param {string} page - 'home' | 'profile'
          * @param {boolean} [fromHash] - true jika dipanggil dari hashchange
+         *
+         * Setiap navigasi ke 'home', selalu render ulang struktur home dan load ulang chat items dinamis (AI & Admin)
+         * Error handling diperkuat, log detail, dan UI error jelas.
          */
         async function handleNavigation(page, fromHash = false) {
             const mainContent = document.querySelector('.main-content');
             try {
-                // Debug log
                 console.log('[NAVIGATION] handleNavigation:', page, 'fromHash:', fromHash);
-
                 // Pastikan Supabase sudah siap sebelum render UI
                 const supabaseReady = await ensureSupabaseReady();
-                if (!supabaseReady) {
-                    // Error sudah ditampilkan di UI oleh ensureSupabaseReady
-                    return;
-                }
-
+                if (!supabaseReady) return;
                 // Update nav active state
-                document.querySelectorAll('.nav-item').forEach(item => {
-                    item.classList.remove('active');
-                });
+                document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
                 let navId = page === 'profile' ? 'nav-profile' : 'nav-home';
                 const navEl = document.getElementById(navId);
                 if (navEl) navEl.classList.add('active');
-
                 // Clear main content
                 if (mainContent) mainContent.innerHTML = '';
-
                 // Render sesuai page
                 if (page === 'home') {
                     if (!fromHash) window.location.hash = 'home';
+                    // Render struktur dasar home (tanpa dummy)
                     renderHomeContent();
+                    // Setelah struktur dasar dirender, load chat items dinamis
+                    try {
+                        await loadChatItems();
+                        console.log('[NGOBRAS] Chat items loaded (AI & Admin)');
+                    } catch (err) {
+                        console.error('[handleNavigation] Error loading chat items:', err);
+                        if (mainContent) {
+                            mainContent.innerHTML += `<div class='error-container'><h3>Load Chat Items Error</h3><div class='error-details'>${err.message}</div><div class='error-debug'>${err.stack}</div></div>`;
+                        }
+                    }
                 } else if (page === 'profile') {
                     if (!fromHash) window.location.hash = 'profile';
                     if (typeof window.handleProfilePage === 'function') {
@@ -80,46 +110,52 @@
                         } catch (profileError) {
                             console.error('[NAVIGATION] Error in handleProfilePage:', profileError);
                             if (mainContent) {
-                                mainContent.innerHTML = `<div class='error-container'><h3>Profile Error</h3><div class='error-details'>${profileError.message}</div></div>`;
+                                mainContent.innerHTML += `<div class='error-container'><h3>Profile Error</h3><div class='error-details'>${profileError.message}</div><div class='error-debug'>${profileError.stack}</div></div>`;
                             }
                         }
                     } else {
-                        console.error('[NAVIGATION] Profile handler not found');
-                        if (mainContent) {
-                            mainContent.innerHTML = `<div class='error-container'><h3>Profile Handler Not Found</h3><div class='error-details'>Fungsi handler profile tidak ditemukan. Pastikan file profile.js dimuat dengan benar.</div></div>`;
-                        }
+                        if (mainContent) mainContent.innerHTML = '<div class="error-container"><h3>Profile Error</h3><div class="error-details">Profile page renderer not found.</div></div>';
                     }
                 } else {
-                    // Unknown page
-                    console.error('[NAVIGATION] Unknown page:', page);
-                    if (mainContent) {
-                        mainContent.innerHTML = `<div class='error-container'><h3>Unknown Page</h3><div class='error-details'>Halaman tidak ditemukan: ${page}</div></div>`;
-                    }
+                    if (mainContent) mainContent.innerHTML = '<div class="error-container"><h3>404</h3><div class="error-details">Halaman tidak ditemukan.</div></div>';
                 }
             } catch (err) {
-                // Error handling detail
-                console.error('[NAVIGATION][handleNavigation] Error:', err);
+                console.error('[NAVIGATION] Error in handleNavigation:', err);
                 if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="error-container">
-                            <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: var(--secondary-color);"></i>
-                            <h3>Navigation Error</h3>
-                            <p>Terjadi error pada navigasi. Silakan refresh halaman atau hubungi support.</p>
-                            <p class="error-details">${err.message}</p>
-                            <div class="error-debug" style="margin-top: 1rem; font-size: 0.8rem; color: #666; text-align: left; background: #f5f5f5; padding: 0.5rem; border-radius: 4px; max-height: 100px; overflow-y: auto;">
-                                <p>Debug info:</p>
-                                <p>Page: ${page}</p>
-                                <p>Hash: ${window.location.hash}</p>
-                                <p>Stack: ${err.stack}</p>
-                            </div>
-                            <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--primary-color); border: none; border-radius: 4px; cursor: pointer;">
-                                Refresh Page
-                            </button>
-                        </div>
-                    `;
+                    mainContent.innerHTML = `<div class='error-container'><h3>Navigation Error</h3><div class='error-details'>${err.message}</div><div class='error-debug'>${err.stack}</div></div>`;
                 }
             }
         }
+
+        // ===== BOTTOM NAVIGATION EVENT HANDLER & HASHCHANGE =====
+        document.addEventListener('DOMContentLoaded', function() {
+            // Event handler untuk bottom nav
+            const navHome = document.getElementById('nav-home');
+            if (navHome) {
+                navHome.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Selalu trigger render ulang meski hash sama
+                    handleNavigation('home', false);
+                });
+            }
+            const navProfile = document.getElementById('nav-profile');
+            if (navProfile) {
+                navProfile.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    handleNavigation('profile', false);
+                });
+            }
+            // Hashchange untuk navigasi via browser
+            window.addEventListener('hashchange', function() {
+                let page = 'home';
+                if (window.location.hash === '#profile') page = 'profile';
+                handleNavigation(page, true);
+            });
+            // Initial render sesuai hash
+            let initialPage = 'home';
+            if (window.location.hash === '#profile') initialPage = 'profile';
+            handleNavigation(initialPage, true);
+        });
 
         /**
          * Function untuk menangani navigasi antar halaman
@@ -697,14 +733,40 @@
 
         /**
          * Handler to load and render AI assistants and admins on page load
+         * Selalu fetch data terbaru, tampilkan error jika gagal
+         * Error handling diperkuat, log detail, dan UI error jelas.
          */
         async function loadChatItems() {
-            // Load and render AI assistants
-            const assistants = await fetchAIAssistants();
-            renderAIAssistants(assistants);
-            // Load and render admins
-            const admins = await fetchAdmins();
-            renderAdmins(admins);
+            try {
+                // Tampilkan loading state pada chat items section
+                const aiSection = document.querySelector('#ai-section .chat-items');
+                const adminSection = document.querySelector('#admin-section .chat-items');
+                if (aiSection) aiSection.innerHTML = '<div class="chat-item">Memuat AI assistants...</div>';
+                if (adminSection) adminSection.innerHTML = '<div class="chat-item">Memuat admin/doctor...</div>';
+                // Fetch AI assistants
+                let aiAssistants = [];
+                try {
+                    aiAssistants = await fetchAIAssistants();
+                } catch (err) {
+                    console.error('[ChatItems] Gagal fetch AI assistants:', err);
+                }
+                // Fetch Admins
+                let admins = [];
+                try {
+                    admins = await fetchAdmins();
+                } catch (err) {
+                    console.error('[ChatItems] Gagal fetch admins:', err);
+                }
+                // Render chat items
+                renderAIAssistants(aiAssistants);
+                renderAdmins(admins);
+            } catch (err) {
+                console.error('[ChatItems] Error loading chat items:', err);
+                const aiSection = document.querySelector('#ai-section .chat-items');
+                const adminSection = document.querySelector('#admin-section .chat-items');
+                if (aiSection) aiSection.innerHTML = `<div class='chat-item'>Gagal memuat AI assistants: ${err.message}</div>`;
+                if (adminSection) adminSection.innerHTML = `<div class='chat-item'>Gagal memuat admin/doctor: ${err.message}</div>`;
+            }
         }
 
         // ===== INIT CHAT ITEMS ON DOMContentLoaded =====
@@ -1272,10 +1334,11 @@
                 return;
             }
             try {
+                // Render struktur dasar home, data dinamis akan di-load oleh loadChatItems()
                 mainContent.innerHTML = `
                 <div class="chat-categories">
                     <!-- ===== AI CONSULTATION SECTION ===== -->
-                    <section class="category-section fade-in">
+                    <section id="ai-section" class="category-section fade-in">
                         <div class="category-header">
                             <div class="category-icon ai-icon"><i class="bi bi-robot"></i></div>
                             <div>
@@ -1283,35 +1346,10 @@
                                 <div class="category-subtitle">Respons cepat 24/7</div>
                             </div>
                         </div>
-                        <div class="chat-items">
-                            <div class="chat-item" onclick="openChat('ai-general')">
-                                <div class="chat-avatar ai-avatar"><i class="bi bi-heart-pulse"></i></div>
-                                <div class="chat-info">
-                                    <div class="chat-title">Konsultasi Umum</div>
-                                    <div class="chat-preview">Tanyakan keluhan kesehatan umum Anda</div>
-                                </div>
-                                <div class="chat-time">Online</div>
-                            </div>
-                            <div class="chat-item" onclick="openChat('ai-symptoms')">
-                                <div class="chat-avatar ai-avatar"><i class="bi bi-search-heart"></i></div>
-                                <div class="chat-info">
-                                    <div class="chat-title">Cek Gejala</div>
-                                    <div class="chat-preview">Analisis gejala yang Anda rasakan</div>
-                                </div>
-                                <div class="chat-time">Online</div>
-                            </div>
-                            <div class="chat-item" onclick="openChat('ai-tips')">
-                                <div class="chat-avatar ai-avatar"><i class="bi bi-lightbulb"></i></div>
-                                <div class="chat-info">
-                                    <div class="chat-title">Tips Kesehatan</div>
-                                    <div class="chat-preview">Dapatkan tips hidup sehat harian</div>
-                                </div>
-                                <div class="chat-time">Online</div>
-                            </div>
-                        </div>
+                        <div class="chat-items"></div>
                     </section>
                     <!-- ===== ADMIN/DOCTOR CONSULTATION SECTION ===== -->
-                    <section class="category-section fade-in">
+                    <section id="admin-section" class="category-section fade-in">
                         <div class="category-header">
                             <div class="category-icon admin-icon"><i class="bi bi-person-vcard"></i></div>
                             <div>
@@ -1319,32 +1357,7 @@
                                 <div class="category-subtitle">Tenaga medis profesional</div>
                             </div>
                         </div>
-                        <div class="chat-items">
-                            <div class="chat-item" onclick="openChat('doctor-general')" data-admin-uuid="UUID_ADMIN_1">
-                                <div class="chat-avatar admin-avatar"><i class="bi bi-person-hearts"></i></div>
-                                <div class="chat-info">
-                                    <div class="chat-title">Dr. Sarah</div>
-                                    <div class="chat-preview">Dokter Umum - Spesialis Penyakit Dalam</div>
-                                </div>
-                                <div class="chat-time">Online</div>
-                            </div>
-                            <div class="chat-item" onclick="openChat('doctor-pediatric')" data-admin-uuid="UUID_ADMIN_2">
-                                <div class="chat-avatar admin-avatar"><i class="bi bi-person-bounding-box"></i></div>
-                                <div class="chat-info">
-                                    <div class="chat-title">Dr. Ahmad</div>
-                                    <div class="chat-preview">Dokter Anak - Konsultasi anak dan bayi</div>
-                                </div>
-                                <div class="chat-time">Online</div>
-                            </div>
-                            <div class="chat-item" onclick="openChat('admin-support')" data-admin-uuid="UUID_ADMIN_3">
-                                <div class="chat-avatar admin-avatar"><i class="bi bi-tools"></i></div>
-                                <div class="chat-info">
-                                    <div class="chat-title">Customer Support</div>
-                                    <div class="chat-preview">Bantuan teknis dan informasi layanan</div>
-                                </div>
-                                <div class="chat-time">Online</div>
-                            </div>
-                        </div>
+                        <div class="chat-items"></div>
                     </section>
                 </div>
                 `;
