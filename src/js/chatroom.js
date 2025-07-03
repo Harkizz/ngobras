@@ -54,34 +54,11 @@ function getQueryParam(name) {
 }
 
 // Inisialisasi Supabase client menggunakan centralized client
-let supabase = null;
+// Use centralized Subscription Manager for all realtime/polling logic
+let subscriptionManager = null;
 async function initSupabase() {
-    try {
-        console.log('[Chatroom] Initializing Supabase client...');
-        ensureSupabaseClientAvailable();
-        
-        // Get client from centralized module
-        console.log('[Chatroom] Calling window.getSupabaseClient()...');
-        supabase = await window.getSupabaseClient();
-        
-        console.log('[Chatroom] getSupabaseClient() returned:', supabase ? 'valid client' : 'null/undefined');
-        
-        if (!supabase) {
-            console.error('[Chatroom] Failed to get Supabase client from centralized module');
-            throw new Error('Failed to get Supabase client from centralized module');
-        }
-        
-        // Check if supabase client has expected methods
-        console.log('[Chatroom] Supabase client methods available:',
-            Object.keys(supabase).filter(k => typeof supabase[k] === 'function'));
-        
-        console.log('[Chatroom] Supabase client initialized successfully');
-        return true;
-    } catch (err) {
-        showError('Gagal inisialisasi Supabase: ' + err.message);
-        console.error('[Chatroom][Supabase Init Error]', err);
-        return false;
-    }
+    // No-op: handled by SubscriptionManager
+    return true;
 }
 
 // Error container untuk menampilkan pesan error
@@ -204,8 +181,7 @@ function renderMessages(messages) {
 let userId = null;
 let adminId = null;
 let messages = [];
-let subscription = null;
-let pollingInterval = null; // Untuk fallback polling
+// Remove legacy subscription/polling variables
 
 // Helper: Ambil access_token Supabase dari localStorage
 function getSupabaseAccessToken() {
@@ -290,113 +266,35 @@ async function fetchInitialMessages() {
     }
 }
 
-// Fallback polling jika realtime gagal
-function startPollingMessages() {
-    if (pollingInterval) return;
-    pollingInterval = setInterval(fetchInitialMessages, 3000); // Poll setiap 3 detik
-    showError('Realtime tidak tersedia, menggunakan polling otomatis.');
-    console.log('Polling started.');
-}
-function stopPollingMessages() {
-    if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-        console.log('Polling stopped.');
-    }
-}
+// Polling handled by SubscriptionManager
 
-// Subscribe realtime ke tabel messages
+// Use SubscriptionManager for all subscriptions
 async function subscribeToMessages() {
-    if (!supabase) {
-        console.warn('[Chatroom] Supabase client not initialized, initializing now...');
-        const initialized = await initSupabase();
-        if (!initialized) {
-            console.error('[Chatroom] Failed to initialize Supabase, cannot subscribe to messages');
-            return;
-        }
-    }
-    
-    console.log('[Chatroom] Supabase client before subscription:',
-        supabase ? 'exists' : 'null/undefined',
-        supabase ? `with methods: ${Object.keys(supabase).filter(m => typeof supabase[m] === 'function').join(', ')}` : '');
-    console.log('Attempting to subscribe to messages channel for user:', userId, 'and admin:', adminId);
-    try {
-        // Subscribe ke semua perubahan pada tabel messages
-        subscription = supabase.channel('messages-channel')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'messages'
-            }, payload => {
-                // Filter event di sisi client: hanya proses jika sender/receiver cocok
-                const relevant = (
-                    (payload.new && (
-                        (payload.new.sender_id === userId && payload.new.receiver_id === adminId) ||
-                        (payload.new.sender_id === adminId && payload.new.receiver_id === userId)
-                    )) ||
-                    (payload.old && (
-                        (payload.old.sender_id === userId && payload.old.receiver_id === adminId) ||
-                        (payload.old.sender_id === adminId && payload.old.receiver_id === userId)
-                    ))
-                );
-                if (relevant) {
-                    console.log('Realtime event relevant, updating UI:', payload);
-                    handleRealtimeMessage(payload);
-                } else {
-                    console.log('Realtime event ignored (not relevant to this chat):', payload);
-                }
-            })
-            .subscribe(
-                async (status, err) => {
-                    console.log('Supabase subscribe status:', status, 'error:', err);
-                    if (status === 'SUBSCRIBED') {
-                        stopPollingMessages();
-                        console.log('Berhasil subscribe ke pesan realtime');
-                        // Setelah subscribe realtime sukses, mark semua pesan admin ke user sebagai read
-                        try {
-                            const token = getSupabaseAccessToken();
-                            if (token) {
-                                const res = await fetch('/api/messages/mark-read', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${token}`
-                                    },
-                                    body: JSON.stringify({ sender_id: adminId, receiver_id: userId })
-                                });
-                                if (!res.ok) {
-                                    let errData = {};
-                                    try { errData = await res.json(); } catch (e) {}
-                                    showError('Gagal menandai pesan admin sebagai sudah dibaca: ' + (errData.error || res.statusText));
-                                    console.error('[mark-read] error:', errData);
-                                } else {
-                                    const result = await res.json();
-                                    console.log('[mark-read] Success:', result);
-                                    if (result && typeof result.updated === 'number' && result.updated === 0) {
-                                        // Bukan error jika tidak ada pesan yang perlu di-mark as read
-                                        console.info('[mark-read] Tidak ada pesan admin yang perlu diupdate (semua sudah dibaca atau tidak ada pesan).');
-                                    }
-                                }
-                            } else {
-                                showError('Token login tidak ditemukan, tidak bisa mark pesan admin sebagai read.');
-                            }
-                        } catch (err) {
-                            showError('Gagal mark pesan admin sebagai read: ' + err.message);
-                            console.error('[mark-read] exception:', err);
-                        }
-                        await fetchInitialMessages();
-                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
-                        showError('Gagal subscribe ke pesan realtime. Beralih ke polling.');
-                        startPollingMessages();
-                        if (err) console.error('Supabase subscribe error details:', err);
-                    }
-                }
+    if (!subscriptionManager) return;
+    // Only subscribe if realtime is enabled
+    return subscriptionManager.subscribe(
+        'messages',
+        { event: '*', schema: 'public', table: 'messages' },
+        payload => {
+            // Filter event di sisi client: hanya proses jika sender/receiver cocok
+            const relevant = (
+                (payload.new && (
+                    (payload.new.sender_id === userId && payload.new.receiver_id === adminId) ||
+                    (payload.new.sender_id === adminId && payload.new.receiver_id === userId)
+                )) ||
+                (payload.old && (
+                    (payload.old.sender_id === userId && payload.old.receiver_id === adminId) ||
+                    (payload.old.sender_id === adminId && payload.old.receiver_id === userId)
+                ))
             );
-    } catch (err) {
-        showError('Gagal subscribe realtime: ' + err.message);
-        startPollingMessages();
-        console.error('Error during subscribe setup:', err);
-    }
+            if (relevant) {
+                console.log('Realtime event relevant, updating UI:', payload);
+                handleRealtimeMessage(payload);
+            } else {
+                console.log('Realtime event ignored (not relevant to this chat):', payload);
+            }
+        }
+    );
 }
 
 // Handler untuk pesan realtime
@@ -435,12 +333,7 @@ function handleRealtimeMessage(payload) {
 
 // Unsubscribe saat keluar dari halaman
 function cleanupSubscription() {
-    if (subscription && supabase) {
-        supabase.removeChannel(subscription);
-        subscription = null;
-        console.log('Supabase channel unsubscribed.');
-    }
-    stopPollingMessages();
+    if (subscriptionManager) subscriptionManager.cleanup();
 }
 
 // Inisialisasi chatroom
@@ -453,7 +346,12 @@ async function initChatroom() {
         console.error('User ID or Admin ID missing in URL');
         return;
     }
-    await initSupabase();
+    // Initialize Subscription Manager
+    subscriptionManager = new window.SupabaseSubscriptionManager({
+        getSupabaseClient: window.getSupabaseClient,
+        fetchMessages: fetchInitialMessages
+    });
+    await subscriptionManager.initialize();
     await fetchInitialMessages();
     await subscribeToMessages();
 }
